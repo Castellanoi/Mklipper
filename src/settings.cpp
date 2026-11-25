@@ -36,6 +36,7 @@ void MklipperSettings::load()
     m_confirmClearHistory = m_settings.value(QStringLiteral("ConfirmClearHistory"), true).toBool();
     m_confirmRemoveStarred = m_settings.value(QStringLiteral("ConfirmRemoveStarred"), true).toBool();
     m_autoPaste = m_settings.value(QStringLiteral("AutoPaste"), true).toBool();
+    m_keepPopupOpen = m_settings.value(QStringLiteral("KeepPopupOpen"), false).toBool();
     m_urlGrabberEnabled = m_settings.value(QStringLiteral("URLGrabberEnabled"), false).toBool();
     m_actionOnSelection = m_settings.value(QStringLiteral("ActionOnSelection"), false).toBool();
     m_timeoutForActionPopups = qBound(0, m_settings.value(QStringLiteral("TimeoutForActionPopups"), 8).toInt(), 200);
@@ -54,6 +55,11 @@ void MklipperSettings::load()
     m_shortcutRepeatAction = m_settings.value(QStringLiteral("RepeatAction"), QString()).toString();
     m_shortcutClearHistory = m_settings.value(QStringLiteral("ClearHistory"), QString()).toString();
     m_settings.endGroup();
+
+    m_settings.beginGroup(QStringLiteral("Updates"));
+    m_autoCheckUpdates = m_settings.value(QStringLiteral("AutoCheck"), true).toBool();
+    m_skippedUpdateVersion = m_settings.value(QStringLiteral("SkippedVersion"), QString()).toString();
+    m_settings.endGroup();
 }
 
 void MklipperSettings::save()
@@ -69,6 +75,7 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("ConfirmClearHistory"), m_confirmClearHistory);
     m_settings.setValue(QStringLiteral("ConfirmRemoveStarred"), m_confirmRemoveStarred);
     m_settings.setValue(QStringLiteral("AutoPaste"), m_autoPaste);
+    m_settings.setValue(QStringLiteral("KeepPopupOpen"), m_keepPopupOpen);
     m_settings.setValue(QStringLiteral("URLGrabberEnabled"), m_urlGrabberEnabled);
     m_settings.setValue(QStringLiteral("ActionOnSelection"), m_actionOnSelection);
     m_settings.setValue(QStringLiteral("TimeoutForActionPopups"), m_timeoutForActionPopups);
@@ -86,6 +93,11 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("CyclePrev"), m_shortcutCyclePrev);
     m_settings.setValue(QStringLiteral("RepeatAction"), m_shortcutRepeatAction);
     m_settings.setValue(QStringLiteral("ClearHistory"), m_shortcutClearHistory);
+    m_settings.endGroup();
+
+    m_settings.beginGroup(QStringLiteral("Updates"));
+    m_settings.setValue(QStringLiteral("AutoCheck"), m_autoCheckUpdates);
+    m_settings.setValue(QStringLiteral("SkippedVersion"), m_skippedUpdateVersion);
     m_settings.endGroup();
 
     m_settings.sync();

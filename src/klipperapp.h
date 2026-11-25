@@ -25,6 +25,9 @@ class QAction;
 class QMenu;
 class SystemClipboard;
 class URLGrabber;
+class UpdateDialog;
+class Updater;
+struct ReleaseInfo;
 
 class KlipperApp : public QObject, public QDBusContext
 {
@@ -47,6 +50,7 @@ public Q_SLOTS:
     Q_SCRIPTABLE void toggleKlipperPopupMenu();
     Q_SCRIPTABLE void showKlipperManuallyInvokeActionMenu();
     Q_SCRIPTABLE void configure();
+    Q_SCRIPTABLE void checkForUpdates();
     Q_SCRIPTABLE void reloadConfig();
     Q_SCRIPTABLE void quit();
     Q_SCRIPTABLE void slotCycleNext();
@@ -63,23 +67,31 @@ private Q_SLOTS:
     void onInvokeActionByUuid(const QString &uuid);
     void showActionPopupMenu(QMenu *menu);
     void updateTrayTooltip();
+    void onUpdateAvailable(const ReleaseInfo &release, bool userInitiated);
+    void onUpdateInstallSucceeded(const ReleaseInfo &release);
 
 private:
     void setupTrayIcon();
     void registerShortcuts();
     void offerActions(const HistoryItemConstPtr &item, bool fromSelection);
     QString cycleNotificationText() const;
+    UpdateDialog *ensureUpdateDialog();
+    void restartAfterUpdate();
 
     std::shared_ptr<SystemClipboard> m_clip;
     std::shared_ptr<HistoryModel> m_historyModel;
     HistoryCycler *m_historyCycler = nullptr;
     URLGrabber *m_urlGrabber = nullptr;
     GlobalShortcutManager *m_shortcuts = nullptr;
+    Updater *m_updater = nullptr;
     std::unique_ptr<KlipperPopup> m_popup;
     QPointer<ConfigDialog> m_configDialog;
+    QPointer<UpdateDialog> m_updateDialog;
 
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
+    QAction *m_pendingUpdateAct = nullptr;
+    QAction *m_pendingUpdateSep = nullptr;
     QAction *m_toggleActionsAct = nullptr;
 
     bool m_urlGrabberEnabled = false;

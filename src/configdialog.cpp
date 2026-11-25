@@ -71,10 +71,14 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_autoPaste = new QCheckBox(tr("Pegar automáticamente al elegir un elemento (además de copiarlo)"), histGroup);
     m_autoPaste->setChecked(s->autoPaste());
 
+    m_keepPopupOpen = new QCheckBox(tr("Mantener la ventana flotante abierta (no cerrarla al hacer clic ni al perder el foco)"), histGroup);
+    m_keepPopupOpen->setChecked(s->keepPopupOpen());
+
     histForm->addRow(m_keepContents);
     histForm->addRow(m_preventEmpty);
     histForm->addRow(m_saveImages);
     histForm->addRow(m_autoPaste);
+    histForm->addRow(m_keepPopupOpen);
     histForm->addRow(tr("Tamaño máximo del historial:"), m_maxItems);
     histForm->addRow(m_confirmClear);
     genLayout->addWidget(histGroup);
@@ -92,11 +96,27 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     selLayout->addWidget(m_syncClipboards);
     genLayout->addWidget(selGroup);
 
-    auto *sysGroup = new QGroupBox(tr("Sistema"), generalPage);
+    auto *sysGroup = new QGroupBox(tr("Sistema y actualizaciones"), generalPage);
     auto *sysLayout = new QVBoxLayout(sysGroup);
     m_autostart = new QCheckBox(tr("Iniciar Mklipper automáticamente al iniciar sesión"), sysGroup);
     m_autostart->setChecked(MklipperSettings::autostartEnabled());
     sysLayout->addWidget(m_autostart);
+
+    m_autoCheckUpdates = new QCheckBox(tr("Buscar actualizaciones automáticamente al iniciar"), sysGroup);
+    m_autoCheckUpdates->setChecked(s->autoCheckUpdates());
+    sysLayout->addWidget(m_autoCheckUpdates);
+
+    auto *verRow = new QHBoxLayout;
+    auto *verLabel = new QLabel(tr("Versión instalada: <b>%1</b>").arg(QStringLiteral(MKLIPPER_VERSION)), sysGroup);
+    auto *checkUpdatesBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("system-software-update")),
+                                            tr("Buscar actualizaciones ahora…"),
+                                            sysGroup);
+    connect(checkUpdatesBtn, &QPushButton::clicked, this, &ConfigDialog::checkForUpdatesRequested);
+    verRow->addWidget(verLabel);
+    verRow->addStretch();
+    verRow->addWidget(checkUpdatesBtn);
+    sysLayout->addLayout(verRow);
+
     genLayout->addWidget(sysGroup);
     genLayout->addStretch();
 
@@ -285,6 +305,7 @@ void ConfigDialog::saveAndAccept()
     s->setMaxClipItems(m_maxItems->value());
     s->setConfirmClearHistory(m_confirmClear->isChecked());
     s->setAutoPaste(m_autoPaste->isChecked());
+    s->setKeepPopupOpen(m_keepPopupOpen->isChecked());
 
     s->setUrlGrabberEnabled(m_urlGrabberEnabled->isChecked());
     s->setActionOnSelection(m_actionOnSelection->isChecked());
@@ -299,6 +320,7 @@ void ConfigDialog::saveAndAccept()
     s->setShortcutRepeatAction(m_keyRepeatAction->keySequence().toString());
     s->setShortcutClearHistory(m_keyClearHistory->keySequence().toString());
 
+    s->setAutoCheckUpdates(m_autoCheckUpdates->isChecked());
     MklipperSettings::setAutostartEnabled(m_autostart->isChecked());
 
     if (m_urlGrabber) {

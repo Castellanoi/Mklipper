@@ -36,6 +36,8 @@ bool tryFastForwardToExistingInstance(int argc, char *argv[])
             method = "clearClipboardHistory";
         } else if (std::strcmp(argv[i], "--configure") == 0) {
             method = "configure";
+        } else if (std::strcmp(argv[i], "--check-updates") == 0) {
+            method = "checkForUpdates";
         } else if (std::strcmp(argv[i], "--quit") == 0) {
             method = "quit";
         } else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0
@@ -110,6 +112,7 @@ int main(int argc, char *argv[])
     QCommandLineOption optAction(u"action"_s, QObject::tr("Invocar acciones sobre el elemento actual"));
     QCommandLineOption optClear(u"clear"_s, QObject::tr("Vaciar el historial del portapapeles"));
     QCommandLineOption optConfigure(u"configure"_s, QObject::tr("Abrir la ventana de configuración"));
+    QCommandLineOption optCheckUpdates(u"check-updates"_s, QObject::tr("Buscar actualizaciones de Mklipper"));
     QCommandLineOption optQuit(u"quit"_s, QObject::tr("Cerrar la instancia en ejecución de Mklipper"));
     QCommandLineOption optNoFast(u"no-fast-path"_s);
     optNoFast.setFlags(QCommandLineOption::HiddenFromHelp);
@@ -121,6 +124,7 @@ int main(int argc, char *argv[])
     parser.addOption(optAction);
     parser.addOption(optClear);
     parser.addOption(optConfigure);
+    parser.addOption(optCheckUpdates);
     parser.addOption(optQuit);
     parser.addOption(optNoFast);
     parser.process(app);
@@ -134,6 +138,8 @@ int main(int argc, char *argv[])
             existing.call(u"clearClipboardHistory"_s);
         } else if (parser.isSet(optConfigure)) {
             existing.call(u"configure"_s);
+        } else if (parser.isSet(optCheckUpdates)) {
+            existing.call(u"checkForUpdates"_s);
         } else if (parser.isSet(optCycleNext)) {
             existing.call(u"slotCycleNext"_s);
         } else if (parser.isSet(optCyclePrev)) {
@@ -158,6 +164,8 @@ int main(int argc, char *argv[])
         klipper.showKlipperPopupMenu();
     } else if (parser.isSet(optConfigure)) {
         klipper.configure();
+    } else if (parser.isSet(optCheckUpdates)) {
+        klipper.checkForUpdates();
     } else if (parser.isSet(optCycleNext)) {
         klipper.slotCycleNext();
     } else if (parser.isSet(optCyclePrev)) {

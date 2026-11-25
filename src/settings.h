@@ -46,6 +46,9 @@ public:
     bool autoPaste() const { return m_autoPaste; }
     void setAutoPaste(bool v) { m_autoPaste = v; }
 
+    bool keepPopupOpen() const { return m_keepPopupOpen; }
+    void setKeepPopupOpen(bool v) { m_keepPopupOpen = v; }
+
     // Actions (URLGrabber)
     bool urlGrabberEnabled() const { return m_urlGrabberEnabled; }
     void setUrlGrabberEnabled(bool v) { m_urlGrabberEnabled = v; }
@@ -81,6 +84,13 @@ public:
     QString shortcutClearHistory() const { return m_shortcutClearHistory; }
     void setShortcutClearHistory(const QString &v) { m_shortcutClearHistory = v; }
 
+    // Updates
+    bool autoCheckUpdates() const { return m_autoCheckUpdates; }
+    void setAutoCheckUpdates(bool v) { m_autoCheckUpdates = v; }
+
+    QString skippedUpdateVersion() const { return m_skippedUpdateVersion; }
+    void setSkippedUpdateVersion(const QString &v) { m_skippedUpdateVersion = v; }
+
     // Autostart helper (user-level ~/.config/autostart/mklipper.desktop)
     static bool autostartEnabled();
     static void setAutostartEnabled(bool enabled);
@@ -105,6 +115,7 @@ private:
     bool m_confirmClearHistory = true;
     bool m_confirmRemoveStarred = true;
     bool m_autoPaste = true;
+    bool m_keepPopupOpen = false;
 
     bool m_urlGrabberEnabled = false;
     bool m_actionOnSelection = false;
@@ -118,4 +129,7 @@ private:
     QString m_shortcutCyclePrev;
     QString m_shortcutRepeatAction;
     QString m_shortcutClearHistory;
+
+    bool m_autoCheckUpdates = true;
+    QString m_skippedUpdateVersion;
 };

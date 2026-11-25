@@ -462,10 +462,17 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_configBtn->setToolTip(tr("Configurar Mklipper"));
     m_configBtn->setFixedSize(30, 30);
 
+    m_closeBtn = new QToolButton(listPage);
+    m_closeBtn->setText(u"✕"_s);
+    m_closeBtn->setToolTip(tr("Cerrar ventana"));
+    m_closeBtn->setFixedSize(30, 30);
+    connect(m_closeBtn, &QToolButton::clicked, this, &QWidget::hide);
+
     topBar->addWidget(m_searchEdit, 1);
     topBar->addWidget(m_starFilterBtn);
     topBar->addWidget(m_clearBtn);
     topBar->addWidget(m_configBtn);
+    topBar->addWidget(m_closeBtn);
     listLayout->addLayout(topBar);
 
     // Password warning banner
@@ -591,9 +598,13 @@ KlipperPopup::KlipperPopup(QWidget *parent)
         activateWindow();
     });
     connect(m_configBtn, &QToolButton::clicked, this, [this]() {
-        hide();
+        if (!MklipperSettings::self()->keepPopupOpen()) {
+            hide();
+        }
         Q_EMIT configureRequested();
     });
+
+    connect(MklipperSettings::self(), &MklipperSettings::settingsChanged, this, &KlipperPopup::updatePersistentUi);
 
     connect(m_model.get(), &HistoryModel::hasPasswordChanged, this, &KlipperPopup::updatePasswordBanner);
     connect(m_model.get(), &HistoryModel::rowsInserted, this, &KlipperPopup::updateStatusLabel);
@@ -603,6 +614,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
 
     updatePasswordBanner();
     updateStatusLabel();
+    updatePersistentUi();
 }
 
 void KlipperPopup::showPositioned(const QPoint &anchorPos, bool anchorAbove)
@@ -716,10 +728,14 @@ void KlipperPopup::showCurrentBarcode()
 
 bool KlipperPopup::event(QEvent *ev)
 {
-    if (ev->type() == QEvent::WindowDeactivate
-        && !m_suppressAutoHide
-        && QApplication::activeModalWidget() == nullptr
-        && QApplication::activePopupWidget() == nullptr) {
+    if (ev->type() == QEvent::Enter && MklipperSettings::self()->keepPopupOpen()) {
+        // Refresh target window when user switches to another app and hovers back over persistent popup
+        m_paster->captureTargetWindow(winId());
+    } else if (ev->type() == QEvent::WindowDeactivate
+               && !m_suppressAutoHide
+               && !MklipperSettings::self()->keepPopupOpen()
+               && QApplication::activeModalWidget() == nullptr
+               && QApplication::activePopupWidget() == nullptr) {
         m_lastHideTimeMs = QDateTime::currentMSecsSinceEpoch();
         hide();
     }
@@ -885,6 +901,37 @@ void KlipperPopup::keyPressEvent(QKeyEvent *ev)
     QFrame::keyPressEvent(ev);
 }
 
+void KlipperPopup::mousePressEvent(QMouseEvent *ev)
+{
+    if (ev->button() == Qt::LeftButton) {
+        m_dragging = true;
+        m_dragOffset = ev->globalPosition().toPoint() - frameGeometry().topLeft();
+        ev->accept();
+        return;
+    }
+    QFrame::mousePressEvent(ev);
+}
+
+void KlipperPopup::mouseMoveEvent(QMouseEvent *ev)
+{
+    if (m_dragging && (ev->buttons() & Qt::LeftButton)) {
+        move(ev->globalPosition().toPoint() - m_dragOffset);
+        ev->accept();
+        return;
+    }
+    QFrame::mouseMoveEvent(ev);
+}
+
+void KlipperPopup::mouseReleaseEvent(QMouseEvent *ev)
+{
+    if (ev->button() == Qt::LeftButton && m_dragging) {
+        m_dragging = false;
+        ev->accept();
+        return;
+    }
+    QFrame::mouseReleaseEvent(ev);
+}
+
 QModelIndex KlipperPopup::sourceIndexFor(const QModelIndex &proxyIndex) const
 {
     return m_proxy->mapToSource(proxyIndex);
@@ -898,7 +945,9 @@ void KlipperPopup::activateItem(const QModelIndex &proxyIndex)
     }
     const QString uuid = src.data(HistoryModel::UuidRole).toString();
     m_model->moveToTop(uuid);
-    hide();
+    if (!MklipperSettings::self()->keepPopupOpen()) {
+        hide();
+    }
     if (MklipperSettings::self()->autoPaste()) {
         m_paster->schedulePaste();
     }
@@ -984,6 +1033,14 @@ void KlipperPopup::returnToListPage()
 void KlipperPopup::updatePasswordBanner()
 {
     m_passwordBanner->setVisible(m_model->clipboardHasPassword() || m_model->selectionHasPassword());
+}
+
+void KlipperPopup::updatePersistentUi()
+{
+    const bool persistent = MklipperSettings::self()->keepPopupOpen();
+    if (m_closeBtn) {
+        m_closeBtn->setVisible(persistent);
+    }
 }
 
 void KlipperPopup::updateStatusLabel()

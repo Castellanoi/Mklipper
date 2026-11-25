@@ -22,6 +22,9 @@ public:
     explicit ConfigDialog(URLGrabber *urlGrabber, QWidget *parent = nullptr);
     ~ConfigDialog() override;
 
+Q_SIGNALS:
+    void checkForUpdatesRequested();
+
 private Q_SLOTS:
     void saveAndAccept();
     void addAction();
@@ -41,8 +44,10 @@ private:
     QCheckBox *m_saveSelection = nullptr;
     QCheckBox *m_syncClipboards = nullptr;
     QCheckBox *m_autostart = nullptr;
+    QCheckBox *m_autoCheckUpdates = nullptr;
     QCheckBox *m_confirmClear = nullptr;
     QCheckBox *m_autoPaste = nullptr;
+    QCheckBox *m_keepPopupOpen = nullptr;
     QSpinBox *m_maxItems = nullptr;
 
     // Actions tab

@@ -14,16 +14,22 @@
 #include "notifications.h"
 #include "settings.h"
 #include "systemclipboard.h"
+#include "updatedialog.h"
+#include "updater.h"
 #include "urlgrabber.h"
 
 #include <QAction>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDBusConnection>
+#include <QFileInfo>
 #include <QIcon>
 #include <QKeySequence>
 #include <QMenu>
 #include <QMimeData>
+#include <QProcess>
+#include <QTimer>
 
 using namespace Qt::StringLiterals;
 
@@ -34,6 +40,7 @@ KlipperApp::KlipperApp(QObject *parent)
     , m_historyCycler(new HistoryCycler(this))
     , m_urlGrabber(new URLGrabber(this))
     , m_shortcuts(new GlobalShortcutManager(this))
+    , m_updater(new Updater(this))
     , m_popup(std::make_unique<KlipperPopup>())
 {
     QDBusConnection bus = QDBusConnection::sessionBus();
@@ -61,10 +68,20 @@ KlipperApp::KlipperApp(QObject *parent)
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
 
     connect(MklipperSettings::self(), &MklipperSettings::settingsChanged, this, &KlipperApp::reloadConfig);
+    connect(m_updater, &Updater::updateAvailable, this, &KlipperApp::onUpdateAvailable);
+    connect(m_updater, &Updater::installSucceeded, this, &KlipperApp::onUpdateInstallSucceeded);
 
     setupTrayIcon();
     reloadConfig();
     updateTrayTooltip();
+
+    if (MklipperSettings::self()->autoCheckUpdates()) {
+        QTimer::singleShot(8000, this, [this]() {
+            if (MklipperSettings::self()->autoCheckUpdates() && !m_updater->isBusy()) {
+                m_updater->checkForUpdates(false);
+            }
+        });
+    }
 }
 
 KlipperApp::~KlipperApp()
@@ -75,6 +92,23 @@ KlipperApp::~KlipperApp()
 void KlipperApp::setupTrayIcon()
 {
     m_trayMenu = new QMenu;
+
+    m_pendingUpdateAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-software-update"_s),
+                                               tr("Actualizar Mklipper…"));
+    m_pendingUpdateAct->setVisible(false);
+    connect(m_pendingUpdateAct, &QAction::triggered, this, [this]() {
+        if (m_updater->hasPendingUpdate()) {
+            auto *dlg = ensureUpdateDialog();
+            dlg->showRelease(m_updater->latestRelease());
+            dlg->show();
+            dlg->raise();
+            dlg->activateWindow();
+        } else {
+            checkForUpdates();
+        }
+    });
+    m_pendingUpdateSep = m_trayMenu->addSeparator();
+    m_pendingUpdateSep->setVisible(false);
 
     auto *openAct = m_trayMenu->addAction(QIcon::fromTheme(u"view-list-text"_s), tr("Abrir historial del portapapeles"));
     connect(openAct, &QAction::triggered, this, [this]() {
@@ -106,6 +140,10 @@ void KlipperApp::setupTrayIcon()
 
     auto *configAct = m_trayMenu->addAction(QIcon::fromTheme(u"preferences-system"_s), tr("Configurar Mklipper…"));
     connect(configAct, &QAction::triggered, this, &KlipperApp::configure);
+
+    auto *updateAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-software-update"_s, QIcon::fromTheme(u"view-refresh"_s)),
+                                            tr("Buscar actualizaciones…"));
+    connect(updateAct, &QAction::triggered, this, &KlipperApp::checkForUpdates);
 
     m_trayMenu->addSeparator();
 
@@ -348,7 +386,87 @@ void KlipperApp::configure()
     }
     m_configDialog = new ConfigDialog(m_urlGrabber);
     m_configDialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(m_configDialog, &ConfigDialog::checkForUpdatesRequested, this, &KlipperApp::checkForUpdates);
     m_configDialog->show();
+}
+
+UpdateDialog *KlipperApp::ensureUpdateDialog()
+{
+    if (!m_updateDialog) {
+        m_updateDialog = new UpdateDialog(m_updater);
+        m_updateDialog->setAttribute(Qt::WA_DeleteOnClose);
+    }
+    return m_updateDialog;
+}
+
+void KlipperApp::checkForUpdates()
+{
+    auto *dlg = ensureUpdateDialog();
+    dlg->show();
+    dlg->raise();
+    dlg->activateWindow();
+    if (!m_updater->isBusy()) {
+        dlg->startCheck();
+    }
+}
+
+void KlipperApp::onUpdateAvailable(const ReleaseInfo &release, bool userInitiated)
+{
+    if (m_pendingUpdateAct && m_pendingUpdateSep) {
+        m_pendingUpdateAct->setText(tr("Actualizar a Mklipper %1…").arg(release.version));
+        m_pendingUpdateAct->setVisible(true);
+        m_pendingUpdateSep->setVisible(true);
+    }
+
+    if (!userInitiated) {
+        if (release.version == MklipperSettings::self()->skippedUpdateVersion()) {
+            return;
+        }
+        Notifications::show(
+            tr("Nueva versión de Mklipper disponible"),
+            tr("Mklipper %1 ya está disponible. Hacé clic en el ícono de la bandeja → «Actualizar a Mklipper %1…» para instalarla.")
+                .arg(release.version),
+            9000);
+    }
+}
+
+void KlipperApp::onUpdateInstallSucceeded(const ReleaseInfo &release)
+{
+    if (m_pendingUpdateAct && m_pendingUpdateSep) {
+        m_pendingUpdateAct->setVisible(false);
+        m_pendingUpdateSep->setVisible(false);
+    }
+    Notifications::show(
+        tr("Mklipper actualizado"),
+        tr("Se instaló Mklipper %1 correctamente. Reiniciando…").arg(release.version),
+        5000);
+    restartAfterUpdate();
+}
+
+void KlipperApp::restartAfterUpdate()
+{
+    saveClipboardHistory();
+
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    bus.unregisterObject(u"/klipper"_s);
+    bus.unregisterService(u"org.mklipper.App"_s);
+    bus.unregisterService(u"org.kde.klipper"_s);
+
+    QString targetExe = u"/usr/bin/mklipper"_s;
+    if (!QFileInfo::exists(targetExe)) {
+        targetExe = QCoreApplication::applicationFilePath();
+    }
+
+    const QString pidStr = QString::number(QCoreApplication::applicationPid());
+    QProcess::startDetached(
+        u"/bin/sh"_s,
+        {u"-c"_s,
+         u"while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec \"$2\""_s,
+         u"mklipper-restart"_s,
+         pidStr,
+         targetExe});
+
+    QTimer::singleShot(150, qApp, &QCoreApplication::quit);
 }
 
 void KlipperApp::quit()

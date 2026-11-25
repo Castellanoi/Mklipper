@@ -1,0 +1,25 @@
+# Changelog
+
+## v1.1.0
+
+### 🇪🇸 Español
+- **Actualizador integrado en la aplicación:**
+  - Comprobación automática (opcional) y manual desde el menú de la bandeja (*Buscar actualizaciones…*), la ventana de configuración o el comando `mklipper --check-updates`.
+  - Consulta directa a **GitHub Releases**, muestra las notas de la versión, descarga el `.deb` con barra de progreso, verifica la integridad **SHA-256**, instala de forma nativa con `pkexec apt-get install` y reinicia Mklipper automáticamente.
+- **Modo ventana flotante persistente:**
+  - Nueva opción en *Configuración → General* (desactivada por defecto) para mantener abierta la ventana flotante del historial al hacer clic en un elemento o al perder el foco.
+- **Automatización de releases:**
+  - Workflow de GitHub Actions que compila el paquete `.deb` en Ubuntu 24.04 (base de Linux Mint 22.x), genera `SHA256SUMS` y publica el Release al subir un tag `v*`.
+
+### 🇬🇧 English
+- **Built-in in-app updater:**
+  - Optional automatic check on startup plus manual check from the tray menu (*Buscar actualizaciones…*), Settings dialog, or `mklipper --check-updates`.
+  - Queries **GitHub Releases**, displays Markdown release notes, downloads the `.deb` with progress reporting, verifies **SHA-256** integrity, installs natively via `pkexec apt-get install`, and restarts Mklipper automatically.
+- **Persistent floating popup mode:**
+  - New option under *Settings → General* (disabled by default) to keep the floating history popup open after clicking an item or losing focus.
+- **Automated releases:**
+  - GitHub Actions workflow that builds the `.deb` package on Ubuntu 24.04 (Linux Mint 22.x base), generates `SHA256SUMS`, and publishes the GitHub Release on `v*` tags.
+
+## v1.0.0
+
+- Initial standalone Qt 6 port of KDE Klipper for Linux Mint (Cinnamon / X11).

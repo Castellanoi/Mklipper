@@ -65,6 +65,9 @@ protected:
     bool event(QEvent *ev) override;
     bool eventFilter(QObject *watched, QEvent *ev) override;
     void keyPressEvent(QKeyEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
 
 private Q_SLOTS:
     void activateItem(const QModelIndex &proxyIndex);
@@ -76,6 +79,7 @@ private Q_SLOTS:
     void saveEditedText();
     void updatePasswordBanner();
     void updateStatusLabel();
+    void updatePersistentUi();
 
 private:
     void showPositioned(const QPoint &anchorPos, bool anchorAbove);
@@ -94,6 +98,7 @@ private:
     QToolButton *m_starFilterBtn = nullptr;
     QToolButton *m_clearBtn = nullptr;
     QToolButton *m_configBtn = nullptr;
+    QToolButton *m_closeBtn = nullptr;
     QWidget *m_passwordBanner = nullptr;
     QListView *m_listView = nullptr;
     QLabel *m_emptyLabel = nullptr;
@@ -107,5 +112,7 @@ private:
     QRCodeWidget *m_qrWidget = nullptr;
 
     bool m_suppressAutoHide = false;
+    bool m_dragging = false;
+    QPoint m_dragOffset;
     qint64 m_lastHideTimeMs = 0;
 };

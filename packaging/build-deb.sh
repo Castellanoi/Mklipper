@@ -7,7 +7,11 @@ DIST_DIR="${ROOT_DIR}/dist"
 STAGE_DIR="${BUILD_DIR}/deb-stage"
 
 PKG_NAME="mklipper"
-PKG_VERSION="1.0.0"
+PKG_VERSION="$(sed -n 's/^project(mklipper VERSION \([0-9][^ ]*\).*/\1/p' "${ROOT_DIR}/CMakeLists.txt" | head -n 1)"
+if [ -z "${PKG_VERSION}" ]; then
+    echo "Error: no se pudo leer la versión desde CMakeLists.txt" >&2
+    exit 1
+fi
 PKG_ARCH="$(dpkg --print-architecture)"
 DEB_FILE="${DIST_DIR}/${PKG_NAME}_${PKG_VERSION}_${PKG_ARCH}.deb"
 
@@ -32,7 +36,7 @@ Priority: optional
 Architecture: ${PKG_ARCH}
 Maintainer: Ivan Castellano <castellano.ivan.93@gmail.com>
 Installed-Size: ${INSTALLED_SIZE}
-Depends: libqt6core6t64 (>= 6.4), libqt6gui6t64 (>= 6.4), libqt6widgets6t64 (>= 6.4), libqt6dbus6t64 (>= 6.4), libqt6sql6t64 (>= 6.4), libqt6sql6-sqlite (>= 6.4), libqt6svg6 (>= 6.4), qt6-gtk-platformtheme (>= 6.4), libqrencode4, libx11-6, libxtst6
+Depends: libqt6core6t64 (>= 6.4), libqt6gui6t64 (>= 6.4), libqt6widgets6t64 (>= 6.4), libqt6dbus6t64 (>= 6.4), libqt6network6t64 (>= 6.4), libqt6sql6t64 (>= 6.4), libqt6sql6-sqlite (>= 6.4), libqt6svg6 (>= 6.4), qt6-gtk-platformtheme (>= 6.4), libqrencode4, libx11-6, libxtst6, pkexec
 Description: Native KDE Klipper clipboard manager port for Linux Mint
  Mklipper is a clean, lightweight, native Qt 6 port of KDE Plasma's Klipper
  clipboard manager designed for Linux Mint (Cinnamon / X11) without KDE or
@@ -71,4 +75,6 @@ EOF
 chmod 0755 "${STAGE_DIR}/DEBIAN/postrm"
 
 dpkg-deb --root-owner-group --build "${STAGE_DIR}" "${DEB_FILE}"
+(cd "${DIST_DIR}" && sha256sum "$(basename "${DEB_FILE}")" > SHA256SUMS)
 echo "Paquete generado: ${DEB_FILE}"
+echo "Checksum generado: ${DIST_DIR}/SHA256SUMS"

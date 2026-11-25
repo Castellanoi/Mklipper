@@ -60,6 +60,27 @@ bool isTerminalClass(const QString &cls)
     return false;
 }
 
+bool queryWindowIsMklipper(Display *dpy, Window win)
+{
+    if (!dpy || win == 0 || win == None) {
+        return false;
+    }
+    XClassHint hint;
+    if (XGetClassHint(dpy, win, &hint) != 0) {
+        bool isOwn = false;
+        if (hint.res_name) {
+            isOwn = isOwn || (QString::fromLocal8Bit(hint.res_name).compare(QStringLiteral("mklipper"), Qt::CaseInsensitive) == 0);
+            XFree(hint.res_name);
+        }
+        if (hint.res_class) {
+            isOwn = isOwn || (QString::fromLocal8Bit(hint.res_class).compare(QStringLiteral("mklipper"), Qt::CaseInsensitive) == 0);
+            XFree(hint.res_class);
+        }
+        return isOwn;
+    }
+    return false;
+}
+
 bool queryWindowIsTerminal(Display *dpy, Window win)
 {
     if (!dpy || win == 0 || win == None) {
@@ -163,7 +184,7 @@ void X11Paster::captureTargetWindow(WId ownWindowId)
         XGetInputFocus(dpy, &active, &revert);
     }
 
-    if (active != 0 && active != None && active != static_cast<Window>(ownWindowId)) {
+    if (active != 0 && active != None && active != static_cast<Window>(ownWindowId) && !queryWindowIsMklipper(dpy, active)) {
         m_targetWindow = static_cast<unsigned long>(active);
         m_targetIsTerminal = queryWindowIsTerminal(dpy, active);
     }
