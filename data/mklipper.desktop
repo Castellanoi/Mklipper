@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Mklipper
+GenericName=Clipboard Manager
+GenericName[es]=Gestor de portapapeles
+Comment=Native KDE Klipper port for Linux Mint
+Comment[es]=Port nativo de KDE Klipper para Linux Mint
+Exec=mklipper
+Icon=mklipper
+Terminal=false
+Categories=Utility;Qt;
+StartupNotify=false
+X-GNOME-UsesNotifications=true

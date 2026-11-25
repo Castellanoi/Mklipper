@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Mklipper
+Comment=Clipboard Manager (Mklipper)
+Comment[es]=Gestor de portapapeles (Mklipper)
+Exec=mklipper
+Icon=mklipper
+Terminal=false
+Categories=Utility;Qt;
+StartupNotify=false
+OnlyShowIn=X-Cinnamon;XFCE;MATE;GNOME;LXQt;
+X-GNOME-Autostart-enabled=true

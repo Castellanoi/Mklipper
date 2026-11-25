@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="icons/mklipper.svg">data/icons/mklipper.svg</file>
+  </qresource>
+</RCC>

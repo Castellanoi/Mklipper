@@ -1,0 +1,7 @@
+build/
+*.user
+*.autosave
+.vscode/
+.idea/
+.DS_Store
+*~
