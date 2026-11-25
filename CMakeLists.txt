@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mklipper VERSION 1.3.0 LANGUAGES CXX)
+project(mklipper VERSION 1.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,8 @@ set(MKLIPPER_SOURCES
     src/main.cpp
     src/settings.cpp
     src/settings.h
+    src/translations.cpp
+    src/translations.h
     src/mimetypes.h
     src/historyitem.cpp
     src/historyitem.h

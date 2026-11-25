@@ -55,6 +55,8 @@ public:
         layout->addWidget(hint);
 
         auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        buttons->button(QDialogButtonBox::Ok)->setText(QObject::tr("Aceptar"));
+        buttons->button(QDialogButtonBox::Cancel)->setText(QObject::tr("Cancelar"));
         connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         layout->addWidget(buttons);

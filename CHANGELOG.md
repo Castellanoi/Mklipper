@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.4.0
+
+### 🇪🇸 Español
+- **Soporte multilenguaje (Español / English):**
+  - Detecta automáticamente el idioma del sistema por defecto (*Automático*), y permite elegir manualmente entre **Español** e **English** en *Configuración → General → Sistema y actualizaciones* con aplicación inmediata sin reiniciar.
+- **Mejor respuesta ante escalado de pantalla (HiDPI / fuentes grandes):**
+  - Corregido el campo numérico *«Tamaño máximo del historial»* (`50 elementos`) y *«Duración del menú automático»* para que nunca se vean aplastados ni recorten el texto con aumento de pantalla activo (125%–200%).
+  - Las pestañas de configuración ahora cuentan con scroll automático y tamaño inicial adaptado al área disponible de la pantalla; los botones, filas del historial y el interruptor *«Pegar sin formato»* del popup se escalan dinámicamente con el tamaño de fuente del sistema.
+  - Activada la política de redondeo `PassThrough` para escalado fraccional nítido en Linux Mint.
+
+### 🇬🇧 English
+- **Multilingual support (English / Spanish):**
+  - Automatically follows the system language by default (*Automatic*), and lets you switch manually between **Español** and **English** under *Settings → General → System & Updates* with live switching (no restart required).
+- **Improved display scaling / HiDPI & large font responsiveness:**
+  - Fixed the *Maximum history size* (`50 items`) and *Automatic menu timeout* spinboxes so they never get squished or clip text under display scaling (125%–200%).
+  - Settings tabs now wrap cleanly in scroll areas with screen-clamped initial sizing; popup dimensions, list row heights, toolbar buttons, and the *Paste without formatting* toggle switch dynamically scale with system font metrics.
+  - Enabled `PassThrough` HiDPI rounding policy for crisp fractional scaling on Linux Mint.
+
 ## v1.3.0
 
 ### 🇪🇸 Español

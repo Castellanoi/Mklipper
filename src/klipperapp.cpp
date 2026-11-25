@@ -14,6 +14,7 @@
 #include "notifications.h"
 #include "settings.h"
 #include "systemclipboard.h"
+#include "translations.h"
 #include "updatedialog.h"
 #include "updater.h"
 #include "urlgrabber.h"
@@ -91,11 +92,29 @@ KlipperApp::~KlipperApp()
 
 void KlipperApp::setupTrayIcon()
 {
+    QIcon icon(u":/icons/mklipper.svg"_s);
+    if (icon.isNull()) {
+        icon = QIcon::fromTheme(u"edit-paste"_s);
+    }
+
+    m_trayIcon = new QSystemTrayIcon(icon, this);
+    rebuildTrayMenu();
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, &KlipperApp::onTrayActivated);
+    m_trayIcon->show();
+}
+
+void KlipperApp::rebuildTrayMenu()
+{
+    auto *oldMenu = m_trayMenu;
     m_trayMenu = new QMenu;
 
     m_pendingUpdateAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-software-update"_s),
                                                tr("Actualizar Mklipper…"));
-    m_pendingUpdateAct->setVisible(false);
+    const bool hasPending = m_updater && m_updater->hasPendingUpdate();
+    if (hasPending) {
+        m_pendingUpdateAct->setText(tr("Actualizar a Mklipper %1…").arg(m_updater->latestRelease().version));
+    }
+    m_pendingUpdateAct->setVisible(hasPending);
     connect(m_pendingUpdateAct, &QAction::triggered, this, [this]() {
         if (m_updater->hasPendingUpdate()) {
             auto *dlg = ensureUpdateDialog();
@@ -108,7 +127,7 @@ void KlipperApp::setupTrayIcon()
         }
     });
     m_pendingUpdateSep = m_trayMenu->addSeparator();
-    m_pendingUpdateSep->setVisible(false);
+    m_pendingUpdateSep->setVisible(hasPending);
 
     auto *openAct = m_trayMenu->addAction(QIcon::fromTheme(u"view-list-text"_s), tr("Abrir historial del portapapeles"));
     connect(openAct, &QAction::triggered, this, [this]() {
@@ -128,6 +147,7 @@ void KlipperApp::setupTrayIcon()
 
     m_toggleActionsAct = m_trayMenu->addAction(tr("Menú automático de acciones"));
     m_toggleActionsAct->setCheckable(true);
+    m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
     connect(m_toggleActionsAct, &QAction::toggled, this, &KlipperApp::setURLGrabberEnabled);
 
     m_trayMenu->addSeparator();
@@ -150,15 +170,23 @@ void KlipperApp::setupTrayIcon()
     auto *quitAct = m_trayMenu->addAction(QIcon::fromTheme(u"application-exit"_s), tr("Salir"));
     connect(quitAct, &QAction::triggered, this, &KlipperApp::quit);
 
-    QIcon icon(u":/icons/mklipper.svg"_s);
-    if (icon.isNull()) {
-        icon = QIcon::fromTheme(u"edit-paste"_s);
+    if (m_trayIcon) {
+        m_trayIcon->setContextMenu(m_trayMenu);
     }
+    if (oldMenu) {
+        oldMenu->deleteLater();
+    }
+}
 
-    m_trayIcon = new QSystemTrayIcon(icon, this);
-    m_trayIcon->setContextMenu(m_trayMenu);
-    connect(m_trayIcon, &QSystemTrayIcon::activated, this, &KlipperApp::onTrayActivated);
-    m_trayIcon->show();
+void KlipperApp::recreatePopup()
+{
+    const bool wasVisible = m_popup && m_popup->isVisible();
+    m_popup = std::make_unique<KlipperPopup>();
+    connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
+    connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
+    if (wasVisible) {
+        m_popup->showNearTray(m_trayIcon ? m_trayIcon->geometry() : QRect());
+    }
 }
 
 void KlipperApp::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
@@ -222,8 +250,17 @@ void KlipperApp::reloadConfig()
     if (calledFromDBus()) {
         s->load();
     }
+    const bool langChanged = MklipperTranslations::applyLanguage(s->language());
+
     m_urlGrabberEnabled = s->urlGrabberEnabled();
-    if (m_toggleActionsAct) {
+    if (langChanged) {
+        rebuildTrayMenu();
+        recreatePopup();
+        if (m_updateDialog && (!m_updater || !m_updater->isBusy())) {
+            m_updateDialog->close();
+        }
+        updateTrayTooltip();
+    } else if (m_toggleActionsAct) {
         QSignalBlocker blocker(m_toggleActionsAct);
         m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
     }

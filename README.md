@@ -43,17 +43,18 @@ Está pensado para integrarse de forma limpia y liviana en el escritorio **Cinna
 - **Elementos fijados (`★`):** protegidos al vaciar el historial o alcanzar el límite máximo.
 - **Privacidad:** ignora secretos marcados por gestores de contraseñas (`x-kde-passwordManagerHint`, KeePassXC, Bitwarden).
 - **Acciones personalizadas por regex (`URLGrabber`)** y apertura rápida de enlaces/archivos.
+- **Multilenguaje (Español / English) y soporte HiDPI:** adopta automáticamente el idioma del sistema y permite cambiar manualmente entre Español e English desde *Configuración → General*; la interfaz se adapta al escalado de pantalla y fuentes grandes.
 - **Integración nativa con Cinnamon:** registra `Super + V` directamente en los atajos de Cinnamon, expone API D-Bus (`org.mklipper.App` / `org.kde.klipper`) y cuenta con comandos CLI (`mklipper --toggle`, `--popup`, `--configure`, `--check-updates`, `--clear`, `--quit`).
 
 ### Instalación
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.3.0_amd64.deb`](dist/mklipper_1.3.0_amd64.deb).
+1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.4.0_amd64.deb`](dist/mklipper_1.4.0_amd64.deb).
 2. Instalalo con `apt` para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.3.0_amd64.deb
+sudo apt install ./mklipper_1.4.0_amd64.deb
 ```
 
 3. Iniciá **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper` en una terminal. A partir del próximo inicio de sesión arrancará automáticamente (`/etc/xdg/autostart/mklipper.desktop`), y podrás actualizar futuras versiones directamente desde la app (*clic derecho en el ícono → Buscar actualizaciones…*).
@@ -81,7 +82,7 @@ chmod +x packaging/build-deb.sh
 3. Instalá el paquete generado:
 
 ```bash
-sudo apt install ./dist/mklipper_1.3.0_amd64.deb
+sudo apt install ./dist/mklipper_1.4.0_amd64.deb
 ```
 
 ### Desinstalación
@@ -118,17 +119,18 @@ It is designed to blend naturally into **Cinnamon (X11)**: it inherits your syst
 - **Pinned items (`★`):** protected from history clearing and max-size eviction.
 - **Password privacy:** skips secrets flagged by password managers (`x-kde-passwordManagerHint`, KeePassXC, Bitwarden).
 - **Custom regex actions (`URLGrabber`)** and quick URL/file opening.
+- **Multilingual (English / Spanish) & HiDPI-ready:** automatically follows your system language and lets you switch manually between English and Spanish in *Settings → General*; dialogs and popup scale cleanly with display scaling and large fonts.
 - **Native Cinnamon integration:** registers `Super + V` directly in Cinnamon's custom keybindings, exposes a Klipper-compatible D-Bus API (`org.mklipper.App` / `org.kde.klipper`), and provides CLI flags (`mklipper --toggle`, `--popup`, `--configure`, `--check-updates`, `--clear`, `--quit`).
 
 ### Installation
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.3.0_amd64.deb`](dist/mklipper_1.3.0_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.4.0_amd64.deb`](dist/mklipper_1.4.0_amd64.deb).
 2. Install it via `apt` so Qt 6 runtime dependencies are resolved automatically:
 
 ```bash
-sudo apt install ./mklipper_1.3.0_amd64.deb
+sudo apt install ./mklipper_1.4.0_amd64.deb
 ```
 
 3. Launch **Mklipper** from your application menu or by running `mklipper`. It will start automatically on subsequent logins via `/etc/xdg/autostart/mklipper.desktop`, and future versions can be installed directly from within the app (*right-click tray icon → Buscar actualizaciones…*).
@@ -156,7 +158,7 @@ chmod +x packaging/build-deb.sh
 3. Install the generated package:
 
 ```bash
-sudo apt install ./dist/mklipper_1.3.0_amd64.deb
+sudo apt install ./dist/mklipper_1.4.0_amd64.deb
 ```
 
 ### Uninstall

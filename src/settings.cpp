@@ -39,6 +39,7 @@ void MklipperSettings::load()
     m_keepPopupOpen = m_settings.value(QStringLiteral("KeepPopupOpen"), false).toBool();
     m_closePopupOnFocusOut = m_settings.value(QStringLiteral("ClosePopupOnFocusOut"), false).toBool();
     m_pastePlainText = m_settings.value(QStringLiteral("PastePlainText"), false).toBool();
+    m_language = m_settings.value(QStringLiteral("Language"), QStringLiteral("system")).toString();
     m_urlGrabberEnabled = m_settings.value(QStringLiteral("URLGrabberEnabled"), false).toBool();
     m_actionOnSelection = m_settings.value(QStringLiteral("ActionOnSelection"), false).toBool();
     m_timeoutForActionPopups = qBound(0, m_settings.value(QStringLiteral("TimeoutForActionPopups"), 8).toInt(), 200);
@@ -80,6 +81,7 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("KeepPopupOpen"), m_keepPopupOpen);
     m_settings.setValue(QStringLiteral("ClosePopupOnFocusOut"), m_closePopupOnFocusOut);
     m_settings.setValue(QStringLiteral("PastePlainText"), m_pastePlainText);
+    m_settings.setValue(QStringLiteral("Language"), m_language);
     m_settings.setValue(QStringLiteral("URLGrabberEnabled"), m_urlGrabberEnabled);
     m_settings.setValue(QStringLiteral("ActionOnSelection"), m_actionOnSelection);
     m_settings.setValue(QStringLiteral("TimeoutForActionPopups"), m_timeoutForActionPopups);

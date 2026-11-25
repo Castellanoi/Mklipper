@@ -3,12 +3,15 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 #include "klipperapp.h"
+#include "settings.h"
+#include "translations.h"
 
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QProcess>
 #include <cstring>
@@ -91,6 +94,9 @@ int main(int argc, char *argv[])
         qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
     }
 
+    // Crisp fractional display scaling (125%, 150%, 175%, etc.) on HiDPI Linux Mint setups
+    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
     QApplication app(argc, argv);
     app.setApplicationName(u"mklipper"_s);
     app.setApplicationDisplayName(u"Mklipper"_s);
@@ -99,6 +105,8 @@ int main(int argc, char *argv[])
     app.setDesktopFileName(u"mklipper"_s);
     app.setWindowIcon(QIcon(u":/icons/mklipper.svg"_s));
     app.setQuitOnLastWindowClosed(false);
+
+    MklipperTranslations::applyLanguage(MklipperSettings::self()->language());
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QObject::tr("Mklipper — Gestor de portapapeles nativo para Linux Mint (port de KDE Klipper)"));

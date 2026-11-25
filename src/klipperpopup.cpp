@@ -123,7 +123,10 @@ public:
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
         const auto type = static_cast<HistoryItemType>(index.data(HistoryModel::TypeIntRole).toInt());
-        const int h = (type == HistoryItemType::Image) ? kRowHeightImage : kRowHeightText;
+        const int lineSp = option.fontMetrics.lineSpacing();
+        const int h = (type == HistoryItemType::Image)
+            ? qMax(kRowHeightImage, lineSp * 2 + 34)
+            : qMax(kRowHeightText, lineSp * 2 + 20);
         return QSize(option.rect.width(), h);
     }
 
@@ -429,8 +432,10 @@ public:
     QSize sizeHint() const override
     {
         const QFontMetrics fm(font());
+        const int trackH = trackHeightFor(fm);
+        const int trackW = trackWidthFor(trackH);
         const int textW = fm.horizontalAdvance(text());
-        return QSize(kTrackWidth + kSpacing + textW + 4, qMax(kTrackHeight + 4, fm.height() + 4));
+        return QSize(trackW + kSpacing + textW + 6, qMax(trackH + 4, fm.height() + 4));
     }
 
 protected:
@@ -439,8 +444,11 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
 
-        const int trackY = (height() - kTrackHeight) / 2;
-        const QRectF trackRect(0, trackY, kTrackWidth, kTrackHeight);
+        const QFontMetrics fm(font());
+        const int trackH = trackHeightFor(fm);
+        const int trackW = trackWidthFor(trackH);
+        const int trackY = (height() - trackH) / 2;
+        const QRectF trackRect(0, trackY, trackW, trackH);
 
         QColor trackColor;
         if (isChecked()) {
@@ -455,11 +463,11 @@ protected:
 
         p.setPen(Qt::NoPen);
         p.setBrush(trackColor);
-        p.drawRoundedRect(trackRect, kTrackHeight / 2.0, kTrackHeight / 2.0);
+        p.drawRoundedRect(trackRect, trackH / 2.0, trackH / 2.0);
 
         const qreal margin = 3.0;
-        const qreal knobSize = kTrackHeight - 2.0 * margin;
-        const qreal knobX = isChecked() ? (kTrackWidth - knobSize - margin) : margin;
+        const qreal knobSize = trackH - 2.0 * margin;
+        const qreal knobX = isChecked() ? (trackW - knobSize - margin) : margin;
         const QRectF knobRect(knobX, trackY + margin, knobSize, knobSize);
 
         p.setBrush(isChecked() ? palette().color(QPalette::HighlightedText) : palette().color(QPalette::Base));
@@ -470,13 +478,13 @@ protected:
             textColor.setAlpha(205);
         }
         p.setPen(textColor);
-        const QRect textRect(kTrackWidth + kSpacing, 0, width() - kTrackWidth - kSpacing, height());
+        const QRect textRect(trackW + kSpacing, 0, width() - trackW - kSpacing, height());
         p.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, text());
     }
 
 private:
-    static constexpr int kTrackWidth = 34;
-    static constexpr int kTrackHeight = 18;
+    static int trackHeightFor(const QFontMetrics &fm) { return qBound(18, fm.height(), 28); }
+    static int trackWidthFor(int trackH) { return qRound(trackH * 1.85); }
     static constexpr int kSpacing = 8;
 };
 
@@ -518,26 +526,28 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_searchEdit->addAction(QIcon::fromTheme(u"edit-find"_s), QLineEdit::LeadingPosition);
     m_searchEdit->installEventFilter(this);
 
+    const int toolBtnSide = qMax(30, fontMetrics().height() + 14);
+
     m_starFilterBtn = new QToolButton(listPage);
     m_starFilterBtn->setCheckable(true);
     m_starFilterBtn->setText(u"★"_s);
     m_starFilterBtn->setToolTip(tr("Mostrar solo elementos fijados"));
-    m_starFilterBtn->setFixedSize(30, 30);
+    m_starFilterBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_clearBtn = new QToolButton(listPage);
     m_clearBtn->setIcon(QIcon::fromTheme(u"edit-clear-history"_s, QIcon::fromTheme(u"edit-clear"_s)));
     m_clearBtn->setToolTip(tr("Vaciar historial"));
-    m_clearBtn->setFixedSize(30, 30);
+    m_clearBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_configBtn = new QToolButton(listPage);
     m_configBtn->setIcon(QIcon::fromTheme(u"preferences-system"_s, QIcon::fromTheme(u"configure"_s)));
     m_configBtn->setToolTip(tr("Configurar Mklipper"));
-    m_configBtn->setFixedSize(30, 30);
+    m_configBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_closeBtn = new QToolButton(listPage);
     m_closeBtn->setText(u"✕"_s);
     m_closeBtn->setToolTip(tr("Cerrar ventana"));
-    m_closeBtn->setFixedSize(30, 30);
+    m_closeBtn->setFixedSize(toolBtnSide, toolBtnSide);
     connect(m_closeBtn, &QToolButton::clicked, this, &QWidget::hide);
 
     topBar->addWidget(m_searchEdit, 1);
@@ -741,6 +751,12 @@ void KlipperPopup::showPositioned(const QPoint &anchorPos, bool anchorAbove)
         screen = QGuiApplication::primaryScreen();
     }
     const QRect avail = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+
+    // Scale popup dimensions proportionally with system text size while staying within screen bounds
+    const qreal fontScale = qBound(1.0, fontMetrics().height() / 17.0, 1.75);
+    const int targetW = qMin(qRound(kPopupWidth * fontScale), qMax(320, avail.width() - 24));
+    const int targetH = qMin(qRound(kPopupHeight * fontScale), qMax(300, avail.height() - 24));
+    setFixedSize(targetW, targetH);
 
     int x = anchorPos.x() - width() / 2;
     int y = anchorAbove ? (anchorPos.y() - height() - 8) : (anchorPos.y() + 8);

@@ -55,6 +55,9 @@ public:
     bool pastePlainText() const { return m_pastePlainText; }
     void setPastePlainText(bool v) { m_pastePlainText = v; }
 
+    QString language() const { return m_language; }
+    void setLanguage(const QString &v) { m_language = v; }
+
     // Actions (URLGrabber)
     bool urlGrabberEnabled() const { return m_urlGrabberEnabled; }
     void setUrlGrabberEnabled(bool v) { m_urlGrabberEnabled = v; }
@@ -124,6 +127,7 @@ private:
     bool m_keepPopupOpen = false;
     bool m_closePopupOnFocusOut = false;
     bool m_pastePlainText = false;
+    QString m_language = QStringLiteral("system");
 
     bool m_urlGrabberEnabled = false;
     bool m_actionOnSelection = false;

@@ -8,17 +8,51 @@
 #include "settings.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFontMetrics>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QKeySequenceEdit>
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
+#include <QScreen>
+#include <QScrollArea>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QVBoxLayout>
+
+namespace
+{
+QWidget *wrapSpinBoxRow(QSpinBox *spin, const QString &maxSampleNumber, QWidget *parent)
+{
+    const QFontMetrics fm(spin->font());
+    const int textW = fm.horizontalAdvance(maxSampleNumber + spin->suffix());
+    const int minW = textW + qMax(96, fm.height() * 5);
+    const int minH = qMax(spin->sizeHint().height(), fm.height() + 14);
+    spin->setMinimumSize(minW, minH);
+    spin->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+
+    auto *container = new QWidget(parent);
+    auto *hl = new QHBoxLayout(container);
+    hl->setContentsMargins(0, 0, 0, 0);
+    hl->addWidget(spin);
+    hl->addStretch();
+    return container;
+}
+
+QScrollArea *makeScrollTab(QWidget *content, QWidget *parent)
+{
+    auto *scroll = new QScrollArea(parent);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidget(content);
+    return scroll;
+}
+} // namespace
 
 ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     : QDialog(parent)
@@ -26,7 +60,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 {
     setWindowTitle(tr("Configurar Mklipper"));
     setWindowIcon(QIcon(QStringLiteral(":/icons/mklipper.svg")));
-    setMinimumSize(560, 460);
+    setMinimumSize(460, 360);
 
     // Clone existing actions for safe editing
     if (m_urlGrabber) {
@@ -50,6 +84,8 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     auto *histGroup = new QGroupBox(tr("Historial y comportamiento"), generalPage);
     auto *histForm = new QFormLayout(histGroup);
+    histForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    histForm->setRowWrapPolicy(QFormLayout::DontWrapRows);
 
     m_keepContents = new QCheckBox(tr("Guardar historial entre sesiones"), histGroup);
     m_keepContents->setChecked(s->keepClipboardContents());
@@ -93,7 +129,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     histForm->addRow(m_pastePlainText);
     histForm->addRow(m_keepPopupOpen);
     histForm->addRow(closeOutsideRow);
-    histForm->addRow(tr("Tamaño máximo del historial:"), m_maxItems);
+    histForm->addRow(tr("Tamaño máximo del historial:"), wrapSpinBoxRow(m_maxItems, QStringLiteral("2048"), histGroup));
     histForm->addRow(m_confirmClear);
     genLayout->addWidget(histGroup);
 
@@ -120,6 +156,22 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_autoCheckUpdates->setChecked(s->autoCheckUpdates());
     sysLayout->addWidget(m_autoCheckUpdates);
 
+    auto *langRow = new QHBoxLayout;
+    auto *langLabel = new QLabel(tr("Idioma:"), sysGroup);
+    m_languageCombo = new QComboBox(sysGroup);
+    m_languageCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_languageCombo->addItem(tr("Automático (idioma del sistema)"), QStringLiteral("system"));
+    m_languageCombo->addItem(QStringLiteral("Español"), QStringLiteral("es"));
+    m_languageCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+    const int langIdx = m_languageCombo->findData(s->language().trimmed().toLower());
+    m_languageCombo->setCurrentIndex(langIdx >= 0 ? langIdx : 0);
+    const QFontMetrics langFm(m_languageCombo->font());
+    m_languageCombo->setMinimumHeight(qMax(m_languageCombo->sizeHint().height(), langFm.height() + 12));
+    langRow->addWidget(langLabel);
+    langRow->addWidget(m_languageCombo);
+    langRow->addStretch();
+    sysLayout->addLayout(langRow);
+
     auto *verRow = new QHBoxLayout;
     auto *verLabel = new QLabel(tr("Versión instalada: <b>%1</b>").arg(QStringLiteral(MKLIPPER_VERSION)), sysGroup);
     auto *checkUpdatesBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("system-software-update")),
@@ -134,7 +186,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     genLayout->addWidget(sysGroup);
     genLayout->addStretch();
 
-    tabs->addTab(generalPage, tr("General"));
+    tabs->addTab(makeScrollTab(generalPage, this), tr("General"));
 
     // ==================== Tab 2: Actions ====================
     auto *actionsPage = new QWidget(this);
@@ -142,6 +194,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     auto *actOptGroup = new QGroupBox(tr("Opciones de acciones"), actionsPage);
     auto *actOptForm = new QFormLayout(actOptGroup);
+    actOptForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     m_urlGrabberEnabled = new QCheckBox(tr("Mostrar menú de acciones automáticamente al copiar"), actOptGroup);
     m_urlGrabberEnabled->setChecked(s->urlGrabberEnabled());
@@ -168,12 +221,13 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     actOptForm->addRow(m_replayInHistory);
     actOptForm->addRow(m_stripWhiteSpace);
     actOptForm->addRow(m_magicMime);
-    actOptForm->addRow(tr("Duración del menú automático:"), m_actionTimeout);
+    actOptForm->addRow(tr("Duración del menú automático:"), wrapSpinBoxRow(m_actionTimeout, QStringLiteral("200"), actOptGroup));
     actLayout->addWidget(actOptGroup);
 
     auto *customGroup = new QGroupBox(tr("Acciones personalizadas por expresión regular"), actionsPage);
     auto *customLayout = new QVBoxLayout(customGroup);
     m_actionsList = new QListWidget(customGroup);
+    m_actionsList->setMinimumHeight(110);
     connect(m_actionsList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *) { editAction(); });
     customLayout->addWidget(m_actionsList, 1);
 
@@ -191,12 +245,13 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     customLayout->addLayout(actBtns);
     actLayout->addWidget(customGroup, 1);
 
-    tabs->addTab(actionsPage, tr("Acciones"));
+    tabs->addTab(makeScrollTab(actionsPage, this), tr("Acciones"));
 
     // ==================== Tab 3: Shortcuts ====================
     auto *keysPage = new QWidget(this);
     auto *keysLayout = new QVBoxLayout(keysPage);
     auto *keysForm = new QFormLayout;
+    keysForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     auto makeKeyRow = [keysPage](const QString &seq) {
         auto *w = new QWidget(keysPage);
@@ -209,7 +264,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
             }
         });
         auto *clearBtn = new QPushButton(QObject::tr("Limpiar"), w);
-        clearBtn->setFixedWidth(72);
+        clearBtn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
         QObject::connect(clearBtn, &QPushButton::clicked, edit, &QKeySequenceEdit::clear);
         hl->addWidget(edit, 1);
         hl->addWidget(clearBtn);
@@ -245,7 +300,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     keysLayout->addWidget(tip);
     keysLayout->addStretch();
 
-    tabs->addTab(keysPage, tr("Atajos"));
+    tabs->addTab(makeScrollTab(keysPage, this), tr("Atajos"));
 
     // Dialog buttons
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -256,6 +311,17 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     mainLayout->addWidget(buttons);
 
     refreshActionList();
+
+    // Pick a comfortable initial size that fits scaled displays without squishing widgets
+    const QSize preferred = generalPage->sizeHint() + QSize(64, 120);
+    if (QScreen *scr = QGuiApplication::primaryScreen()) {
+        const QRect avail = scr->availableGeometry();
+        const int targetW = qBound(480, preferred.width(), static_cast<int>(avail.width() * 0.85));
+        const int targetH = qBound(400, preferred.height(), static_cast<int>(avail.height() * 0.85));
+        resize(targetW, targetH);
+    } else {
+        resize(qMax(600, preferred.width()), qMax(540, preferred.height()));
+    }
 }
 
 ConfigDialog::~ConfigDialog()
@@ -337,6 +403,9 @@ void ConfigDialog::saveAndAccept()
     s->setShortcutClearHistory(m_keyClearHistory->keySequence().toString());
 
     s->setAutoCheckUpdates(m_autoCheckUpdates->isChecked());
+    if (m_languageCombo) {
+        s->setLanguage(m_languageCombo->currentData().toString());
+    }
     MklipperSettings::setAutostartEnabled(m_autostart->isChecked());
 
     if (m_urlGrabber) {

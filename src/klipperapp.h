@@ -72,6 +72,8 @@ private Q_SLOTS:
 
 private:
     void setupTrayIcon();
+    void rebuildTrayMenu();
+    void recreatePopup();
     void registerShortcuts();
     void offerActions(const HistoryItemConstPtr &item, bool fromSelection);
     QString cycleNotificationText() const;

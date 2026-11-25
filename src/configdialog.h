@@ -10,6 +10,7 @@
 #include "urlgrabber.h"
 
 class QCheckBox;
+class QComboBox;
 class QKeySequenceEdit;
 class QListWidget;
 class QSpinBox;
@@ -45,6 +46,7 @@ private:
     QCheckBox *m_syncClipboards = nullptr;
     QCheckBox *m_autostart = nullptr;
     QCheckBox *m_autoCheckUpdates = nullptr;
+    QComboBox *m_languageCombo = nullptr;
     QCheckBox *m_confirmClear = nullptr;
     QCheckBox *m_autoPaste = nullptr;
     QCheckBox *m_pastePlainText = nullptr;
