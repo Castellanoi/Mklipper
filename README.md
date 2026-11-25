@@ -37,7 +37,7 @@ Está pensado para integrarse de forma limpia y liviana en el escritorio **Cinna
 - **Ícono en la barra de tareas / bandeja del sistema:** clic izquierdo abre/cierra el popup junto al panel; clic derecho abre el menú rápido y la configuración.
 - **Popup flotante estilo Klipper:** búsqueda instantánea, miniaturas de imágenes, edición de texto en línea, generador de códigos QR (copiar o guardar en PNG) y **modo ventana persistente** opcional (mantiene la ventana abierta al hacer clic entre elementos, con botón `✕` y opción adicional para cerrarla al hacer clic fuera de ella).
 - **Numeración y pegado rápido (`1`–`0`):** los elementos aparecen numerados (`1` a `9`, `0` para el 10.º); con el popup abierto podés presionar la tecla numérica correspondiente (o `Alt+1`..`Alt+0` mientras buscás) para pegarlo al instante.
-- **Pegado automático directo:** al hacer clic en un elemento (o elegirlo con `Enter` / `1`–`0`), además de dejarlo en el portapapeles, lo pega directamente en la ventana anterior (`Ctrl+V` en aplicaciones normales y `Ctrl+Shift+V` en terminales).
+- **Pegado automático directo y switch «Pegar sin formato»:** al hacer clic en un elemento (o elegirlo con `Enter` / `1`–`0`), además de dejarlo en el portapapeles, lo pega directamente en la ventana anterior (`Ctrl+V` en aplicaciones normales y `Ctrl+Shift+V` en terminales). Incluye un interruptor rápido en la propia ventana para quitar colores, fuentes y estilos HTML/RTF al pegar texto (sin afectar imágenes ni archivos).
 - **Actualizador integrado:** busca nuevas versiones en GitHub Releases (automáticamente al iniciar o bajo demanda desde el menú de la bandeja / configuración / `mklipper --check-updates`), verifica la suma **SHA-256**, instala el `.deb` con el diálogo nativo de contraseña (`pkexec apt-get install`) y reinicia Mklipper automáticamente.
 - **Historial persistente en SQLite:** guarda texto, imágenes/capturas y URLs en `~/.local/share/mklipper/history3.sqlite`.
 - **Elementos fijados (`★`):** protegidos al vaciar el historial o alcanzar el límite máximo.
@@ -49,11 +49,11 @@ Está pensado para integrarse de forma limpia y liviana en el escritorio **Cinna
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.2.1_amd64.deb`](dist/mklipper_1.2.1_amd64.deb).
+1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.3.0_amd64.deb`](dist/mklipper_1.3.0_amd64.deb).
 2. Instalalo con `apt` para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.2.1_amd64.deb
+sudo apt install ./mklipper_1.3.0_amd64.deb
 ```
 
 3. Iniciá **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper` en una terminal. A partir del próximo inicio de sesión arrancará automáticamente (`/etc/xdg/autostart/mklipper.desktop`), y podrás actualizar futuras versiones directamente desde la app (*clic derecho en el ícono → Buscar actualizaciones…*).
@@ -81,7 +81,7 @@ chmod +x packaging/build-deb.sh
 3. Instalá el paquete generado:
 
 ```bash
-sudo apt install ./dist/mklipper_1.2.1_amd64.deb
+sudo apt install ./dist/mklipper_1.3.0_amd64.deb
 ```
 
 ### Desinstalación
@@ -112,7 +112,7 @@ It is designed to blend naturally into **Cinnamon (X11)**: it inherits your syst
 - **System tray / taskbar icon:** left-click toggles the popup anchored near the panel; right-click opens the quick menu and settings.
 - **Klipper-style floating popup:** instant search, image thumbnails, inline text editing, built-in QR code generation (copy or save as PNG), and optional **persistent window mode** (stays open while clicking between items, with a `✕` close button and an optional setting to also close when clicking outside).
 - **Numbered items & instant `1`–`0` paste:** entries are numbered (`1`–`9`, `0` for the 10th item); press `1`–`0` while the popup is open (or `Alt+1`..`Alt+0` while filtering) to paste immediately.
-- **Direct auto-paste:** clicking an item (or pressing `Enter` / `1`–`0`) keeps it in the clipboard **and** automatically pastes it into the previously active window (`Ctrl+V` in regular apps, `Ctrl+Shift+V` in terminal emulators).
+- **Direct auto-paste & "Paste without formatting" toggle switch:** clicking an item (or pressing `Enter` / `1`–`0`) keeps it in the clipboard **and** automatically pastes it into the previously active window (`Ctrl+V` in regular apps, `Ctrl+Shift+V` in terminal emulators). Includes a quick toggle switch right inside the popup to strip HTML/RTF colors, fonts, and styles when pasting text (without affecting images or copied files).
 - **Built-in in-app updater:** checks GitHub Releases automatically on startup (configurable) or manually via tray menu / Settings / `mklipper --check-updates`, verifies **SHA-256** checksums, installs the `.deb` via Linux Mint's native authentication dialog (`pkexec apt-get install`), and restarts automatically.
 - **Persistent SQLite history:** stores text, images/screenshots, and URLs in `~/.local/share/mklipper/history3.sqlite`.
 - **Pinned items (`★`):** protected from history clearing and max-size eviction.
@@ -124,11 +124,11 @@ It is designed to blend naturally into **Cinnamon (X11)**: it inherits your syst
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.2.1_amd64.deb`](dist/mklipper_1.2.1_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.3.0_amd64.deb`](dist/mklipper_1.3.0_amd64.deb).
 2. Install it via `apt` so Qt 6 runtime dependencies are resolved automatically:
 
 ```bash
-sudo apt install ./mklipper_1.2.1_amd64.deb
+sudo apt install ./mklipper_1.3.0_amd64.deb
 ```
 
 3. Launch **Mklipper** from your application menu or by running `mklipper`. It will start automatically on subsequent logins via `/etc/xdg/autostart/mklipper.desktop`, and future versions can be installed directly from within the app (*right-click tray icon → Buscar actualizaciones…*).
@@ -156,7 +156,7 @@ chmod +x packaging/build-deb.sh
 3. Install the generated package:
 
 ```bash
-sudo apt install ./dist/mklipper_1.2.1_amd64.deb
+sudo apt install ./dist/mklipper_1.3.0_amd64.deb
 ```
 
 ### Uninstall

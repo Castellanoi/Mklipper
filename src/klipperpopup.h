@@ -13,6 +13,7 @@
 #include <QSortFilterProxyModel>
 
 class HistoryModel;
+class QAbstractButton;
 class QLabel;
 class QLineEdit;
 class QListView;
@@ -100,6 +101,8 @@ private:
     QToolButton *m_clearBtn = nullptr;
     QToolButton *m_configBtn = nullptr;
     QToolButton *m_closeBtn = nullptr;
+    QAbstractButton *m_plainTextSwitch = nullptr;
+    QLabel *m_plainTextHintLabel = nullptr;
     QWidget *m_passwordBanner = nullptr;
     QListView *m_listView = nullptr;
     QLabel *m_emptyLabel = nullptr;

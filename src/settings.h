@@ -52,6 +52,9 @@ public:
     bool closePopupOnFocusOut() const { return m_closePopupOnFocusOut; }
     void setClosePopupOnFocusOut(bool v) { m_closePopupOnFocusOut = v; }
 
+    bool pastePlainText() const { return m_pastePlainText; }
+    void setPastePlainText(bool v) { m_pastePlainText = v; }
+
     // Actions (URLGrabber)
     bool urlGrabberEnabled() const { return m_urlGrabberEnabled; }
     void setUrlGrabberEnabled(bool v) { m_urlGrabberEnabled = v; }
@@ -120,6 +123,7 @@ private:
     bool m_autoPaste = true;
     bool m_keepPopupOpen = false;
     bool m_closePopupOnFocusOut = false;
+    bool m_pastePlainText = false;
 
     bool m_urlGrabberEnabled = false;
     bool m_actionOnSelection = false;

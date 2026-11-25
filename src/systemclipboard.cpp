@@ -9,6 +9,7 @@
 #include "systemclipboard.h"
 
 #include "mimetypes.h"
+#include "settings.h"
 
 #include <QApplication>
 #include <QFile>
@@ -159,6 +160,33 @@ QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &
         auto *fallback = new QMimeData;
         fallback->setText(item->text());
         return fallback;
+    }
+
+    if (MklipperSettings::self()->pastePlainText() && item->type() != HistoryItemType::Image) {
+        bool hasUriList = false;
+        QString plainText;
+        bool hasPlainText = false;
+        for (auto it = mimeDataStore.begin(); it != mimeDataStore.end(); ++it) {
+            const auto &[format, bytes] = *it;
+            if (format == MimeTypes::uriList) {
+                hasUriList = true;
+                break;
+            }
+            if ((format == MimeTypes::plainText || format == MimeTypes::plainUtf8Text) && !hasPlainText) {
+                plainText = QString::fromUtf8(bytes);
+                hasPlainText = true;
+            }
+        }
+        if (!hasUriList) {
+            if (!hasPlainText) {
+                plainText = item->text();
+            }
+            if (!plainText.isEmpty()) {
+                auto *plainMime = new QMimeData;
+                plainMime->setText(plainText);
+                return plainMime;
+            }
+        }
     }
 
     auto pngIt = std::ranges::find_if(mimeDataStore, [](const auto &pair) {

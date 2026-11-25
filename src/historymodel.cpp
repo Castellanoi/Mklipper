@@ -1002,6 +1002,8 @@ void HistoryModel::loadSettings()
     m_bKeepContents = s->keepClipboardContents();
     m_bSynchronize = s->syncClipboards();
     m_bActionOnSelection = s->actionOnSelection();
+    const bool prevPlainText = m_bPastePlainText;
+    m_bPastePlainText = s->pastePlainText();
 
     if (m_bNoNullClipboard) {
         connect(m_clip.get(), &SystemClipboard::receivedEmptyClipboard, this, &HistoryModel::slotReceivedEmptyClipboard, Qt::UniqueConnection);
@@ -1011,6 +1013,11 @@ void HistoryModel::loadSettings()
 
     if (!m_bKeepContents && m_db.isOpen()) {
         clear();
+    } else if (prevPlainText != m_bPastePlainText && !m_items.isEmpty() && !m_clipboardHasPassword) {
+        const SystemClipboard::SelectionMode buffersWithoutPassword = buffersHolding(Holding::NoPassword);
+        if (buffersWithoutPassword != 0) {
+            m_clip->setMimeData(m_items[0], buffersWithoutPassword);
+        }
     }
 }
 
@@ -1116,9 +1123,42 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         return;
     }
 
+    auto isRichTextToStrip = [](const QMimeData *mime) {
+        if (!mime || !mime->hasText() || mime->hasUrls()) {
+            return false;
+        }
+        if (mime->hasImage() && !mime->hasHtml()) {
+            return false;
+        }
+        if (mime->hasHtml()) {
+            return true;
+        }
+        const QStringList fmts = mime->formats();
+        for (const QString &f : fmts) {
+            if (f.compare(u"text/rtf"_s, Qt::CaseInsensitive) == 0
+                || f.compare(u"application/rtf"_s, Qt::CaseInsensitive) == 0
+                || f.compare(u"text/richtext"_s, Qt::CaseInsensitive) == 0
+                || f.compare(u"application/x-qt-richtext"_s, Qt::CaseInsensitive) == 0) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const bool stripFormatting = m_bPastePlainText && isRichTextToStrip(data);
+    std::unique_ptr<QMimeData> plainOnly;
+    if (stripFormatting) {
+        plainOnly = std::make_unique<QMimeData>();
+        plainOnly->setText(data->text());
+    }
+
     if (insert(data)) {
+        if (stripFormatting && !selectionMode) {
+            // Replace active X11 clipboard with plain text so even direct Ctrl+V pastes without formatting
+            m_clip->setMimeData(plainOnly.get(), SystemClipboard::Clipboard);
+        }
         if (m_bSynchronize) {
-            m_clip->setMimeData(data,
+            m_clip->setMimeData(stripFormatting ? plainOnly.get() : data,
                                 selectionMode ? SystemClipboard::Clipboard : SystemClipboard::Selection,
                                 SystemClipboard::ClipboardUpdateReason::SyncSelection);
             clearHasPassword();

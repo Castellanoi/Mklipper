@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.0
+
+### 🇪🇸 Español
+- **Switch «Pegar sin formato» directo en la ventana flotante:**
+  - Nuevo interruptor visual (*toggle switch*) en la ventana principal del portapapeles (y sincronizado en *Configuración → General*) para activar o desactivar el pegado como texto plano con un solo clic.
+  - Al activarlo, quita colores, fuentes y estilos HTML/RTF tanto al elegir elementos del historial como al copiar texto con formato y pegarlo directamente con `Ctrl+V`, sin afectar imágenes ni archivos copiados.
+  - Conserva el formato original en el historial SQLite por si desactivás el switch más adelante.
+
+### 🇬🇧 English
+- **"Paste without formatting" toggle switch in the floating popup:**
+  - New toggle switch right in the popup window (and synced in *Settings → General*) to turn plain-text pasting on or off with a single click.
+  - When enabled, strips HTML/RTF colors, fonts, and styles both when clicking history items and when copying formatted text for direct `Ctrl+V` pasting, while leaving images and copied files untouched.
+  - Preserves original formatting in the SQLite history in case you turn the switch back off later.
+
 ## v1.2.1
 
 ### 🇪🇸 Español

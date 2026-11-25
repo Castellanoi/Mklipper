@@ -71,6 +71,9 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_autoPaste = new QCheckBox(tr("Pegar automáticamente al elegir un elemento (además de copiarlo)"), histGroup);
     m_autoPaste->setChecked(s->autoPaste());
 
+    m_pastePlainText = new QCheckBox(tr("Pegar sin formato (solo texto plano, sin colores ni estilos HTML)"), histGroup);
+    m_pastePlainText->setChecked(s->pastePlainText());
+
     m_keepPopupOpen = new QCheckBox(tr("Mantener la ventana flotante abierta al hacer clic en elementos"), histGroup);
     m_keepPopupOpen->setChecked(s->keepPopupOpen());
 
@@ -87,6 +90,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     histForm->addRow(m_preventEmpty);
     histForm->addRow(m_saveImages);
     histForm->addRow(m_autoPaste);
+    histForm->addRow(m_pastePlainText);
     histForm->addRow(m_keepPopupOpen);
     histForm->addRow(closeOutsideRow);
     histForm->addRow(tr("Tamaño máximo del historial:"), m_maxItems);
@@ -315,6 +319,7 @@ void ConfigDialog::saveAndAccept()
     s->setMaxClipItems(m_maxItems->value());
     s->setConfirmClearHistory(m_confirmClear->isChecked());
     s->setAutoPaste(m_autoPaste->isChecked());
+    s->setPastePlainText(m_pastePlainText->isChecked());
     s->setKeepPopupOpen(m_keepPopupOpen->isChecked());
     s->setClosePopupOnFocusOut(m_closePopupOnFocusOut->isChecked());
 

@@ -119,6 +119,7 @@ private:
     bool m_bKeepContents = true;
     bool m_bSynchronize = false;
     bool m_bActionOnSelection = false;
+    bool m_bPastePlainText = false;
     bool m_clipboardHasPassword = false;
     bool m_selectionHasPassword = false;
 };

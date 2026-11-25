@@ -12,6 +12,7 @@
 #include "settings.h"
 #include "x11paster.h"
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QCache>
 #include <QCursor>
@@ -410,6 +411,76 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// PlainTextSwitch — compact native-palette toggle switch for the popup bar
+// ---------------------------------------------------------------------------
+class PlainTextSwitch : public QAbstractButton
+{
+public:
+    explicit PlainTextSwitch(const QString &text, QWidget *parent = nullptr)
+        : QAbstractButton(parent)
+    {
+        setText(text);
+        setCheckable(true);
+        setCursor(Qt::PointingHandCursor);
+        setFocusPolicy(Qt::NoFocus);
+        setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    }
+
+    QSize sizeHint() const override
+    {
+        const QFontMetrics fm(font());
+        const int textW = fm.horizontalAdvance(text());
+        return QSize(kTrackWidth + kSpacing + textW + 4, qMax(kTrackHeight + 4, fm.height() + 4));
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, true);
+
+        const int trackY = (height() - kTrackHeight) / 2;
+        const QRectF trackRect(0, trackY, kTrackWidth, kTrackHeight);
+
+        QColor trackColor;
+        if (isChecked()) {
+            trackColor = palette().color(QPalette::Highlight);
+        } else {
+            trackColor = palette().color(QPalette::WindowText);
+            trackColor.setAlpha(65);
+        }
+        if (underMouse()) {
+            trackColor = isChecked() ? trackColor.lighter(110) : QColor(trackColor.red(), trackColor.green(), trackColor.blue(), 95);
+        }
+
+        p.setPen(Qt::NoPen);
+        p.setBrush(trackColor);
+        p.drawRoundedRect(trackRect, kTrackHeight / 2.0, kTrackHeight / 2.0);
+
+        const qreal margin = 3.0;
+        const qreal knobSize = kTrackHeight - 2.0 * margin;
+        const qreal knobX = isChecked() ? (kTrackWidth - knobSize - margin) : margin;
+        const QRectF knobRect(knobX, trackY + margin, knobSize, knobSize);
+
+        p.setBrush(isChecked() ? palette().color(QPalette::HighlightedText) : palette().color(QPalette::Base));
+        p.drawEllipse(knobRect);
+
+        QColor textColor = palette().color(QPalette::WindowText);
+        if (!isChecked()) {
+            textColor.setAlpha(205);
+        }
+        p.setPen(textColor);
+        const QRect textRect(kTrackWidth + kSpacing, 0, width() - kTrackWidth - kSpacing, height());
+        p.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, text());
+    }
+
+private:
+    static constexpr int kTrackWidth = 34;
+    static constexpr int kTrackHeight = 18;
+    static constexpr int kSpacing = 8;
+};
+
+// ---------------------------------------------------------------------------
 // KlipperPopup
 // ---------------------------------------------------------------------------
 KlipperPopup::KlipperPopup(QWidget *parent)
@@ -475,6 +546,33 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     topBar->addWidget(m_configBtn);
     topBar->addWidget(m_closeBtn);
     listLayout->addLayout(topBar);
+
+    // Quick options strip: Plain-text paste toggle switch
+    auto *modeBar = new QHBoxLayout;
+    modeBar->setContentsMargins(2, 0, 2, 0);
+    modeBar->setSpacing(6);
+
+    m_plainTextSwitch = new PlainTextSwitch(tr("Pegar sin formato"), listPage);
+    m_plainTextSwitch->setToolTip(
+        tr("Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos)"));
+    m_plainTextSwitch->setChecked(MklipperSettings::self()->pastePlainText());
+    connect(m_plainTextSwitch, &QAbstractButton::toggled, this, [](bool checked) {
+        auto *s = MklipperSettings::self();
+        if (s->pastePlainText() != checked) {
+            s->setPastePlainText(checked);
+            s->save();
+        }
+    });
+
+    m_plainTextHintLabel = new QLabel(listPage);
+    QFont hintFont = m_plainTextHintLabel->font();
+    hintFont.setPointSizeF(qMax(8.0, hintFont.pointSizeF() - 1.5));
+    m_plainTextHintLabel->setFont(hintFont);
+
+    modeBar->addWidget(m_plainTextSwitch);
+    modeBar->addStretch();
+    modeBar->addWidget(m_plainTextHintLabel);
+    listLayout->addLayout(modeBar);
 
     // Password warning banner
     auto *pwBanner = new QFrame(listPage);
@@ -1080,9 +1178,26 @@ void KlipperPopup::updatePasswordBanner()
 
 void KlipperPopup::updatePersistentUi()
 {
-    const bool persistent = MklipperSettings::self()->keepPopupOpen();
+    const auto *s = MklipperSettings::self();
+    const bool persistent = s->keepPopupOpen();
     if (m_closeBtn) {
         m_closeBtn->setVisible(persistent);
+    }
+
+    const bool plainText = s->pastePlainText();
+    if (m_plainTextSwitch && m_plainTextSwitch->isChecked() != plainText) {
+        QSignalBlocker blocker(m_plainTextSwitch);
+        m_plainTextSwitch->setChecked(plainText);
+    }
+    if (m_plainTextHintLabel) {
+        m_plainTextHintLabel->setText(plainText ? tr("Solo texto plano") : tr("Con formato original"));
+        QPalette hp = m_plainTextHintLabel->palette();
+        QColor c = plainText ? palette().color(QPalette::Highlight) : palette().color(QPalette::WindowText);
+        if (!plainText) {
+            c.setAlpha(140);
+        }
+        hp.setColor(QPalette::WindowText, c);
+        m_plainTextHintLabel->setPalette(hp);
     }
 }
 
