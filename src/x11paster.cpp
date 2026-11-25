@@ -192,28 +192,49 @@ void X11Paster::captureTargetWindow(WId ownWindowId)
 
 void X11Paster::schedulePaste()
 {
+    const quint64 serial = ++m_pasteSerial;
     if (Display *dpy = x11Display()) {
         if (m_targetWindow != 0) {
             activateWindow(dpy, static_cast<Window>(m_targetWindow));
         }
     }
     // Wait briefly for window focus restoration and key release
-    QTimer::singleShot(90, this, [this]() { attemptPaste(12); });
+    QTimer::singleShot(90, this, [this, serial]() { attemptPaste(12, serial); });
 }
 
-void X11Paster::attemptPaste(int retriesLeft)
+void X11Paster::activateOwnWindow(WId ownWindowId) const
 {
+    if (Display *dpy = x11Display()) {
+        if (ownWindowId != 0) {
+            activateWindow(dpy, static_cast<Window>(ownWindowId));
+        }
+    }
+}
+
+void X11Paster::attemptPaste(int retriesLeft, quint64 serial)
+{
+    if (serial != m_pasteSerial) {
+        return;
+    }
+
     Display *dpy = x11Display();
     if (!dpy) {
+        Q_EMIT pasteFinished();
         return;
     }
 
     if (retriesLeft > 0 && anyBlockingModifierHeld(dpy)) {
-        QTimer::singleShot(25, this, [this, retriesLeft]() { attemptPaste(retriesLeft - 1); });
+        QTimer::singleShot(25, this, [this, retriesLeft, serial]() { attemptPaste(retriesLeft - 1, serial); });
         return;
     }
 
     sendPasteKeystroke();
+    // Give the target application a brief moment to receive Ctrl+V and read CLIPBOARD before signaling completion
+    QTimer::singleShot(80, this, [this, serial]() {
+        if (serial == m_pasteSerial) {
+            Q_EMIT pasteFinished();
+        }
+    });
 }
 
 void X11Paster::sendPasteKeystroke() const

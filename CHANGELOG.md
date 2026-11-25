@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.0
+
+### 🇪🇸 Español
+- **Modo ventana persistente mejorado:**
+  - Nueva sub-opción en *Configuración → General* (**«Cerrar la ventana al hacer clic fuera de ella»**, disponible al activar la ventana flotante persistente).
+  - Permite mantener la ventana abierta mientras hacés clic en varios elementos seguidos (incluso con pegado automático) y cerrarla tanto con la cruz (`✕`) / `Esc` como haciendo clic fuera de ella.
+  - Al actualizar desde versiones anteriores se conservan intactas todas tus configuraciones e historial.
+
+### 🇬🇧 English
+- **Improved persistent floating popup mode:**
+  - New sub-option under *Settings → General* (**"Cerrar la ventana al hacer clic fuera de ella"**, enabled when persistent floating window mode is active).
+  - Keeps the popup open while clicking multiple items in a row (including with auto-paste enabled) while letting you close it either via the `✕` button / `Esc` or by clicking outside the popup.
+  - Existing user settings and clipboard history are fully preserved when upgrading.
+
 ## v1.1.0
 
 ### 🇪🇸 Español

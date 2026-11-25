@@ -80,6 +80,7 @@ private Q_SLOTS:
     void updatePasswordBanner();
     void updateStatusLabel();
     void updatePersistentUi();
+    void onPasteFinished();
 
 private:
     void showPositioned(const QPoint &anchorPos, bool anchorAbove);
@@ -112,6 +113,8 @@ private:
     QRCodeWidget *m_qrWidget = nullptr;
 
     bool m_suppressAutoHide = false;
+    bool m_pastingInProgress = false;
+    quint64 m_pasteGeneration = 0;
     bool m_dragging = false;
     QPoint m_dragOffset;
     qint64 m_lastHideTimeMs = 0;

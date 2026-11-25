@@ -33,6 +33,7 @@
 #include <QScreen>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
+#include <QTimer>
 #include <QToolButton>
 #include <QToolTip>
 #include <QUrl>
@@ -598,12 +599,14 @@ KlipperPopup::KlipperPopup(QWidget *parent)
         activateWindow();
     });
     connect(m_configBtn, &QToolButton::clicked, this, [this]() {
-        if (!MklipperSettings::self()->keepPopupOpen()) {
+        const auto *s = MklipperSettings::self();
+        if (!s->keepPopupOpen() || s->closePopupOnFocusOut()) {
             hide();
         }
         Q_EMIT configureRequested();
     });
 
+    connect(m_paster, &X11Paster::pasteFinished, this, &KlipperPopup::onPasteFinished);
     connect(MklipperSettings::self(), &MklipperSettings::settingsChanged, this, &KlipperPopup::updatePersistentUi);
 
     connect(m_model.get(), &HistoryModel::hasPasswordChanged, this, &KlipperPopup::updatePasswordBanner);
@@ -728,12 +731,17 @@ void KlipperPopup::showCurrentBarcode()
 
 bool KlipperPopup::event(QEvent *ev)
 {
-    if (ev->type() == QEvent::Enter && MklipperSettings::self()->keepPopupOpen()) {
+    const auto *s = MklipperSettings::self();
+    if (ev->type() == QEvent::Hide) {
+        m_pastingInProgress = false;
+        ++m_pasteGeneration;
+    } else if (ev->type() == QEvent::Enter && s->keepPopupOpen() && !m_pastingInProgress) {
         // Refresh target window when user switches to another app and hovers back over persistent popup
         m_paster->captureTargetWindow(winId());
     } else if (ev->type() == QEvent::WindowDeactivate
                && !m_suppressAutoHide
-               && !MklipperSettings::self()->keepPopupOpen()
+               && !m_pastingInProgress
+               && (!s->keepPopupOpen() || s->closePopupOnFocusOut())
                && QApplication::activeModalWidget() == nullptr
                && QApplication::activePopupWidget() == nullptr) {
         m_lastHideTimeMs = QDateTime::currentMSecsSinceEpoch();
@@ -943,13 +951,48 @@ void KlipperPopup::activateItem(const QModelIndex &proxyIndex)
     if (!src.isValid()) {
         return;
     }
+    const auto *s = MklipperSettings::self();
     const QString uuid = src.data(HistoryModel::UuidRole).toString();
     m_model->moveToTop(uuid);
-    if (!MklipperSettings::self()->keepPopupOpen()) {
+    if (!s->keepPopupOpen()) {
         hide();
     }
-    if (MklipperSettings::self()->autoPaste()) {
+    if (s->autoPaste()) {
+        if (s->keepPopupOpen()) {
+            const quint64 gen = ++m_pasteGeneration;
+            m_pastingInProgress = true;
+            // Safety fallback in case paste never finishes
+            QTimer::singleShot(1500, this, [this, gen]() {
+                if (gen == m_pasteGeneration) {
+                    m_pastingInProgress = false;
+                }
+            });
+        }
         m_paster->schedulePaste();
+    }
+}
+
+void KlipperPopup::onPasteFinished()
+{
+    const auto *s = MklipperSettings::self();
+    if (!isVisible() || !s->keepPopupOpen()) {
+        m_pastingInProgress = false;
+        return;
+    }
+
+    if (s->closePopupOnFocusOut()) {
+        // Restore focus to the persistent popup so subsequent clicks outside it will trigger WindowDeactivate and close it
+        const quint64 gen = m_pasteGeneration;
+        raise();
+        activateWindow();
+        m_paster->activateOwnWindow(winId());
+        QTimer::singleShot(140, this, [this, gen]() {
+            if (gen == m_pasteGeneration) {
+                m_pastingInProgress = false;
+            }
+        });
+    } else {
+        m_pastingInProgress = false;
     }
 }
 
