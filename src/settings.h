@@ -55,6 +55,12 @@ public:
     bool pastePlainText() const { return m_pastePlainText; }
     void setPastePlainText(bool v) { m_pastePlainText = v; }
 
+    bool saveSourceInfo() const { return m_saveSourceInfo; }
+    void setSaveSourceInfo(bool v) { m_saveSourceInfo = v; }
+
+    bool showSourceInfo() const { return m_showSourceInfo; }
+    void setShowSourceInfo(bool v) { m_showSourceInfo = v; }
+
     QString language() const { return m_language; }
     void setLanguage(const QString &v) { m_language = v; }
 
@@ -127,6 +133,8 @@ private:
     bool m_keepPopupOpen = false;
     bool m_closePopupOnFocusOut = false;
     bool m_pastePlainText = false;
+    bool m_saveSourceInfo = true;
+    bool m_showSourceInfo = true;
     QString m_language = QStringLiteral("system");
 
     bool m_urlGrabberEnabled = false;

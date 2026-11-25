@@ -52,6 +52,8 @@ private:
     QCheckBox *m_pastePlainText = nullptr;
     QCheckBox *m_keepPopupOpen = nullptr;
     QCheckBox *m_closePopupOnFocusOut = nullptr;
+    QCheckBox *m_saveSourceInfo = nullptr;
+    QCheckBox *m_showSourceInfo = nullptr;
     QSpinBox *m_maxItems = nullptr;
 
     // Actions tab

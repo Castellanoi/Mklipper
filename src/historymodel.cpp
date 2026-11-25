@@ -467,6 +467,12 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
         return isItemStarred(item->uuid());
     case HasActionRole:
         return m_urlGrabber && m_urlGrabber->hasMatchingActions(item);
+    case SourceAppRole:
+        return item->sourceApp();
+    case SourceTitleRole:
+        return item->sourceTitle();
+    case SourceUrlRole:
+        return item->sourceUrl();
     default:
         return {};
     }
@@ -541,7 +547,15 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
             m_starredCache.insert(newUuid, true);
         }
 
-        item = std::make_shared<HistoryItem>(std::move(newUuid), mimetypes, std::move(text));
+        const QString preservedApp = item->sourceApp();
+        const QString preservedTitle = item->sourceTitle();
+        const QString preservedUrl = item->sourceUrl();
+        item = std::make_shared<HistoryItem>(std::move(newUuid),
+                                             mimetypes,
+                                             std::move(text),
+                                             preservedApp,
+                                             preservedTitle,
+                                             preservedUrl);
         Q_EMIT dataChanged(index, index, {Qt::DisplayRole, UuidRole});
         moveToTop(item->uuid());
         return true;
@@ -670,7 +684,11 @@ HistoryItemConstPtr HistoryModel::first() const
     return m_items.isEmpty() ? HistoryItemConstPtr{} : m_items.first();
 }
 
-bool HistoryModel::persistMimeData(const QString &uuid, const QString &text, const QMimeData *mimeData, qreal timestamp)
+bool HistoryModel::persistMimeData(const QString &uuid,
+                                   const QString &text,
+                                   const QMimeData *mimeData,
+                                   qreal timestamp,
+                                   const ClipboardSourceInfo &source)
 {
     if (!m_db.isOpen()) {
         return false;
@@ -798,12 +816,17 @@ bool HistoryModel::persistMimeData(const QString &uuid, const QString &text, con
     {
         TransactionGuard tx(&m_db);
         QSqlQuery insMain(m_db);
-        insMain.prepare(u"INSERT OR REPLACE INTO main (uuid, added_time, last_used_time, mimetypes, text, starred) VALUES (?, ?, ?, ?, ?, 0)"_s);
+        insMain.prepare(
+            u"INSERT OR REPLACE INTO main (uuid, added_time, last_used_time, mimetypes, text, starred, source_app, source_title, source_url) "
+            u"VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)"_s);
         insMain.addBindValue(uuid);
         insMain.addBindValue(ts);
         insMain.addBindValue(ts);
         insMain.addBindValue(savedMimeTypes.join(u','));
         insMain.addBindValue(text);
+        insMain.addBindValue(source.app);
+        insMain.addBindValue(source.title);
+        insMain.addBindValue(source.url);
         if (!tx.exec(insMain)) {
             return false;
         }
@@ -828,7 +851,7 @@ bool HistoryModel::persistMimeData(const QString &uuid, const QString &text, con
     return true;
 }
 
-bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp)
+bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const ClipboardSourceInfo &source)
 {
     if (m_maxSize == 0 || !mimeData) {
         return false;
@@ -838,6 +861,22 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp)
         return false;
     }
     if (const int existingIdx = indexOf(uuid); existingIdx >= 0) {
+        if (!source.isEmpty()) {
+            auto &existing = m_items[existingIdx];
+            if (!existing->hasSourceInfo() || (!source.url.isEmpty() && existing->sourceUrl().isEmpty())) {
+                QSqlQuery updSrc(m_db);
+                updSrc.prepare(u"UPDATE main SET source_app = ?, source_title = ?, source_url = ? WHERE uuid = ?"_s);
+                updSrc.addBindValue(source.app);
+                updSrc.addBindValue(source.title);
+                updSrc.addBindValue(source.url);
+                updSrc.addBindValue(uuid);
+                if (updSrc.exec()) {
+                    existing->setSourceInfo(source.app, source.title, source.url);
+                    const QModelIndex idx = this->index(existingIdx);
+                    Q_EMIT dataChanged(idx, idx, {SourceAppRole, SourceTitleRole, SourceUrlRole});
+                }
+            }
+        }
         moveToTop(existingIdx);
         return true;
     }
@@ -848,11 +887,11 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp)
     }
 
     const QString text = textFromMimeData(mimeData);
-    if (!persistMimeData(uuid, text, mimeData, timestamp)) {
+    if (!persistMimeData(uuid, text, mimeData, timestamp, source)) {
         return false;
     }
 
-    auto item = std::make_shared<HistoryItem>(uuid, formats, text);
+    auto item = std::make_shared<HistoryItem>(uuid, formats, text, source.app, source.title, source.url);
     beginInsertRows(QModelIndex(), 0, 0);
     m_items.prepend(std::move(item));
     endInsertRows();
@@ -914,7 +953,29 @@ bool HistoryModel::loadHistory()
                u"last_used_time REAL CHECK (last_used_time > 0), "
                u"mimetypes TEXT NOT NULL, "
                u"text NTEXT, "
-               u"starred BOOLEAN)"_s);
+               u"starred BOOLEAN, "
+               u"source_app TEXT DEFAULT '', "
+               u"source_title TEXT DEFAULT '', "
+               u"source_url TEXT DEFAULT '')"_s);
+
+    // Backwards-compatible migration for databases created before v1.5.0
+    {
+        QSet<QString> existingCols;
+        if (query.exec(u"PRAGMA table_info(main)"_s)) {
+            while (query.next()) {
+                existingCols.insert(query.value(1).toString());
+            }
+        }
+        if (!existingCols.contains(u"source_app"_s)) {
+            query.exec(u"ALTER TABLE main ADD COLUMN source_app TEXT DEFAULT ''"_s);
+        }
+        if (!existingCols.contains(u"source_title"_s)) {
+            query.exec(u"ALTER TABLE main ADD COLUMN source_title TEXT DEFAULT ''"_s);
+        }
+        if (!existingCols.contains(u"source_url"_s)) {
+            query.exec(u"ALTER TABLE main ADD COLUMN source_url TEXT DEFAULT ''"_s);
+        }
+    }
     query.exec(u"CREATE TABLE IF NOT EXISTS aux ("
                u"uuid char(40) NOT NULL, "
                u"mimetype TEXT NOT NULL, "
@@ -947,7 +1008,7 @@ bool HistoryModel::loadHistory()
     QHash<QString, bool> starredMap;
     int starred = 0;
 
-    query.prepare(u"SELECT uuid, mimetypes, text, starred FROM main ORDER BY last_used_time DESC, added_time DESC LIMIT ?"_s);
+    query.prepare(u"SELECT uuid, mimetypes, text, starred, source_app, source_title, source_url FROM main ORDER BY last_used_time DESC, added_time DESC LIMIT ?"_s);
     query.addBindValue(static_cast<int>(qMax<qsizetype>(m_maxSize, 2048)));
     if (query.exec()) {
         while (query.next()) {
@@ -1004,6 +1065,7 @@ void HistoryModel::loadSettings()
     m_bActionOnSelection = s->actionOnSelection();
     const bool prevPlainText = m_bPastePlainText;
     m_bPastePlainText = s->pastePlainText();
+    m_bSaveSourceInfo = s->saveSourceInfo();
 
     if (m_bNoNullClipboard) {
         connect(m_clip.get(), &SystemClipboard::receivedEmptyClipboard, this, &HistoryModel::slotReceivedEmptyClipboard, Qt::UniqueConnection);
@@ -1089,6 +1151,9 @@ QHash<int, QByteArray> HistoryModel::roleNames() const
         {TypeIntRole, "type"},
         {StarredRole, "starred"},
         {HasActionRole, "hasAction"},
+        {SourceAppRole, "sourceApp"},
+        {SourceTitleRole, "sourceTitle"},
+        {SourceUrlRole, "sourceUrl"},
     };
 }
 
@@ -1152,7 +1217,9 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         plainOnly->setText(data->text());
     }
 
-    if (insert(data)) {
+    const ClipboardSourceInfo sourceInfo = m_bSaveSourceInfo ? captureClipboardSource(mode, data) : ClipboardSourceInfo{};
+
+    if (insert(data, 0, sourceInfo)) {
         if (stripFormatting && !selectionMode) {
             // Replace active X11 clipboard with plain text so even direct Ctrl+V pastes without formatting
             m_clip->setMimeData(plainOnly.get(), SystemClipboard::Clipboard);

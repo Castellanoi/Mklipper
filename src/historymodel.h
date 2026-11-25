@@ -15,6 +15,7 @@
 #include <QSqlDatabase>
 
 #include "historyitem.h"
+#include "sourceinfo.h"
 #include "systemclipboard.h"
 
 class URLGrabber;
@@ -33,6 +34,9 @@ public:
         ImageSizeRole,
         StarredRole,
         HasActionRole,
+        SourceAppRole,
+        SourceTitleRole,
+        SourceUrlRole,
     };
     Q_ENUM(RoleType)
 
@@ -68,7 +72,7 @@ public:
     int indexOf(const HistoryItem *item) const;
     HistoryItemConstPtr first() const;
 
-    bool insert(const QMimeData *mimeData, qreal timestamp = 0);
+    bool insert(const QMimeData *mimeData, qreal timestamp = 0, const ClipboardSourceInfo &source = {});
     bool insert(const QString &text);
 
     bool loadHistory();
@@ -95,7 +99,11 @@ private:
     explicit HistoryModel();
 
     void moveToTop(qsizetype row);
-    bool persistMimeData(const QString &uuid, const QString &text, const QMimeData *mimeData, qreal timestamp);
+    bool persistMimeData(const QString &uuid,
+                         const QString &text,
+                         const QMimeData *mimeData,
+                         qreal timestamp,
+                         const ClipboardSourceInfo &source = {});
     static bool saveToFile(const QString &dbFolder, const QByteArray &data, const QString &itemUuid, const QString &dataUuid);
     void setHasPassword(QClipboard::Mode mode, bool hasPassword);
 
@@ -120,6 +128,7 @@ private:
     bool m_bSynchronize = false;
     bool m_bActionOnSelection = false;
     bool m_bPastePlainText = false;
+    bool m_bSaveSourceInfo = true;
     bool m_clipboardHasPassword = false;
     bool m_selectionHasPassword = false;
 };

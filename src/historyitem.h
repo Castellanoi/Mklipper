@@ -32,13 +32,28 @@ Q_DECLARE_METATYPE(HistoryItemConstPtr)
 class HistoryItem
 {
 public:
-    explicit HistoryItem(QString uuid, const QStringList &mimeTypes, QString text);
+    explicit HistoryItem(QString uuid,
+                         const QStringList &mimeTypes,
+                         QString text,
+                         QString sourceApp = {},
+                         QString sourceTitle = {},
+                         QString sourceUrl = {});
     ~HistoryItem() = default;
 
     HistoryItemType type() const;
     HistoryItemTypes allTypes() const { return m_types; }
     QString text() const { return m_text; }
     const QString &uuid() const { return m_uuid; }
+    const QString &sourceApp() const { return m_sourceApp; }
+    const QString &sourceTitle() const { return m_sourceTitle; }
+    const QString &sourceUrl() const { return m_sourceUrl; }
+    bool hasSourceInfo() const { return !m_sourceApp.isEmpty() || !m_sourceTitle.isEmpty() || !m_sourceUrl.isEmpty(); }
+    void setSourceInfo(QString app, QString title, QString url)
+    {
+        m_sourceApp = std::move(app);
+        m_sourceTitle = std::move(title);
+        m_sourceUrl = std::move(url);
+    }
 
     bool operator==(const HistoryItem &rhs) const { return m_uuid == rhs.m_uuid; }
 
@@ -48,4 +63,7 @@ private:
     QString m_uuid;
     HistoryItemTypes m_types = HistoryItemType::Unknown;
     QString m_text;
+    QString m_sourceApp;
+    QString m_sourceTitle;
+    QString m_sourceUrl;
 };

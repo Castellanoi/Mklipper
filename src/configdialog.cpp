@@ -122,6 +122,18 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     connect(m_keepPopupOpen, &QCheckBox::toggled, m_closePopupOnFocusOut, &QCheckBox::setEnabled);
     closeOutsideLayout->addWidget(m_closePopupOnFocusOut);
 
+    m_saveSourceInfo = new QCheckBox(tr("Guardar origen de los elementos copiados (aplicación y enlace/ventana)"), histGroup);
+    m_saveSourceInfo->setChecked(s->saveSourceInfo());
+
+    auto *showSourceRow = new QWidget(histGroup);
+    auto *showSourceLayout = new QHBoxLayout(showSourceRow);
+    showSourceLayout->setContentsMargins(24, 0, 0, 0);
+    m_showSourceInfo = new QCheckBox(tr("Mostrar etiqueta de origen en la lista del portapapeles"), showSourceRow);
+    m_showSourceInfo->setChecked(s->showSourceInfo());
+    m_showSourceInfo->setEnabled(m_saveSourceInfo->isChecked());
+    connect(m_saveSourceInfo, &QCheckBox::toggled, m_showSourceInfo, &QCheckBox::setEnabled);
+    showSourceLayout->addWidget(m_showSourceInfo);
+
     histForm->addRow(m_keepContents);
     histForm->addRow(m_preventEmpty);
     histForm->addRow(m_saveImages);
@@ -129,6 +141,8 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     histForm->addRow(m_pastePlainText);
     histForm->addRow(m_keepPopupOpen);
     histForm->addRow(closeOutsideRow);
+    histForm->addRow(m_saveSourceInfo);
+    histForm->addRow(showSourceRow);
     histForm->addRow(tr("Tamaño máximo del historial:"), wrapSpinBoxRow(m_maxItems, QStringLiteral("2048"), histGroup));
     histForm->addRow(m_confirmClear);
     genLayout->addWidget(histGroup);
@@ -388,6 +402,8 @@ void ConfigDialog::saveAndAccept()
     s->setPastePlainText(m_pastePlainText->isChecked());
     s->setKeepPopupOpen(m_keepPopupOpen->isChecked());
     s->setClosePopupOnFocusOut(m_closePopupOnFocusOut->isChecked());
+    s->setSaveSourceInfo(m_saveSourceInfo->isChecked());
+    s->setShowSourceInfo(m_showSourceInfo->isChecked());
 
     s->setUrlGrabberEnabled(m_urlGrabberEnabled->isChecked());
     s->setActionOnSelection(m_actionOnSelection->isChecked());

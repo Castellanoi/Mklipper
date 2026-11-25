@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.5.0
+
+### 🇪🇸 Español
+- **Registro y visualización del origen de lo copiado (aplicación y enlace/ventana):**
+  - Captura automáticamente desde qué aplicación y ventana (o enlace web exacto cuando el navegador lo provee en el portapapeles) se copió cada elemento, con migración transparente de la base SQLite sin perder tu historial anterior.
+  - Diseño visual limpio y sutil: muestra una pequeña línea discreta al pie de cada tarjeta (`Firefox · github.com`, `VS Code · main.cpp`, `Terminal`), tooltip completo al pasar el mouse y botón rápido `↗` solo al pasar el cursor si hay un enlace web de origen.
+  - También podés buscar en el historial por nombre de aplicación, título de ventana o dominio.
+  - Nuevas casillas en *Configuración → General* para habilitar/deshabilitar el guardado del origen (privacidad) y/o ocultar la etiqueta visual en la lista.
+
+### 🇬🇧 English
+- **Source tracking for copied items (application & link/window):**
+  - Automatically captures the source application and window title (plus exact source URL when exposed by browsers on the clipboard), with a seamless backwards-compatible SQLite migration that preserves existing history.
+  - Clean, uncluttered UI: displays a subtle single-line source footer on each card (`Firefox · github.com`, `VS Code · main.cpp`, `Terminal`), full source details on hover tooltip, and a hover-only `↗` quick button whenever a clickable source link is available.
+  - Search bar also filters by source app name, window title, or domain.
+  - New checkboxes under *Settings → General* to enable/disable recording source info (for privacy) and/or toggle the inline source label in the list.
+
 ## v1.4.0
 
 ### 🇪🇸 Español

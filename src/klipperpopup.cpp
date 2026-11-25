@@ -10,6 +10,7 @@
 #include "historymodel.h"
 #include "qrcodewidget.h"
 #include "settings.h"
+#include "sourceinfo.h"
 #include "x11paster.h"
 
 #include <QAbstractButton>
@@ -17,6 +18,7 @@
 #include <QCache>
 #include <QCursor>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QEvent>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -53,6 +55,7 @@ constexpr int kActionBtnGap = 4;
 
 enum class RowAction {
     None,
+    OpenSource,
     Star,
     Action,
     Qr,
@@ -97,7 +100,19 @@ bool HistoryFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
     }
 
     const QString text = idx.data(Qt::DisplayRole).toString();
-    return text.contains(re);
+    if (text.contains(re)) {
+        return true;
+    }
+    const QString srcApp = idx.data(HistoryModel::SourceAppRole).toString();
+    if (!srcApp.isEmpty() && srcApp.contains(re)) {
+        return true;
+    }
+    const QString srcTitle = idx.data(HistoryModel::SourceTitleRole).toString();
+    if (!srcTitle.isEmpty() && srcTitle.contains(re)) {
+        return true;
+    }
+    const QString srcUrl = idx.data(HistoryModel::SourceUrlRole).toString();
+    return !srcUrl.isEmpty() && srcUrl.contains(re);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,13 +135,46 @@ public:
         m_hoverPos = pos;
     }
 
+    static QString compactSourceFor(const QModelIndex &index)
+    {
+        if (!MklipperSettings::self()->showSourceInfo()) {
+            return {};
+        }
+        return formatCompactSourceLabel(index.data(HistoryModel::SourceAppRole).toString(),
+                                        index.data(HistoryModel::SourceTitleRole).toString(),
+                                        index.data(HistoryModel::SourceUrlRole).toString());
+    }
+
+    static QString sourceTooltipFor(const QModelIndex &index)
+    {
+        const QString app = index.data(HistoryModel::SourceAppRole).toString();
+        const QString title = index.data(HistoryModel::SourceTitleRole).toString();
+        const QString url = index.data(HistoryModel::SourceUrlRole).toString();
+        if (app.isEmpty() && title.isEmpty() && url.isEmpty()) {
+            return {};
+        }
+        QStringList lines;
+        if (!app.isEmpty()) {
+            lines.append(tr("Aplicación: %1").arg(app));
+        }
+        if (!title.isEmpty()) {
+            lines.append(tr("Ventana: %1").arg(title));
+        }
+        if (!url.isEmpty()) {
+            lines.append(tr("Enlace: %1").arg(url));
+        }
+        return lines.join(QLatin1Char('\n'));
+    }
+
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
         const auto type = static_cast<HistoryItemType>(index.data(HistoryModel::TypeIntRole).toInt());
         const int lineSp = option.fontMetrics.lineSpacing();
+        const bool hasMeta = !compactSourceFor(index).isEmpty();
+        const int metaExtra = hasMeta ? qMax(16, lineSp) : 0;
         const int h = (type == HistoryItemType::Image)
-            ? qMax(kRowHeightImage, lineSp * 2 + 34)
-            : qMax(kRowHeightText, lineSp * 2 + 20);
+            ? qMax(kRowHeightImage, lineSp * 2 + 34) + (hasMeta ? qMax(14, lineSp - 2) : 0)
+            : qMax(kRowHeightText, lineSp * 2 + 20) + metaExtra;
         return QSize(option.rect.width(), h);
     }
 
@@ -145,6 +193,7 @@ public:
         const auto type = static_cast<HistoryItemType>(index.data(HistoryModel::TypeIntRole).toInt());
         const bool starred = index.data(HistoryModel::StarredRole).toBool();
         const bool hasAction = index.data(HistoryModel::HasActionRole).toBool();
+        const QString sourceUrl = index.data(HistoryModel::SourceUrlRole).toString();
 
         int right = itemRect.right() - 8;
         const int cy = itemRect.center().y() - kActionBtnSize / 2;
@@ -164,6 +213,9 @@ public:
         }
         if (hasAction) {
             pushBtn(RowAction::Action, tr("Ejecutar acción"), u"system-run"_s, u"⚡"_s);
+        }
+        if (!sourceUrl.isEmpty()) {
+            pushBtn(RowAction::OpenSource, tr("Abrir enlace de origen"), u"internet-web-browser"_s, u"↗"_s);
         }
         pushBtn(RowAction::Star, starred ? tr("Desfijar") : tr("Fijar elemento"),
                 starred ? u"starred"_s : u"non-starred"_s,
@@ -279,6 +331,16 @@ public:
 
         contentRect.setLeft(badgeRect.right() + 9);
 
+        // Reserve a clean subtle bottom row for source info (app / domain / title) when enabled
+        const QString sourceLabel = compactSourceFor(index);
+        const bool hasSourceUrl = !index.data(HistoryModel::SourceUrlRole).toString().isEmpty();
+        QRect metaRect;
+        if (!sourceLabel.isEmpty()) {
+            const int metaH = qMax(15, option.fontMetrics.height() - 1);
+            metaRect = QRect(contentRect.left(), contentRect.bottom() - metaH + 1, contentRect.width(), metaH);
+            contentRect.setBottom(metaRect.top() - 2);
+        }
+
         if (type == HistoryItemType::Image) {
             const QUrl imgUrl = index.data(HistoryModel::ImageUrlRole).toUrl();
             const QString uuid = index.data(HistoryModel::UuidRole).toString();
@@ -344,6 +406,29 @@ public:
                 painter->drawText(r2, Qt::AlignVCenter | Qt::AlignLeft,
                                   fm2.elidedText(line2, Qt::ElideRight, r2.width()));
             }
+        }
+
+        // Draw subtle, uncluttered source pill/line at the bottom of the card
+        if (!sourceLabel.isEmpty() && metaRect.isValid() && metaRect.width() > 24) {
+            QFont metaFont = option.font;
+            metaFont.setPointSizeF(qMax(7.5, metaFont.pointSizeF() - 1.7));
+            painter->setFont(metaFont);
+
+            const int dotSize = 5;
+            const QRectF dotRect(metaRect.left(), metaRect.center().y() - dotSize / 2.0, dotSize, dotSize);
+            QColor dotColor = hasSourceUrl ? pal.color(QPalette::Highlight) : pal.color(QPalette::Text);
+            dotColor.setAlpha(hasSourceUrl ? 190 : 105);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(dotColor);
+            painter->drawEllipse(dotRect);
+
+            QColor metaColor = pal.color(QPalette::Text);
+            metaColor.setAlpha(135);
+            painter->setPen(metaColor);
+            const QRect textMetaRect = metaRect.adjusted(dotSize + 5, 0, 0, 0);
+            const QFontMetrics fmMeta(metaFont);
+            painter->drawText(textMetaRect, Qt::AlignVCenter | Qt::AlignLeft,
+                              fmMeta.elidedText(sourceLabel, Qt::ElideRight, textMetaRect.width()));
         }
 
         // Draw buttons or persistent star indicator
@@ -931,7 +1016,12 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                 if (m_delegate->hitTestButton(cardRect, idx, pos, &tip) != RowAction::None && !tip.isEmpty()) {
                     QToolTip::showText(me->globalPosition().toPoint(), tip, m_listView->viewport());
                 } else {
-                    QToolTip::hideText();
+                    const QString srcTip = ClipboardItemDelegate::sourceTooltipFor(idx);
+                    if (!srcTip.isEmpty()) {
+                        QToolTip::showText(me->globalPosition().toPoint(), srcTip, m_listView->viewport());
+                    } else {
+                        QToolTip::hideText();
+                    }
                 }
             }
         } else if (ev->type() == QEvent::Leave) {
@@ -946,6 +1036,16 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                     const QRect cardRect = m_listView->visualRect(idx).adjusted(6, 3, -6, -3);
                     const RowAction act = m_delegate->hitTestButton(cardRect, idx, pos);
                     switch (act) {
+                    case RowAction::OpenSource: {
+                        const QUrl srcUrl(idx.data(HistoryModel::SourceUrlRole).toString());
+                        if (srcUrl.isValid()) {
+                            if (!MklipperSettings::self()->keepPopupOpen()) {
+                                hide();
+                            }
+                            QDesktopServices::openUrl(srcUrl);
+                        }
+                        return true;
+                    }
                     case RowAction::Star:
                         toggleStar(idx);
                         return true;
@@ -1214,6 +1314,10 @@ void KlipperPopup::updatePersistentUi()
         }
         hp.setColor(QPalette::WindowText, c);
         m_plainTextHintLabel->setPalette(hp);
+    }
+    if (m_listView) {
+        m_listView->doItemsLayout();
+        m_listView->viewport()->update();
     }
 }
 

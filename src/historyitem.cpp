@@ -10,9 +10,17 @@
 
 using namespace Qt::StringLiterals;
 
-HistoryItem::HistoryItem(QString uuid, const QStringList &mimeTypes, QString text)
+HistoryItem::HistoryItem(QString uuid,
+                         const QStringList &mimeTypes,
+                         QString text,
+                         QString sourceApp,
+                         QString sourceTitle,
+                         QString sourceUrl)
     : m_uuid(std::move(uuid))
     , m_text(std::move(text))
+    , m_sourceApp(std::move(sourceApp))
+    , m_sourceTitle(std::move(sourceTitle))
+    , m_sourceUrl(std::move(sourceUrl))
 {
     if (std::ranges::any_of(mimeTypes, [](const QString &mimeType) {
             return mimeType.startsWith(u"text/");
@@ -52,5 +60,13 @@ HistoryItemPtr HistoryItem::create(const QSqlQuery &query)
         return {};
     }
     QString text = query.value(u"text"_s).toString();
-    return std::make_shared<HistoryItem>(std::move(uuid), mimeTypes, std::move(text));
+    QString sourceApp = query.value(u"source_app"_s).toString();
+    QString sourceTitle = query.value(u"source_title"_s).toString();
+    QString sourceUrl = query.value(u"source_url"_s).toString();
+    return std::make_shared<HistoryItem>(std::move(uuid),
+                                         mimeTypes,
+                                         std::move(text),
+                                         std::move(sourceApp),
+                                         std::move(sourceTitle),
+                                         std::move(sourceUrl));
 }

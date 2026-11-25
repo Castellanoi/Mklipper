@@ -35,6 +35,8 @@ public:
             {"Pegar sin formato (solo texto plano, sin colores ni estilos HTML)", u"Paste without formatting (plain text only, no HTML colors or styles)"_s},
             {"Mantener la ventana flotante abierta al hacer clic en elementos", u"Keep floating window open when clicking items"_s},
             {"Cerrar la ventana al hacer clic fuera de ella", u"Close window when clicking outside"_s},
+            {"Guardar origen de los elementos copiados (aplicación y enlace/ventana)", u"Save source of copied items (application and link/window)"_s},
+            {"Mostrar etiqueta de origen en la lista del portapapeles", u"Show source label in the clipboard list"_s},
             {"Tamaño máximo del historial:", u"Maximum history size:"_s},
             {"Selección de texto (X11)", u"Text Selection (X11)"_s},
             {"Guardar texto seleccionado con el mouse en el historial", u"Save mouse-selected text in history"_s},
@@ -145,6 +147,10 @@ public:
             {"Anterior: %1", u"Previous: %1"_s},
 
             // KlipperPopup
+            {"Aplicación: %1", u"Application: %1"_s},
+            {"Ventana: %1", u"Window: %1"_s},
+            {"Enlace: %1", u"Link: %1"_s},
+            {"Abrir enlace de origen", u"Open source link"_s},
             {"Editar texto", u"Edit text"_s},
             {"Mostrar código QR", u"Show QR code"_s},
             {"Ejecutar acción", u"Run action"_s},
