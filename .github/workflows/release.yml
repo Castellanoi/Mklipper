@@ -68,11 +68,20 @@ jobs:
         run: |
           TAG="${{ steps.notes.outputs.tag }}"
           DEB_FILE="$(ls dist/mklipper_*_amd64.deb | head -n 1)"
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release upload "${TAG}" "${DEB_FILE}" dist/SHA256SUMS --clobber
-            gh release edit "${TAG}" --title "Mklipper ${TAG}" --notes-file release_notes.md
-          else
-            gh release create "${TAG}" "${DEB_FILE}" dist/SHA256SUMS \
-              --title "Mklipper ${TAG}" \
-              --notes-file release_notes.md
-          fi
+          for attempt in 1 2 3; do
+            if gh release view "${TAG}" >/dev/null 2>&1; then
+              if gh release upload "${TAG}" "${DEB_FILE}" dist/SHA256SUMS --clobber \
+                && gh release edit "${TAG}" --title "Mklipper ${TAG}" --notes-file release_notes.md; then
+                exit 0
+              fi
+            else
+              if gh release create "${TAG}" "${DEB_FILE}" dist/SHA256SUMS \
+                --title "Mklipper ${TAG}" \
+                --notes-file release_notes.md; then
+                exit 0
+              fi
+            fi
+            echo "Attempt ${attempt} failed; retrying in 5s..." >&2
+            sleep 5
+          done
+          exit 1
