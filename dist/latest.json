@@ -1,0 +1,16 @@
+{
+  "version": "1.2.1",
+  "tag_name": "v1.2.1",
+  "name": "Mklipper v1.2.1",
+  "html_url": "https://github.com/Castellanoi/Mklipper/releases/tag/v1.2.1",
+  "body": "### 🇪🇸 Español\n- **Actualizador integrado más confiable (doble fuente):**\n  - Ahora consulta primero el manifiesto directo `dist/latest.json` en GitHub (`raw.githubusercontent.com`, sin límite de consultas ni dependencia de GitHub Actions) con respaldo automático a **GitHub Releases**.\n  - Evita falsos *«ya estás en la última versión»* cuando GitHub Releases sufre demoras o interrupciones, y desactiva caché HTTP al buscar actualizaciones manualmente.\n  - Mantiene verificación estricta de integridad **SHA-256** e instalación nativa con `pkexec apt-get install`.\n\n### 🇬🇧 English\n- **More reliable in-app updater (dual-source):**\n  - Now checks the direct `dist/latest.json` manifest on GitHub (`raw.githubusercontent.com`, no API rate limits or GitHub Actions dependency) with automatic fallback to **GitHub Releases**.\n  - Prevents false \"already up to date\" results during GitHub Releases delays/outages and bypasses HTTP cache on manual checks.\n  - Preserves strict **SHA-256** integrity verification and native installation via `pkexec apt-get install`.",
+  "assets": [
+    {
+      "name": "mklipper_1.2.1_amd64.deb",
+      "architecture": "amd64",
+      "size": 215458,
+      "sha256": "701b63d72d95bb464b4a7f16cf0850755de4b645b49bef8290e752527da5c228",
+      "url": "https://raw.githubusercontent.com/Castellanoi/Mklipper/main/dist/mklipper_1.2.1_amd64.deb"
+    }
+  ]
+}

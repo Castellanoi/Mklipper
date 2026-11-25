@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.2.1
+
+### 🇪🇸 Español
+- **Actualizador integrado más confiable (doble fuente):**
+  - Ahora consulta primero el manifiesto directo `dist/latest.json` en GitHub (`raw.githubusercontent.com`, sin límite de consultas ni dependencia de GitHub Actions) con respaldo automático a **GitHub Releases**.
+  - Evita falsos *«ya estás en la última versión»* cuando GitHub Releases sufre demoras o interrupciones, y desactiva caché HTTP al buscar actualizaciones manualmente.
+  - Mantiene verificación estricta de integridad **SHA-256** e instalación nativa con `pkexec apt-get install`.
+
+### 🇬🇧 English
+- **More reliable in-app updater (dual-source):**
+  - Now checks the direct `dist/latest.json` manifest on GitHub (`raw.githubusercontent.com`, no API rate limits or GitHub Actions dependency) with automatic fallback to **GitHub Releases**.
+  - Prevents false "already up to date" results during GitHub Releases delays/outages and bypasses HTTP cache on manual checks.
+  - Preserves strict **SHA-256** integrity verification and native installation via `pkexec apt-get install`.
+
 ## v1.2.0
 
 ### 🇪🇸 Español

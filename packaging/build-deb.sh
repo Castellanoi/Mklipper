@@ -76,5 +76,58 @@ chmod 0755 "${STAGE_DIR}/DEBIAN/postrm"
 
 dpkg-deb --root-owner-group --build "${STAGE_DIR}" "${DEB_FILE}"
 (cd "${DIST_DIR}" && sha256sum "$(basename "${DEB_FILE}")" > SHA256SUMS)
+
+DEB_BASENAME="$(basename "${DEB_FILE}")"
+DEB_SHA256="$(awk '{print $1}' "${DIST_DIR}/SHA256SUMS")"
+DEB_SIZE="$(stat -c '%s' "${DEB_FILE}")"
+
+python3 - "${ROOT_DIR}/CHANGELOG.md" "${DIST_DIR}/latest.json" "${PKG_VERSION}" "${PKG_ARCH}" "${DEB_BASENAME}" "${DEB_SIZE}" "${DEB_SHA256}" <<'PYEOF'
+import json
+import os
+import sys
+
+changelog_path, out_path, version, arch, deb_name, deb_size, deb_sha256 = sys.argv[1:8]
+tag = f"v{version}"
+notes = ""
+
+if os.path.exists(changelog_path):
+    with open(changelog_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    collecting = False
+    collected = []
+    header = f"## {tag}"
+    for line in lines:
+        if line.strip() == header:
+            collecting = True
+            continue
+        if collecting and line.startswith("## "):
+            break
+        if collecting:
+            collected.append(line)
+    notes = "".join(collected).strip()
+
+manifest = {
+    "version": version,
+    "tag_name": tag,
+    "name": f"Mklipper {tag}",
+    "html_url": f"https://github.com/Castellanoi/Mklipper/releases/tag/{tag}",
+    "body": notes,
+    "assets": [
+        {
+            "name": deb_name,
+            "architecture": arch,
+            "size": int(deb_size),
+            "sha256": deb_sha256,
+            "url": f"https://raw.githubusercontent.com/Castellanoi/Mklipper/main/dist/{deb_name}",
+        }
+    ],
+}
+
+with open(out_path, "w", encoding="utf-8") as f:
+    json.dump(manifest, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+PYEOF
+
 echo "Paquete generado: ${DEB_FILE}"
 echo "Checksum generado: ${DIST_DIR}/SHA256SUMS"
+echo "Manifiesto generado: ${DIST_DIR}/latest.json"

@@ -12,6 +12,7 @@
 #include <memory>
 
 class QFile;
+class QJsonObject;
 class QNetworkAccessManager;
 class QNetworkReply;
 class QProcess;
@@ -26,6 +27,7 @@ struct ReleaseInfo {
     QString assetName;        // e.g. "mklipper_1.1.0_amd64.deb"
     QUrl assetUrl;            // Direct download URL for .deb
     qint64 assetSize = 0;     // Bytes
+    QString expectedSha256;   // Optional inline SHA-256 hex (from latest.json manifest)
     QUrl checksumUrl;         // Optional SHA256SUMS / .sha256 URL
     QString checksumFileName; // Name of checksum asset
     QString architecture;     // Detected Debian arch, e.g. "amd64"
@@ -78,9 +80,18 @@ Q_SIGNALS:
     void cancelled();
 
 private:
+    enum class CheckSource {
+        Manifest,
+        GitHubReleases,
+        CustomOverride,
+    };
+
     void setState(State newState);
-    QUrl latestReleaseApiUrl() const;
+    QUrl manifestUrl(bool bustCache) const;
+    QUrl releasesApiUrl() const;
     bool isAllowedUrl(const QUrl &url) const;
+    void startCheckRequest(const QUrl &url, CheckSource source);
+    bool parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) const;
 
     void onCheckReplyFinished();
     void startDebDownload();
@@ -95,6 +106,9 @@ private:
     QPointer<QProcess> m_installProcess;
 
     State m_state = State::Idle;
+    CheckSource m_checkSource = CheckSource::Manifest;
+    QString m_primaryCheckError;
+    bool m_primarySucceeded = false;
     bool m_userInitiatedCheck = false;
     bool m_hasPendingUpdate = false;
     ReleaseInfo m_latestRelease;

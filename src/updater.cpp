@@ -5,6 +5,7 @@
 #include "updater.h"
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -19,12 +20,14 @@
 #include <QStandardPaths>
 #include <QSysInfo>
 #include <QTemporaryDir>
+#include <QUrlQuery>
 #include <QVersionNumber>
 
 using namespace Qt::StringLiterals;
 
 namespace
 {
+constexpr auto kDefaultManifestUrl = "https://raw.githubusercontent.com/Castellanoi/Mklipper/main/dist/latest.json";
 constexpr auto kDefaultReleasesApiUrl = "https://api.github.com/repos/Castellanoi/Mklipper/releases/latest";
 constexpr int kApiTimeoutMs = 25000;
 constexpr int kDownloadTimeoutMs = 180000;
@@ -160,12 +163,19 @@ void Updater::setState(State newState)
     }
 }
 
-QUrl Updater::latestReleaseApiUrl() const
+QUrl Updater::manifestUrl(bool bustCache) const
 {
-    const QByteArray overrideEnv = qgetenv("MKLIPPER_UPDATE_URL").trimmed();
-    if (!overrideEnv.isEmpty()) {
-        return QUrl::fromUserInput(QString::fromUtf8(overrideEnv));
+    QUrl url(QString::fromLatin1(kDefaultManifestUrl));
+    if (bustCache) {
+        QUrlQuery q;
+        q.addQueryItem(u"_t"_s, QString::number(QDateTime::currentSecsSinceEpoch()));
+        url.setQuery(q);
     }
+    return url;
+}
+
+QUrl Updater::releasesApiUrl() const
+{
     return QUrl(QString::fromLatin1(kDefaultReleasesApiUrl));
 }
 
@@ -191,24 +201,143 @@ void Updater::checkForUpdates(bool userInitiated)
         return;
     }
 
-    const QUrl apiUrl = latestReleaseApiUrl();
-    if (!isAllowedUrl(apiUrl)) {
-        Q_EMIT checkFailed(tr("La URL de actualización configurada no es válida o no usa HTTPS."), userInitiated);
+    m_userInitiatedCheck = userInitiated;
+    m_primaryCheckError.clear();
+    m_primarySucceeded = false;
+
+    const QByteArray overrideEnv = qgetenv("MKLIPPER_UPDATE_URL").trimmed();
+    if (!overrideEnv.isEmpty()) {
+        const QUrl customUrl = QUrl::fromUserInput(QString::fromUtf8(overrideEnv));
+        if (!isAllowedUrl(customUrl)) {
+            Q_EMIT checkFailed(tr("La URL de actualización configurada no es válida o no usa HTTPS."), userInitiated);
+            return;
+        }
+        setState(State::Checking);
+        Q_EMIT statusMessage(tr("Buscando actualizaciones…"));
+        startCheckRequest(customUrl, CheckSource::CustomOverride);
         return;
     }
 
-    m_userInitiatedCheck = userInitiated;
     setState(State::Checking);
     Q_EMIT statusMessage(tr("Buscando actualizaciones…"));
+    startCheckRequest(manifestUrl(userInitiated), CheckSource::Manifest);
+}
 
-    QNetworkRequest req(apiUrl);
+void Updater::startCheckRequest(const QUrl &url, CheckSource source)
+{
+    m_checkSource = source;
+
+    QNetworkRequest req(url);
+    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
     req.setRawHeader("User-Agent", userAgentString().toUtf8());
-    req.setRawHeader("Accept", "application/vnd.github+json");
+    req.setRawHeader("Cache-Control", "no-cache");
+    if (source == CheckSource::GitHubReleases) {
+        req.setRawHeader("Accept", "application/vnd.github+json");
+    } else {
+        req.setRawHeader("Accept", "application/json");
+    }
     req.setTransferTimeout(kApiTimeoutMs);
 
     QNetworkReply *reply = m_nam->get(req);
     m_activeReply = reply;
     connect(reply, &QNetworkReply::finished, this, &Updater::onCheckReplyFinished);
+}
+
+bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) const
+{
+    QString tagName = obj.value(u"tag_name"_s).toString().trimmed();
+    QString version = normalizeVersionString(tagName);
+    if (version.isEmpty()) {
+        version = normalizeVersionString(obj.value(u"version"_s).toString().trimmed());
+        if (tagName.isEmpty() && !version.isEmpty()) {
+            tagName = u"v"_s + version;
+        }
+    }
+    if (version.isEmpty()) {
+        return false;
+    }
+
+    ReleaseInfo info;
+    info.tagName = tagName;
+    info.version = version;
+    info.title = obj.value(u"name"_s).toString().trimmed();
+    if (info.title.isEmpty()) {
+        info.title = QStringLiteral("Mklipper %1").arg(tagName);
+    }
+    info.releaseNotes = obj.value(u"body"_s).toString().trimmed();
+    if (info.releaseNotes.isEmpty()) {
+        info.releaseNotes = obj.value(u"notes"_s).toString().trimmed();
+    }
+    info.htmlUrl = QUrl(obj.value(u"html_url"_s).toString().trimmed());
+    info.architecture = systemArchitecture();
+
+    const QString preferredSuffix = QStringLiteral("_%1.deb").arg(info.architecture);
+    const QString allSuffix = u"_all.deb"_s;
+    static const QRegularExpression reSha256(QStringLiteral("^[0-9a-fA-F]{64}$"));
+
+    const QJsonArray assets = obj.value(u"assets"_s).toArray();
+    for (const QJsonValue &val : assets) {
+        const QJsonObject asset = val.toObject();
+        const QString name = QFileInfo(asset.value(u"name"_s).toString().trimmed()).fileName();
+        QString urlStr = asset.value(u"browser_download_url"_s).toString().trimmed();
+        if (urlStr.isEmpty()) {
+            urlStr = asset.value(u"url"_s).toString().trimmed();
+        }
+        const QUrl downloadUrl(urlStr);
+        if (!isAllowedUrl(downloadUrl)) {
+            continue;
+        }
+
+        const QString assetArch = asset.value(u"architecture"_s).toString().trimmed();
+        const bool exactArch = (!assetArch.isEmpty() && assetArch.compare(info.architecture, Qt::CaseInsensitive) == 0)
+            || name.endsWith(preferredSuffix, Qt::CaseInsensitive);
+        const bool allArch = (!assetArch.isEmpty() && assetArch.compare(u"all"_s, Qt::CaseInsensitive) == 0)
+            || name.endsWith(allSuffix, Qt::CaseInsensitive);
+
+        if (exactArch || (!info.hasDebAsset() && allArch)) {
+            info.assetName = name;
+            info.assetUrl = downloadUrl;
+            info.assetSize = asset.value(u"size"_s).toInteger();
+            const QString inlineSha = asset.value(u"sha256"_s).toString().trimmed();
+            if (reSha256.match(inlineSha).hasMatch()) {
+                info.expectedSha256 = inlineSha.toLower();
+            }
+        }
+    }
+
+    // Second pass: look for matching SHA-256 checksum asset if no inline hash was provided
+    if (info.expectedSha256.isEmpty()) {
+        for (const QJsonValue &val : assets) {
+            const QJsonObject asset = val.toObject();
+            const QString name = QFileInfo(asset.value(u"name"_s).toString().trimmed()).fileName();
+            QString urlStr = asset.value(u"browser_download_url"_s).toString().trimmed();
+            if (urlStr.isEmpty()) {
+                urlStr = asset.value(u"url"_s).toString().trimmed();
+            }
+            const QUrl downloadUrl(urlStr);
+            if (!isAllowedUrl(downloadUrl)) {
+                continue;
+            }
+
+            const bool isExactSha = !info.assetName.isEmpty()
+                && name.compare(info.assetName + u".sha256"_s, Qt::CaseInsensitive) == 0;
+            const bool isSumsFile = name.compare(u"SHA256SUMS"_s, Qt::CaseInsensitive) == 0
+                || name.compare(u"sha256sums.txt"_s, Qt::CaseInsensitive) == 0;
+
+            if (isExactSha) {
+                info.checksumUrl = downloadUrl;
+                info.checksumFileName = name;
+                break;
+            }
+            if (isSumsFile && !info.checksumUrl.isValid()) {
+                info.checksumUrl = downloadUrl;
+                info.checksumFileName = name;
+            }
+        }
+    }
+
+    outInfo = info;
+    return true;
 }
 
 void Updater::onCheckReplyFinished()
@@ -223,6 +352,7 @@ void Updater::onCheckReplyFinished()
     }
 
     const bool userInitiated = m_userInitiatedCheck;
+    const CheckSource source = m_checkSource;
 
     if (m_state != State::Checking) {
         return;
@@ -236,23 +366,39 @@ void Updater::onCheckReplyFinished()
         return;
     }
 
-    if (httpStatus == 404) {
-        // Repo has no GitHub Releases published yet
+    auto fallbackOrFinish = [&](bool treatAsUpToDate, const QString &errorMsg) {
+        if (source == CheckSource::Manifest) {
+            if (treatAsUpToDate) {
+                m_primarySucceeded = true;
+            } else {
+                m_primaryCheckError = errorMsg;
+            }
+            startCheckRequest(releasesApiUrl(), CheckSource::GitHubReleases);
+            return;
+        }
+
         setState(State::Idle);
-        m_hasPendingUpdate = false;
-        Q_EMIT alreadyUpToDate(currentVersion(), userInitiated);
+        if (treatAsUpToDate || m_primarySucceeded) {
+            m_hasPendingUpdate = false;
+            Q_EMIT alreadyUpToDate(currentVersion(), userInitiated);
+        } else {
+            Q_EMIT checkFailed(errorMsg.isEmpty() ? m_primaryCheckError : errorMsg, userInitiated);
+        }
+    };
+
+    if (httpStatus == 404) {
+        fallbackOrFinish(true, {});
         return;
     }
 
     if (reply->error() != QNetworkReply::NoError) {
-        setState(State::Idle);
         QString msg;
         if (httpStatus == 403 || httpStatus == 429) {
             msg = tr("Se alcanzó el límite temporal de consultas de GitHub. Intentá de nuevo en unos minutos.");
         } else {
             msg = tr("No se pudo conectar con GitHub para buscar actualizaciones (%1).").arg(reply->errorString());
         }
-        Q_EMIT checkFailed(msg, userInitiated);
+        fallbackOrFinish(false, msg);
         return;
     }
 
@@ -260,84 +406,19 @@ void Updater::onCheckReplyFinished()
     QJsonParseError parseErr;
     const QJsonDocument doc = QJsonDocument::fromJson(payload, &parseErr);
     if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
-        setState(State::Idle);
-        Q_EMIT checkFailed(tr("Respuesta inválida del servidor de actualizaciones."), userInitiated);
-        return;
-    }
-
-    const QJsonObject obj = doc.object();
-    const QString tagName = obj.value(u"tag_name"_s).toString().trimmed();
-    const QString version = normalizeVersionString(tagName);
-    if (version.isEmpty()) {
-        setState(State::Idle);
-        Q_EMIT checkFailed(tr("No se encontró un número de versión válido en el último release."), userInitiated);
-        return;
-    }
-
-    if (!isNewerVersion(version, currentVersion())) {
-        setState(State::Idle);
-        m_hasPendingUpdate = false;
-        Q_EMIT alreadyUpToDate(currentVersion(), userInitiated);
+        fallbackOrFinish(false, tr("Respuesta inválida del servidor de actualizaciones."));
         return;
     }
 
     ReleaseInfo info;
-    info.tagName = tagName;
-    info.version = version;
-    info.title = obj.value(u"name"_s).toString().trimmed();
-    if (info.title.isEmpty()) {
-        info.title = QStringLiteral("Mklipper %1").arg(tagName);
-    }
-    info.releaseNotes = obj.value(u"body"_s).toString().trimmed();
-    info.htmlUrl = QUrl(obj.value(u"html_url"_s).toString().trimmed());
-    info.architecture = systemArchitecture();
-
-    const QString preferredSuffix = QStringLiteral("_%1.deb").arg(info.architecture);
-    const QString allSuffix = u"_all.deb"_s;
-
-    const QJsonArray assets = obj.value(u"assets"_s).toArray();
-    for (const QJsonValue &val : assets) {
-        const QJsonObject asset = val.toObject();
-        const QString name = QFileInfo(asset.value(u"name"_s).toString().trimmed()).fileName();
-        const QUrl downloadUrl(asset.value(u"browser_download_url"_s).toString().trimmed());
-        if (!isAllowedUrl(downloadUrl)) {
-            continue;
-        }
-
-        if (name.endsWith(preferredSuffix, Qt::CaseInsensitive)) {
-            info.assetName = name;
-            info.assetUrl = downloadUrl;
-            info.assetSize = asset.value(u"size"_s).toInteger();
-        } else if (!info.hasDebAsset() && name.endsWith(allSuffix, Qt::CaseInsensitive)) {
-            info.assetName = name;
-            info.assetUrl = downloadUrl;
-            info.assetSize = asset.value(u"size"_s).toInteger();
-        }
+    if (!parseReleaseJson(doc.object(), info)) {
+        fallbackOrFinish(false, tr("No se encontró un número de versión válido en el último release."));
+        return;
     }
 
-    // Second pass: look for matching SHA-256 checksum asset
-    for (const QJsonValue &val : assets) {
-        const QJsonObject asset = val.toObject();
-        const QString name = QFileInfo(asset.value(u"name"_s).toString().trimmed()).fileName();
-        const QUrl downloadUrl(asset.value(u"browser_download_url"_s).toString().trimmed());
-        if (!isAllowedUrl(downloadUrl)) {
-            continue;
-        }
-
-        const bool isExactSha = !info.assetName.isEmpty()
-            && name.compare(info.assetName + u".sha256"_s, Qt::CaseInsensitive) == 0;
-        const bool isSumsFile = name.compare(u"SHA256SUMS"_s, Qt::CaseInsensitive) == 0
-            || name.compare(u"sha256sums.txt"_s, Qt::CaseInsensitive) == 0;
-
-        if (isExactSha) {
-            info.checksumUrl = downloadUrl;
-            info.checksumFileName = name;
-            break;
-        }
-        if (isSumsFile && !info.checksumUrl.isValid()) {
-            info.checksumUrl = downloadUrl;
-            info.checksumFileName = name;
-        }
+    if (!isNewerVersion(info.version, currentVersion())) {
+        fallbackOrFinish(true, {});
+        return;
     }
 
     m_latestRelease = info;
@@ -362,14 +443,15 @@ void Updater::downloadAndInstall(const ReleaseInfo &release)
 
     cleanupDownload();
     m_pendingInstall = release;
-    m_expectedSha256.clear();
+    m_expectedSha256 = release.expectedSha256.toLower();
     m_installOutput.clear();
 
     setState(State::Downloading);
 
-    if (release.checksumUrl.isValid() && isAllowedUrl(release.checksumUrl)) {
+    if (m_expectedSha256.isEmpty() && release.checksumUrl.isValid() && isAllowedUrl(release.checksumUrl)) {
         Q_EMIT statusMessage(tr("Descargando suma de verificación SHA-256…"));
         QNetworkRequest req(release.checksumUrl);
+        req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
         req.setRawHeader("User-Agent", userAgentString().toUtf8());
         req.setTransferTimeout(kApiTimeoutMs);
 
