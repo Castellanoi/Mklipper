@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.7.1
+
+### 🇪🇸 Español
+- **Filtro automático de salvapantallas, bloqueos de pantalla y capturas vacías:**
+  - Al bloquear la pantalla (por ejemplo con `Super + L`), Mklipper ignora ahora cualquier evento de portapapeles originado por `cinnamon-screensaver`, otros bloqueadores de pantalla (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock`, etc.) y agentes de autenticación `polkit`.
+  - Se descartan también entradas vacías o compuestas únicamente por espacios en blanco para guardar solo contenido real copiado por el usuario.
+- **Notas de actualización filtradas al idioma del usuario:**
+  - La ventana de actualización muestra ahora únicamente la sección del *changelog* correspondiente al idioma activo del usuario (con respaldo automático a inglés/español en versiones anteriores), mientras que el registro de cambios incluye los 7 idiomas soportados.
+- **Documentación multilingüe actualizada:**
+  - [`README.md`](README.md) actualizado con las 7 traducciones completas (Español, English, Português (Brasil), Français, Italiano, Deutsch y Русский) y todas las funciones incorporadas hasta la v1.7.1.
+
+### 🇬🇧 English
+- **Automatic filtering of lockscreens, screensavers, and empty clipboard entries:**
+  - When locking the screen (e.g. via `Super + L`), Mklipper now ignores clipboard events originating from `cinnamon-screensaver`, other screen lockers (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock`, etc.), and `polkit` authentication agents.
+  - Empty or whitespace-only clipboard entries are also discarded so only real user-copied content is recorded.
+- **Language-filtered release notes in the Update dialog:**
+  - The in-app Update window now displays only the changelog section matching the user's active language (with automatic fallback to English/Spanish for older releases), while the changelog itself includes all 7 supported languages.
+- **Updated multilingual documentation:**
+  - [`README.md`](README.md) updated with complete documentation in all 7 supported languages (Spanish, English, Portuguese (Brazil), French, Italian, German, and Russian) and all features up to v1.7.1.
+
+### 🇧🇷 Português (Brasil)
+- **Filtro automático para bloqueio de tela, protetores de tela e capturas vazias:**
+  - Ao bloquear a tela (por exemplo com `Super + L`), o Mklipper agora ignora eventos da área de transferência originados por `cinnamon-screensaver`, outros bloqueadores de tela (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock`, etc.) e agentes de autenticação `polkit`.
+  - Entradas vazias ou contendo apenas espaços em branco também são descartadas para manter somente o que o usuário realmente copiou.
+- **Notas de atualização filtradas no idioma do usuário:**
+  - A janela de atualização agora exibe apenas a seção do *changelog* correspondente ao idioma ativo do usuário (com fallback automático para inglês/espanhol em versões anteriores), enquanto o registro de alterações inclui todos os 7 idiomas suportados.
+- **Documentação multilíngue atualizada:**
+  - [`README.md`](README.md) atualizado com todos os 7 idiomas suportados e todas as funcionalidades adicionadas até a v1.7.1.
+
+### 🇫🇷 Français
+- **Filtrage automatique des écrans de verrouillage, économiseurs d'écran et captures vides :**
+  - Lors du verrouillage de l'écran (par exemple avec `Super + L`), Mklipper ignore désormais les événements du presse-papiers provenant de `cinnamon-screensaver`, d'autres verrouilleurs d'écran (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock`, etc.) et des agents d'authentification `polkit`.
+  - Les entrées vides ou composées uniquement d'espaces sont également ignorées afin de ne conserver que ce que l'utilisateur copie réellement.
+- **Notes de version filtrées selon la langue de l'utilisateur :**
+  - La fenêtre de mise à jour n'affiche désormais que la section du journal des modifications correspondant à la langue active (avec repli automatique vers l'anglais/l'espagnol pour les anciennes versions), tandis que le changelog complet inclut les 7 langues prises en charge.
+- **Documentation multilingue mise à jour :**
+  - [`README.md`](README.md) mis à jour dans les 7 langues prises en charge avec l'ensemble des fonctionnalités jusqu'à la v1.7.1.
+
+### 🇮🇹 Italiano
+- **Filtro automatico per blocco schermo, salvaschermo e catture vuote:**
+  - Quando blocchi lo schermo (ad esempio con `Super + L`), Mklipper ora ignora gli eventi degli appunti generati da `cinnamon-screensaver`, altri blocchi schermo (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock`, ecc.) e agenti di autenticazione `polkit`.
+  - Anche gli elementi vuoti o composti solo da spazi bianchi vengono scartati per salvare solo i contenuti realmente copiati dall'utente.
+- **Note di rilascio filtrate nella lingua dell'utente:**
+  - La finestra di aggiornamento mostra ora solo la sezione del *changelog* nella lingua attiva (con fallback automatico all'inglese/spagnolo per le versioni precedenti), mentre il changelog include tutte le 7 lingue supportate.
+- **Documentazione multilingue aggiornata:**
+  - [`README.md`](README.md) aggiornato in tutte le 7 lingue supportate con tutte le funzionalità introdotte fino alla v1.7.1.
+
+### 🇩🇪 Deutsch
+- **Automatischer Filter für Bildschirmsperren, Bildschirmschoner und leere Einträge:**
+  - Beim Sperren des Bildschirms (z. B. mit `Super + L`) ignoriert Mklipper nun Zwischenablage-Ereignisse von `cinnamon-screensaver`, anderen Bildschirmsperren (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock` usw.) sowie `polkit`-Authentifizierungsagenten.
+  - Leere Einträge oder reine Leerzeichen werden ebenfalls verworfen, sodass nur wirklich vom Benutzer kopierte Inhalte gespeichert werden.
+- **Sprachgefilterte Versionshinweise im Aktualisierungsdialog:**
+  - Das Aktualisierungsfenster zeigt nun ausschließlich den Abschnitt der Versionshinweise in der aktiven Sprache an (mit automatischem Fallback auf Englisch/Spanisch bei älteren Versionen), während das vollständige Changelog alle 7 unterstützten Sprachen enthält.
+- **Mehrsprachige Dokumentation aktualisiert:**
+  - [`README.md`](README.md) in allen 7 unterstützten Sprachen sowie mit allen Funktionen bis v1.7.1 aktualisiert.
+
+### 🇷🇺 Русский
+- **Автоматическая фильтрация экранов блокировки, хранителей экрана и пустых записей:**
+  - При блокировке экрана (например, через `Super + L`) Mklipper теперь игнорирует события буфера обмена от `cinnamon-screensaver`, других блокировщиков экрана (`gnome-screensaver`, `mate-screensaver`, `xfce4-screensaver`, `xscreensaver`, `light-locker`, `kscreenlocker`, `i3lock`, `slock` и др.) и агентов аутентификации `polkit`.
+  - Пустые записи и строки, состоящие только из пробелов, также отбрасываются, чтобы сохранялось только реально скопированное пользователем содержимое.
+- **Список изменений на языке пользователя в окне обновлений:**
+  - Окно обновлений теперь показывает только раздел списка изменений на активном языке интерфейса (с автоматическим откатом на английский/испанский для старых версий), при этом сам журнал изменений включает все 7 поддерживаемых языков.
+- **Обновлённая многоязычная документация:**
+  - Файл [`README.md`](README.md) обновлён на всех 7 поддерживаемых языках с описанием всех возможностей вплоть до v1.7.1.
+
 ## v1.7.0
 
 ### 🇪🇸 Español

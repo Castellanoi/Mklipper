@@ -187,6 +187,39 @@ bool isSecretMimeData(const QMimeData *data)
     }
     return false;
 }
+
+bool hasMeaningfulClipboardContent(const QMimeData *data)
+{
+    if (!data) {
+        return false;
+    }
+    if (data->hasUrls()) {
+        const auto urls = data->urls();
+        for (const QUrl &url : urls) {
+            if (url.isValid() && !url.isEmpty()) {
+                return true;
+            }
+        }
+    }
+    if (data->hasImage()) {
+        const QImage img = data->imageData().value<QImage>();
+        if (!img.isNull()) {
+            return true;
+        }
+        const QStringList fmts = data->formats();
+        for (const QString &fmt : fmts) {
+            if (fmt.startsWith(MimeTypes::imagePrefix) && !data->data(fmt).isEmpty()) {
+                return true;
+            }
+        }
+    }
+    if (data->hasText()) {
+        if (!data->text().trimmed().isEmpty()) {
+            return true;
+        }
+    }
+    return false;
+}
 } // namespace
 
 std::shared_ptr<HistoryModel> HistoryModel::self()
@@ -916,7 +949,7 @@ bool HistoryModel::persistMimeData(const QString &uuid,
 
 bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const ClipboardSourceInfo &source)
 {
-    if (m_maxSize == 0 || !mimeData) {
+    if (m_maxSize == 0 || !mimeData || !hasMeaningfulClipboardContent(mimeData)) {
         return false;
     }
     const QString uuid = computeUuid(mimeData);
@@ -1372,6 +1405,10 @@ QHash<int, QByteArray> HistoryModel::roleNames() const
 
 void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
 {
+    if (isIgnoredClipboardSource(mode)) {
+        return;
+    }
+
     const bool isPassword = isSecretMimeData(data);
     const bool selectionMode = (mode == QClipboard::Selection);
     if (isPassword) {
@@ -1385,6 +1422,10 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         return;
     }
     setHasPassword(mode, false);
+
+    if (!hasMeaningfulClipboardContent(data)) {
+        return;
+    }
 
     if (selectionMode && !m_bSaveSelection) {
         if (m_bSynchronize) {
@@ -1448,7 +1489,7 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
 
 void HistoryModel::slotReceivedEmptyClipboard(QClipboard::Mode mode)
 {
-    if (!m_bNoNullClipboard) {
+    if (!m_bNoNullClipboard || isIgnoredClipboardSource(mode)) {
         return;
     }
     if (auto top = first()) {

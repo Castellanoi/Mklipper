@@ -42,4 +42,7 @@ bool applyLanguage(const QString &configured);
 
 // Returns structured, friendly User Manual tabs & cards for the active language (falling back to English / source)
 QList<ManualSection> userManualSections();
+
+// Extracts only the active language's section from a multi-language Markdown changelog (falling back gracefully)
+QString filterReleaseNotesForLanguage(const QString &markdown, const QString &langCode = QString());
 } // namespace MklipperTranslations

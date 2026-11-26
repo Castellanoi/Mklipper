@@ -18,6 +18,7 @@ struct ClipboardSourceInfo {
 };
 
 ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeData *mimeData);
+bool isIgnoredClipboardSource(QClipboard::Mode mode);
 QString formatCompactSourceLabel(const QString &app, const QString &title, const QString &url);
 QString extractSourceUrlFromMime(const QMimeData *mimeData);
 QString prettifyAppName(const QString &rawClass, const QString &rawName);

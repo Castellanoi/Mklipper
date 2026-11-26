@@ -7,6 +7,7 @@
 #include "flaticons.h"
 #include "settings.h"
 #include "themestyle.h"
+#include "translations.h"
 
 #include <QCloseEvent>
 #include <QDesktopServices>
@@ -364,8 +365,9 @@ void UpdateDialog::setMode(Mode mode)
         m_subtitleLabel->setTextFormat(Qt::RichText);
         m_subtitleLabel->setText(sub);
 
-        if (!m_release.releaseNotes.isEmpty()) {
-            m_notesBrowser->setMarkdown(m_release.releaseNotes);
+        const QString localizedNotes = MklipperTranslations::filterReleaseNotesForLanguage(m_release.releaseNotes);
+        if (!localizedNotes.isEmpty()) {
+            m_notesBrowser->setMarkdown(localizedNotes);
         } else {
             m_notesBrowser->setPlainText(tr("No se incluyeron notas de versión para este release."));
         }

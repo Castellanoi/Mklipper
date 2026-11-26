@@ -141,10 +141,45 @@ QString readProcComm(unsigned long pid)
 struct X11WindowMeta {
     QString resName;
     QString resClass;
+    QString procComm;
     QString title;
     unsigned long pid = 0;
     bool isMklipper = false;
 };
+
+bool isIgnoredAppIdentifier(const QString &raw)
+{
+    const QString id = raw.trimmed().toLower();
+    if (id.isEmpty()) {
+        return false;
+    }
+
+    // Screen lockers, screensavers, and privilege auth agents should never pollute clipboard history
+    if (id.contains(u"screensaver"_s)
+        || id.contains(u"screenlocker"_s)
+        || id.contains(u"screen-locker"_s)
+        || id.contains(u"light-locker"_s)
+        || id.contains(u"xsecurelock"_s)
+        || id.contains(u"swaylock"_s)
+        || id.contains(u"gtklock"_s)
+        || id.contains(u"hyprlock"_s)
+        || id.contains(u"physlock"_s)
+        || (id.contains(u"polkit"_s) && id.contains(u"auth"_s))) {
+        return true;
+    }
+
+    return id == u"slock"_s
+        || id == u"i3lock"_s
+        || id == u"xlock"_s
+        || id == u"dm-tool"_s;
+}
+
+bool isIgnoredWindowMeta(const X11WindowMeta &meta)
+{
+    return isIgnoredAppIdentifier(meta.resClass)
+        || isIgnoredAppIdentifier(meta.resName)
+        || isIgnoredAppIdentifier(meta.procComm);
+}
 
 X11WindowMeta inspectX11Window(Display *dpy, Window win)
 {
@@ -178,9 +213,12 @@ X11WindowMeta inspectX11Window(Display *dpy, Window win)
     }
 
     meta.pid = readX11Pid(dpy, win);
-    if (meta.resClass.isEmpty() && meta.resName.isEmpty() && meta.pid > 0) {
-        meta.resName = readProcComm(meta.pid);
-        if (meta.resName.compare(u"mklipper"_s, Qt::CaseInsensitive) == 0) {
+    if (meta.pid > 0) {
+        meta.procComm = readProcComm(meta.pid);
+        if (meta.resClass.isEmpty() && meta.resName.isEmpty()) {
+            meta.resName = meta.procComm;
+        }
+        if (meta.procComm.compare(u"mklipper"_s, Qt::CaseInsensitive) == 0) {
             meta.isMklipper = true;
         }
     }
@@ -443,6 +481,47 @@ ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeDat
 
     info.title = cleanWindowTitle(rawTitle, info.app);
     return info;
+}
+
+bool isIgnoredClipboardSource(QClipboard::Mode mode)
+{
+    Display *dpy = x11Display();
+    if (!dpy) {
+        return false;
+    }
+
+    ScopedX11ErrorGuard x11Guard(dpy);
+
+    const Atom selAtom = XInternAtom(dpy, mode == QClipboard::Selection ? "PRIMARY" : "CLIPBOARD", False);
+    const Window ownerWin = (selAtom != None) ? XGetSelectionOwner(dpy, selAtom) : None;
+    if (ownerWin != 0 && ownerWin != None) {
+        const X11WindowMeta ownerMeta = inspectX11Window(dpy, ownerWin);
+        if (isIgnoredWindowMeta(ownerMeta)) {
+            return true;
+        }
+    }
+
+    const Window activeWin = queryActiveWindow(dpy);
+    if (activeWin != 0 && activeWin != None && activeWin != ownerWin) {
+        const X11WindowMeta activeMeta = inspectX11Window(dpy, activeWin);
+        if (isIgnoredWindowMeta(activeMeta)) {
+            return true;
+        }
+    }
+
+    // Also inspect direct X11 input focus window in case a fullscreen lockscreen overrides focus without _NET_ACTIVE_WINDOW
+    Window focusedWin = None;
+    int revert = 0;
+    XGetInputFocus(dpy, &focusedWin, &revert);
+    if (focusedWin != 0 && focusedWin != None && focusedWin != PointerRoot
+        && focusedWin != ownerWin && focusedWin != activeWin) {
+        const X11WindowMeta focusMeta = inspectX11Window(dpy, focusedWin);
+        if (isIgnoredWindowMeta(focusMeta)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 QString formatCompactSourceLabel(const QString &app, const QString &title, const QString &url)

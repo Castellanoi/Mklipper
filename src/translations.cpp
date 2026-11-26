@@ -26,6 +26,7 @@ namespace
 {
 struct LanguagePack {
     LanguageInfo info;
+    QString englishName;
     QString filePath;
     QList<ManualSection> manualSections;
     QHash<QByteArray, QString> strings;
@@ -103,9 +104,10 @@ QMap<QString, LanguagePack> &packRegistry()
 
             LanguagePack pack;
             pack.info.code = code;
+            pack.englishName = meta.value(u"name"_s).toString().trimmed();
             pack.info.nativeName = meta.value(u"nativeName"_s).toString().trimmed();
             if (pack.info.nativeName.isEmpty()) {
-                pack.info.nativeName = meta.value(u"name"_s).toString().trimmed();
+                pack.info.nativeName = pack.englishName;
             }
             if (pack.info.nativeName.isEmpty()) {
                 pack.info.nativeName = code.toUpper();
@@ -322,5 +324,125 @@ QList<ManualSection> userManualSections()
         }
     }
     return {};
+}
+
+QString filterReleaseNotesForLanguage(const QString &markdown, const QString &langCode)
+{
+    const QString trimmedInput = markdown.trimmed();
+    if (trimmedInput.isEmpty()) {
+        return {};
+    }
+
+    auto foldForMatch = [](const QString &text) -> QString {
+        const QString decomposed = text.normalized(QString::NormalizationForm_D).toLower();
+        QString out;
+        out.reserve(decomposed.size());
+        for (const QChar ch : decomposed) {
+            if (ch.category() == QChar::Mark_NonSpacing || ch.category() == QChar::Mark_SpacingCombining) {
+                continue;
+            }
+            if (ch.isLetterOrNumber()) {
+                out.append(ch);
+            } else if (ch == QLatin1Char('_') || ch == QLatin1Char('-') || ch.isSpace()) {
+                if (!out.isEmpty() && out.back() != QLatin1Char(' ')) {
+                    out.append(QLatin1Char(' '));
+                }
+            }
+        }
+        return out.trimmed();
+    };
+
+    const auto &reg = packRegistry();
+    auto matchHeadingToLang = [&](const QString &headingLine) -> QString {
+        QString h = headingLine.trimmed();
+        if (!h.startsWith(u"### "_s) && !h.startsWith(u"## "_s)) {
+            return {};
+        }
+        while (h.startsWith(QLatin1Char('#'))) {
+            h.remove(0, 1);
+        }
+        const QString foldedHeading = foldForMatch(h);
+        if (foldedHeading.isEmpty()) {
+            return {};
+        }
+
+        const QString firstToken = foldedHeading.section(QLatin1Char(' '), 0, 0);
+        for (auto it = reg.constBegin(); it != reg.constEnd(); ++it) {
+            const LanguagePack &pack = it.value();
+            const QString foldedCode = foldForMatch(pack.info.code);
+            const QString foldedNative = foldForMatch(pack.info.nativeName);
+            const QString foldedEnglish = foldForMatch(pack.englishName);
+            const QString nativeFirst = foldedNative.section(QLatin1Char(' '), 0, 0);
+            const QString englishFirst = foldedEnglish.section(QLatin1Char(' '), 0, 0);
+
+            if (foldedHeading == foldedCode
+                || foldedHeading == foldedNative
+                || (!foldedEnglish.isEmpty() && foldedHeading == foldedEnglish)
+                || (!nativeFirst.isEmpty() && firstToken == nativeFirst)
+                || (!englishFirst.isEmpty() && firstToken == englishFirst)) {
+                return it.key();
+            }
+        }
+        return {};
+    };
+
+    QStringList preambleLines;
+    QMap<QString, QStringList> sections;
+    QStringList sectionOrder;
+    QString currentLang;
+
+    const QStringList lines = trimmedInput.split(QLatin1Char('\n'));
+    for (const QString &line : lines) {
+        const QString detectedLang = matchHeadingToLang(line);
+        if (!detectedLang.isEmpty()) {
+            currentLang = detectedLang;
+            if (!sections.contains(currentLang)) {
+                sectionOrder.append(currentLang);
+            }
+            continue;
+        }
+        if (currentLang.isEmpty()) {
+            preambleLines.append(line);
+        } else {
+            sections[currentLang].append(line);
+        }
+    }
+
+    if (sections.isEmpty()) {
+        return trimmedInput;
+    }
+
+    const QString target = langCode.isEmpty() ? activeLanguage() : resolveLanguage(langCode);
+    QString chosen;
+    if (sections.contains(target)) {
+        chosen = target;
+    } else {
+        const QString base = target.section(QLatin1Char('_'), 0, 0);
+        for (const QString &k : sectionOrder) {
+            if (k.section(QLatin1Char('_'), 0, 0) == base) {
+                chosen = k;
+                break;
+            }
+        }
+    }
+    if (chosen.isEmpty() && sections.contains(u"en"_s)) {
+        chosen = u"en"_s;
+    }
+    if (chosen.isEmpty()) {
+        const QString src = findSourceLanguageCode();
+        if (sections.contains(src)) {
+            chosen = src;
+        }
+    }
+    if (chosen.isEmpty() && !sectionOrder.isEmpty()) {
+        chosen = sectionOrder.first();
+    }
+
+    const QString body = sections.value(chosen).join(QLatin1Char('\n')).trimmed();
+    const QString preamble = preambleLines.join(QLatin1Char('\n')).trimmed();
+    if (!preamble.isEmpty() && !body.isEmpty()) {
+        return preamble + u"\n\n"_s + body;
+    }
+    return body.isEmpty() ? trimmedInput : body;
 }
 } // namespace MklipperTranslations
