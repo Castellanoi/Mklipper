@@ -7,18 +7,22 @@
 #include "klipperpopup.h"
 #include "settings.h"
 #include "sourceinfo.h"
+#include "systemclipboard.h"
 #include "textutils.h"
 #include "translations.h"
 #include "urlgrabber.h"
 
 #include <QApplication>
+#include <QBuffer>
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
 #include <QImage>
+#include <QImageWriter>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMimeData>
+#include <QStringConverter>
 #include <QTemporaryDir>
 #include <QUrl>
 
@@ -320,6 +324,100 @@ void testTimestampPreservationAndTrayBadge()
     popup.hide();
     CHECK(popup.highlightIntensityFor(testUuid) == 0.0);
 }
+
+void testWebImageCopyPreservesFullImageAndSourceUrl()
+{
+    auto model = HistoryModel::self();
+    model->clear();
+    CHECK(model->rowCount() == 0);
+
+    auto makePngBytes = [](int w, int h, const QColor &col) {
+        QImage img(w, h, QImage::Format_ARGB32);
+        img.fill(col);
+        QByteArray bytes;
+        QBuffer buf(&bytes);
+        buf.open(QIODevice::WriteOnly);
+        QImageWriter writer(&buf, "PNG");
+        writer.write(img);
+        return bytes;
+    };
+
+    // 1) Chrome / Brave "Copy Image": image/png + text/html + text/plain (image URL) + text/uri-list + chromium/x-source-url
+    {
+        QMimeData chromeImg;
+        chromeImg.setData(u"image/png"_s, makePngBytes(640, 480, QColor(53, 168, 84)));
+        chromeImg.setHtml(u"<img src=\"https://cdn.example.com/photo.jpg\" alt=\"Photo\"/>"_s);
+        chromeImg.setText(u"https://cdn.example.com/photo.jpg"_s);
+        chromeImg.setUrls({QUrl(u"https://cdn.example.com/photo.jpg"_s)});
+        chromeImg.setData(u"chromium/x-source-url"_s, "https://example.com/gallery/page-1");
+
+        ClipboardSourceInfo src;
+        src.app = u"Chrome"_s;
+        src.title = u"Gallery"_s;
+        CHECK(model->insert(&chromeImg, 0, src));
+        CHECK(model->rowCount() == 1);
+
+        const QModelIndex idx = model->index(0);
+        CHECK(static_cast<HistoryItemType>(idx.data(HistoryModel::TypeIntRole).toInt()) == HistoryItemType::Image);
+        CHECK(idx.data(HistoryModel::ImageSizeRole).toSize() == QSize(640, 480));
+        CHECK(idx.data(HistoryModel::SourceUrlRole).toString() == u"https://example.com/gallery/page-1"_s);
+        CHECK(idx.data(HistoryModel::SourceAppRole).toString() == u"Chrome"_s);
+
+        // Even with PastePlainText enabled, restoring to clipboard MUST preserve full-resolution image and NOT turn into URL text
+        const auto item = model->first();
+        CHECK(item != nullptr);
+        std::unique_ptr<QMimeData> restored(SystemClipboard::self()->loadMimeDataFromDatabase(item, true));
+        CHECK(restored != nullptr);
+        CHECK(restored->hasImage());
+        CHECK(!restored->hasText());
+        CHECK(!restored->hasUrls());
+        const QImage restoredImg = restored->imageData().value<QImage>();
+        CHECK(restoredImg.size() == QSize(640, 480));
+    }
+
+    // 2) Firefox "Copy Image": image/png + <img src=... alt=...> + alt text in text/plain + text/x-moz-url-priv (UTF-16LE)
+    {
+        QMimeData ffImg;
+        ffImg.setData(u"image/png"_s, makePngBytes(800, 600, QColor(41, 128, 185)));
+        ffImg.setHtml(u"<html><body><!--StartFragment--><img src=\"https://img.example.org/cat.webp\" alt=\"Cute cat\"/><!--EndFragment--></body></html>"_s);
+        ffImg.setText(u"Cute cat"_s);
+        auto toUtf16Le = QStringEncoder(QStringEncoder::Utf16LE);
+        ffImg.setData(u"text/x-moz-url-priv"_s, toUtf16Le(u"https://example.org/articles/cats\nCats"_s));
+        ffImg.setData(u"text/x-moz-url"_s, toUtf16Le(u"https://img.example.org/cat.webp\ncat.webp"_s));
+
+        CHECK(model->insert(&ffImg));
+        const QModelIndex idx = model->index(0);
+        CHECK(static_cast<HistoryItemType>(idx.data(HistoryModel::TypeIntRole).toInt()) == HistoryItemType::Image);
+        CHECK(idx.data(HistoryModel::ImageSizeRole).toSize() == QSize(800, 600));
+        // Prefers webpage URL (text/x-moz-url-priv) over raw image URL
+        CHECK(idx.data(HistoryModel::SourceUrlRole).toString() == u"https://example.org/articles/cats"_s);
+    }
+
+    // 3) Image with only <img src="..."> in HTML falls back to extracting src URL
+    {
+        QMimeData htmlOnlyImg;
+        htmlOnlyImg.setData(u"image/png"_s, makePngBytes(320, 240, QColor(229, 57, 53)));
+        htmlOnlyImg.setHtml(u"<img src=\"https://site.test/pic.png?a=1&amp;b=2\">"_s);
+
+        CHECK(model->insert(&htmlOnlyImg));
+        const QModelIndex idx = model->index(0);
+        CHECK(static_cast<HistoryItemType>(idx.data(HistoryModel::TypeIntRole).toInt()) == HistoryItemType::Image);
+        CHECK(idx.data(HistoryModel::ImageSizeRole).toSize() == QSize(320, 240));
+        CHECK(idx.data(HistoryModel::SourceUrlRole).toString() == u"https://site.test/pic.png?a=1&b=2"_s);
+    }
+
+    // 4) Spreadsheet/rich-document copy (non-URL text + HTML table + bitmap preview) MUST stay Text, not Image
+    {
+        QMimeData calcMime;
+        calcMime.setText(u"100\t200\n300\t400"_s);
+        calcMime.setHtml(u"<table><tr><td>100</td><td>200</td></tr></table>"_s);
+        calcMime.setData(u"image/png"_s, makePngBytes(120, 60, QColor(200, 200, 200)));
+
+        CHECK(model->insert(&calcMime));
+        const QModelIndex idx = model->index(0);
+        CHECK(static_cast<HistoryItemType>(idx.data(HistoryModel::TypeIntRole).toInt()) == HistoryItemType::Text);
+    }
+}
 } // namespace
 
 int main(int argc, char **argv)
@@ -337,6 +435,7 @@ int main(int argc, char **argv)
     testIgnoredAppsAndLockscreens();
     testHistoryModelAndFilters(tmpDir.path());
     testTimestampPreservationAndTrayBadge();
+    testWebImageCopyPreservesFullImageAndSourceUrl();
 
     if (g_failures > 0) {
         std::cerr << "Mklipper tests FAILED with " << g_failures << " failure(s)." << std::endl;

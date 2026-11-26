@@ -250,7 +250,8 @@ QString extractSourceUrlFromMime(const QMimeData *mimeData)
     }
 
     // 2. Firefox / Gecko URL metadata (UTF-16LE "<url>\n<title>")
-    for (const QString &mozFmt : {u"text/x-moz-url"_s, u"text/x-moz-url-priv"_s}) {
+    // Prefer text/x-moz-url-priv (source webpage URL) over text/x-moz-url (often raw image/link URL)
+    for (const QString &mozFmt : {u"text/x-moz-url-priv"_s, u"text/x-moz-url"_s}) {
         if (mimeData->hasFormat(mozFmt)) {
             const QString decoded = decodeUtf16LeOrUtf8(mimeData->data(mozFmt));
             const QString firstLine = decoded.section(QLatin1Char('\n'), 0, 0).trimmed();
@@ -278,6 +279,29 @@ QString extractSourceUrlFromMime(const QMimeData *mimeData)
             if (isHttpUrl(s)) {
                 return s;
             }
+        }
+    }
+
+    // 5. Fallback for browser-copied images whose only URL metadata is <img src="https://...">
+    if (mimeData->hasHtml()) {
+        static const QRegularExpression reImgSrc(
+            QStringLiteral(R"(<img\b[^>]*\bsrc\s*=\s*["'](https?://[^"']+)["'])"),
+            QRegularExpression::CaseInsensitiveOption);
+        const auto m = reImgSrc.match(mimeData->html().left(4096));
+        if (m.hasMatch()) {
+            QString candidate = m.captured(1).trimmed();
+            candidate.replace(u"&amp;"_s, u"&"_s);
+            if (isHttpUrl(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    // 6. Fallback when plain text itself is a single HTTP/HTTPS URL (e.g. copied alongside image)
+    if (mimeData->hasText()) {
+        const QString txt = mimeData->text().trimmed();
+        if (!txt.contains(QLatin1Char(' ')) && !txt.contains(QLatin1Char('\n')) && isHttpUrl(txt)) {
+            return txt;
         }
     }
 

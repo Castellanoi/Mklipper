@@ -68,6 +68,8 @@ public:
                      ClipboardUpdateReason updateReason = ClipboardUpdateReason::UpdateClipboard);
 
     bool isLocked(QClipboard::Mode mode) const;
+    QMimeData *loadMimeDataFromDatabase(const HistoryItemConstPtr &item,
+                                        std::optional<bool> plainTextOverride = std::nullopt) const;
 
 Q_SIGNALS:
     void newClipData(QClipboard::Mode mode, const QMimeData *data);
@@ -80,8 +82,6 @@ private Q_SLOTS:
 private:
     SystemClipboard();
 
-    QMimeData *loadMimeDataFromDatabase(const HistoryItemConstPtr &item,
-                                        std::optional<bool> plainTextOverride = std::nullopt) const;
     void setMimeDataInternal(QMimeData *selectionMimeData, QMimeData *clipboardMimeData, ClipboardUpdateReason updateReason);
 
     QClipboard *m_clip = nullptr;

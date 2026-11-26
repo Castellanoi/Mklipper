@@ -455,7 +455,8 @@ public:
         if (type == HistoryItemType::Image) {
             const QUrl imgUrl = index.data(HistoryModel::ImageUrlRole).toUrl();
             const QString uuid = index.data(HistoryModel::UuidRole).toString();
-            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(96, cardRect.height() - 16));
+            const int maxThumbH = qMax(36, contentRect.height() - 2);
+            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(92, maxThumbH));
 
             if (!thumb.isNull()) {
                 const QRect thumbRect(contentRect.left(),

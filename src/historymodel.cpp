@@ -27,6 +27,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
 #include <QSqlError>
@@ -191,6 +192,153 @@ bool isSecretMimeData(const QMimeData *data)
     return false;
 }
 
+bool isSingleHttpUrlText(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty() || trimmed.contains(QLatin1Char(' ')) || trimmed.contains(QLatin1Char('\n'))) {
+        return false;
+    }
+    const QUrl u(trimmed);
+    const QString scheme = u.scheme().toLower();
+    return u.isValid() && (scheme == u"http"_s || scheme == u"https"_s) && !u.host().isEmpty();
+}
+
+bool isHtmlImageOnly(const QString &html)
+{
+    if (html.isEmpty() || !html.contains(u"<img"_s, Qt::CaseInsensitive)) {
+        return false;
+    }
+    QString stripped = html;
+    static const QRegularExpression reComment(QStringLiteral(R"(<!--[\s\S]*?-->)"));
+    static const QRegularExpression reHead(QStringLiteral(R"(<(?:head|style|script)\b[^>]*>[\s\S]*?</(?:head|style|script)>)"),
+                                           QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression reMetaHeader(QStringLiteral(R"(^(?:Version|StartHTML|EndHTML|StartFragment|EndFragment|SourceURL):[^\r\n]*[\r\n]*)"),
+                                                 QRegularExpression::CaseInsensitiveOption | QRegularExpression::MultilineOption);
+    static const QRegularExpression reTags(QStringLiteral(R"(<[^>]+>)"));
+    stripped.remove(reMetaHeader);
+    stripped.remove(reComment);
+    stripped.remove(reHead);
+    stripped.remove(reTags);
+    stripped.replace(u"&nbsp;"_s, u" "_s, Qt::CaseInsensitive);
+    return stripped.trimmed().isEmpty();
+}
+
+bool hasImagePayload(const QMimeData *data)
+{
+    if (!data) {
+        return false;
+    }
+    if (data->hasImage()) {
+        const QImage img = data->imageData().value<QImage>();
+        if (!img.isNull()) {
+            return true;
+        }
+    }
+    const QStringList fmts = data->formats();
+    for (const QString &fmt : fmts) {
+        if (fmt.startsWith(MimeTypes::imagePrefix) && !data->data(fmt).isEmpty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isImageClipboardCopy(const QMimeData *data)
+{
+    if (!hasImagePayload(data)) {
+        return false;
+    }
+    // Local files copied from a file manager (file://) should stay URL items, not images
+    if (data->hasUrls()) {
+        bool hasNonHttpUrl = false;
+        for (const QUrl &u : data->urls()) {
+            if (!u.isValid() || u.isEmpty()) {
+                continue;
+            }
+            const QString scheme = u.scheme().toLower();
+            if (scheme != u"http"_s && scheme != u"https"_s) {
+                hasNonHttpUrl = true;
+                break;
+            }
+        }
+        if (hasNonHttpUrl) {
+            return false;
+        }
+    }
+    if (!data->hasText() || data->text().trimmed().isEmpty()) {
+        return true;
+    }
+    if (isSingleHttpUrlText(data->text())) {
+        return true;
+    }
+    if (data->hasHtml() && isHtmlImageOnly(data->html())) {
+        return true;
+    }
+    return false;
+}
+
+std::unique_ptr<QMimeData> buildCleanImageMimeData(const QMimeData *data)
+{
+    if (!data) {
+        return nullptr;
+    }
+
+    QByteArray pngBytes;
+    QImage image;
+
+    // 1. Prefer lossless original image/png bytes directly (zero re-encoding, exact original dimensions)
+    if (data->hasFormat(MimeTypes::png)) {
+        const QByteArray raw = data->data(MimeTypes::png);
+        if (!raw.isEmpty() && raw.size() <= kMaxClipboardPayloadBytes) {
+            QImage decoded = QImage::fromData(raw, "PNG");
+            if (!decoded.isNull()) {
+                pngBytes = raw;
+                image = std::move(decoded);
+            }
+        }
+    }
+
+    // 2. Fallback to QMimeData::imageData() or any other image/* format (JPEG, WebP, BMP, etc.), encoded losslessly to PNG
+    if (image.isNull() && data->hasImage()) {
+        image = data->imageData().value<QImage>();
+    }
+    if (image.isNull()) {
+        const QStringList fmts = data->formats();
+        for (const QString &fmt : fmts) {
+            if (!fmt.startsWith(MimeTypes::imagePrefix) || fmt == MimeTypes::png) {
+                continue;
+            }
+            const QByteArray raw = data->data(fmt);
+            if (raw.isEmpty() || raw.size() > kMaxClipboardPayloadBytes) {
+                continue;
+            }
+            QImage decoded = QImage::fromData(raw);
+            if (!decoded.isNull()) {
+                image = std::move(decoded);
+                break;
+            }
+        }
+    }
+
+    if (image.isNull()) {
+        return nullptr;
+    }
+
+    if (pngBytes.isEmpty()) {
+        QBuffer buffer(&pngBytes);
+        buffer.open(QIODevice::WriteOnly);
+        QImageWriter encoder(&buffer, "PNG");
+        if (!encoder.write(image) || pngBytes.isEmpty() || pngBytes.size() > kMaxClipboardPayloadBytes) {
+            return nullptr;
+        }
+    }
+
+    auto clean = std::make_unique<QMimeData>();
+    clean->setData(QString(MimeTypes::png), pngBytes);
+    clean->setImageData(image);
+    return clean;
+}
+
 bool hasMeaningfulClipboardContent(const QMimeData *data)
 {
     if (!data) {
@@ -204,17 +352,8 @@ bool hasMeaningfulClipboardContent(const QMimeData *data)
             }
         }
     }
-    if (data->hasImage()) {
-        const QImage img = data->imageData().value<QImage>();
-        if (!img.isNull()) {
-            return true;
-        }
-        const QStringList fmts = data->formats();
-        for (const QString &fmt : fmts) {
-            if (fmt.startsWith(MimeTypes::imagePrefix) && !data->data(fmt).isEmpty()) {
-                return true;
-            }
-        }
+    if (hasImagePayload(data)) {
+        return true;
     }
     if (data->hasText()) {
         if (!data->text().trimmed().isEmpty()) {
@@ -963,22 +1102,36 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     if (m_maxSize == 0 || !mimeData || !hasMeaningfulClipboardContent(mimeData)) {
         return false;
     }
-    const QString uuid = computeUuid(mimeData);
+
+    ClipboardSourceInfo effectiveSource = source;
+    std::unique_ptr<QMimeData> normalizedImage;
+    const QMimeData *effectiveMime = mimeData;
+    if (isImageClipboardCopy(mimeData)) {
+        if (m_bSaveSourceInfo && effectiveSource.url.isEmpty()) {
+            effectiveSource.url = extractSourceUrlFromMime(mimeData);
+        }
+        normalizedImage = buildCleanImageMimeData(mimeData);
+        if (normalizedImage) {
+            effectiveMime = normalizedImage.get();
+        }
+    }
+
+    const QString uuid = computeUuid(effectiveMime);
     if (!HistoryItem::isValidUuid(uuid)) {
         return false;
     }
     if (const int existingIdx = indexOf(uuid); existingIdx >= 0) {
-        if (!source.isEmpty()) {
+        if (!effectiveSource.isEmpty()) {
             auto &existing = m_items[existingIdx];
-            if (!existing->hasSourceInfo() || (!source.url.isEmpty() && existing->sourceUrl().isEmpty())) {
+            if (!existing->hasSourceInfo() || (!effectiveSource.url.isEmpty() && existing->sourceUrl().isEmpty())) {
                 QSqlQuery updSrc(m_db);
                 updSrc.prepare(u"UPDATE main SET source_app = ?, source_title = ?, source_url = ? WHERE uuid = ?"_s);
-                updSrc.addBindValue(source.app);
-                updSrc.addBindValue(source.title);
-                updSrc.addBindValue(source.url);
+                updSrc.addBindValue(effectiveSource.app);
+                updSrc.addBindValue(effectiveSource.title);
+                updSrc.addBindValue(effectiveSource.url);
                 updSrc.addBindValue(uuid);
                 if (updSrc.exec()) {
-                    existing->setSourceInfo(source.app, source.title, source.url);
+                    existing->setSourceInfo(effectiveSource.app, effectiveSource.title, effectiveSource.url);
                     const QModelIndex idx = this->index(existingIdx);
                     Q_EMIT dataChanged(idx, idx, {SourceAppRole, SourceTitleRole, SourceUrlRole});
                 }
@@ -990,21 +1143,21 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
         return true;
     }
 
-    const QStringList formats = mimeData->formats();
+    const QStringList formats = effectiveMime->formats();
     if (formats.isEmpty() || formats.size() > 64) {
         return false;
     }
 
-    const QString text = textFromMimeData(mimeData);
+    const QString text = textFromMimeData(effectiveMime);
     if (text.toUtf8().size() > kMaxClipboardPayloadBytes) {
         return false;
     }
     const qreal ts = (timestamp == 0) ? (QDateTime::currentMSecsSinceEpoch() / 1000.0) : timestamp;
-    if (!persistMimeData(uuid, text, mimeData, ts, source)) {
+    if (!persistMimeData(uuid, text, effectiveMime, ts, effectiveSource)) {
         return false;
     }
 
-    auto item = std::make_shared<HistoryItem>(uuid, formats, text, source.app, source.title, source.url, ts, ts);
+    auto item = std::make_shared<HistoryItem>(uuid, formats, text, effectiveSource.app, effectiveSource.title, effectiveSource.url, ts, ts);
     beginInsertRows(QModelIndex(), 0, 0);
     m_items.prepend(std::move(item));
     endInsertRows();
@@ -1674,7 +1827,9 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         return;
     }
 
-    if (!m_bSaveImages && data->hasImage() && !data->hasText() && !data->hasFormat(MimeTypes::kdeForceImageCopy)) {
+    const bool isImageCopy = isImageClipboardCopy(data);
+
+    if (!m_bSaveImages && isImageCopy && !data->hasFormat(MimeTypes::kdeForceImageCopy)) {
         return;
     }
 
@@ -1700,7 +1855,7 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         return false;
     };
 
-    const bool stripFormatting = m_bPastePlainText && isRichTextToStrip(data);
+    const bool stripFormatting = !isImageCopy && m_bPastePlainText && isRichTextToStrip(data);
     std::unique_ptr<QMimeData> plainOnly;
     if (stripFormatting) {
         plainOnly = std::make_unique<QMimeData>();

@@ -43,6 +43,15 @@ HistoryItem::HistoryItem(QString uuid,
 
 HistoryItemType HistoryItem::type() const
 {
+    if (m_types & HistoryItemType::Image) {
+        const QString trimmed = m_text.trimmed();
+        if (trimmed.isEmpty()
+            || (!trimmed.contains(QLatin1Char(' ')) && !trimmed.contains(QLatin1Char('\n'))
+                && (trimmed.startsWith(u"http://"_s, Qt::CaseInsensitive)
+                    || trimmed.startsWith(u"https://"_s, Qt::CaseInsensitive)))) {
+            return HistoryItemType::Image;
+        }
+    }
     if (m_types & HistoryItemType::Url) {
         return HistoryItemType::Url;
     } else if ((m_types & HistoryItemType::Text) && !m_text.isEmpty()) {

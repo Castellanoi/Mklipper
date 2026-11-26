@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" /></a>
-  <img src="https://img.shields.io/badge/Version-1.8.2-blue.svg" alt="Version: 1.8.2" />
+  <img src="https://img.shields.io/badge/Version-1.8.3-blue.svg" alt="Version: 1.8.3" />
   <img src="https://img.shields.io/badge/Qt-6.4%2B-41cd52.svg" alt="Qt 6.4+" />
   <img src="https://img.shields.io/badge/Languages-7-orange.svg" alt="Languages: 7" />
   <img src="https://img.shields.io/badge/Tested%20on-Linux%20Mint%20Cinnamon%20(X11)-87cf3e.svg" alt="Tested on Linux Mint Cinnamon (X11)" />
@@ -59,11 +59,11 @@ Está diseñado para integrarse de forma limpia y liviana en **Cinnamon (X11)**:
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descarga el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.8.2_amd64.deb`](dist/mklipper_1.8.2_amd64.deb).
+1. Descarga el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.8.3_amd64.deb`](dist/mklipper_1.8.3_amd64.deb).
 2. Instálalo con `apt` (o doble clic en Linux Mint) para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.8.2_amd64.deb
+sudo apt install ./mklipper_1.8.3_amd64.deb
 ```
 
 3. Inicia **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper`. Arrancará automáticamente en los próximos inicios de sesión (`/etc/xdg/autostart/mklipper.desktop`) y **recibirás las futuras actualizaciones directamente en el Gestor de actualizaciones de Linux Mint**.
@@ -90,7 +90,7 @@ git clone https://github.com/Castellanoi/Mklipper.git
 cd Mklipper
 chmod +x packaging/build-deb.sh
 ./packaging/build-deb.sh
-sudo apt install ./dist/mklipper_1.8.2_amd64.deb
+sudo apt install ./dist/mklipper_1.8.3_amd64.deb
 ```
 
 ### Desinstalación
@@ -136,11 +136,11 @@ It blends naturally into **Cinnamon (X11)**: it syncs live with your active GTK3
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.8.2_amd64.deb`](dist/mklipper_1.8.2_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.8.3_amd64.deb`](dist/mklipper_1.8.3_amd64.deb).
 2. Install via `apt` (or double-click in Linux Mint):
 
 ```bash
-sudo apt install ./mklipper_1.8.2_amd64.deb
+sudo apt install ./mklipper_1.8.3_amd64.deb
 ```
 
 3. Launch **Mklipper** from the application menu or by running `mklipper`. It starts automatically on login (`/etc/xdg/autostart/mklipper.desktop`) and **future updates appear directly in Linux Mint's Update Manager**.
@@ -167,7 +167,7 @@ git clone https://github.com/Castellanoi/Mklipper.git
 cd Mklipper
 chmod +x packaging/build-deb.sh
 ./packaging/build-deb.sh
-sudo apt install ./dist/mklipper_1.8.2_amd64.deb
+sudo apt install ./dist/mklipper_1.8.3_amd64.deb
 ```
 
 ### Uninstall
@@ -210,8 +210,8 @@ Ele se integra de forma natural ao **Cinnamon (X11)**: sincroniza ao vivo com o 
 ### Instalação rápida
 
 ```bash
-# Opção 1: Pacote .deb (baixe dist/mklipper_1.8.2_amd64.deb ou em GitHub Releases)
-sudo apt install ./mklipper_1.8.2_amd64.deb
+# Opção 1: Pacote .deb (baixe dist/mklipper_1.8.3_amd64.deb ou em GitHub Releases)
+sudo apt install ./mklipper_1.8.3_amd64.deb
 
 # Opção 2: Diretamente pelo repositório APT assinado
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -251,8 +251,8 @@ Il s'intègre naturellement à **Cinnamon (X11)** : synchronisation en direct av
 ### Installation rapide
 
 ```bash
-# Option 1 : Paquet .deb (téléchargez dist/mklipper_1.8.2_amd64.deb ou via GitHub Releases)
-sudo apt install ./mklipper_1.8.2_amd64.deb
+# Option 1 : Paquet .deb (téléchargez dist/mklipper_1.8.3_amd64.deb ou via GitHub Releases)
+sudo apt install ./mklipper_1.8.3_amd64.deb
 
 # Option 2 : Depuis le dépôt APT signé
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -292,8 +292,8 @@ Si integra perfettamente in **Cinnamon (X11)**: si adatta dal vivo al tema GTK3,
 ### Installazione rapida
 
 ```bash
-# Opzione 1: Pacchetto .deb (scarica dist/mklipper_1.8.2_amd64.deb o da GitHub Releases)
-sudo apt install ./mklipper_1.8.2_amd64.deb
+# Opzione 1: Pacchetto .deb (scarica dist/mklipper_1.8.3_amd64.deb o da GitHub Releases)
+sudo apt install ./mklipper_1.8.3_amd64.deb
 
 # Opzione 2: Direttamente dal repository APT firmato
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -333,8 +333,8 @@ Es fügt sich nahtlos in **Cinnamon (X11)** ein: synchronisiert sich live mit GT
 ### Schnellinstallation
 
 ```bash
-# Option 1: .deb-Paket (dist/mklipper_1.8.2_amd64.deb oder über GitHub Releases laden)
-sudo apt install ./mklipper_1.8.2_amd64.deb
+# Option 1: .deb-Paket (dist/mklipper_1.8.3_amd64.deb oder über GitHub Releases laden)
+sudo apt install ./mklipper_1.8.3_amd64.deb
 
 # Option 2: Direkt über das signierte APT-Repository
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -374,8 +374,8 @@ Lizenz: **GNU GPL v3** ([LICENSE](LICENSE)).
 ### Быстрая установка
 
 ```bash
-# Вариант 1: Пакет .deb (скачайте dist/mklipper_1.8.2_amd64.deb или из GitHub Releases)
-sudo apt install ./mklipper_1.8.2_amd64.deb
+# Вариант 1: Пакет .deb (скачайте dist/mklipper_1.8.3_amd64.deb или из GitHub Releases)
+sudo apt install ./mklipper_1.8.3_amd64.deb
 
 # Вариант 2: Напрямую из подписанного APT-репозитория
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \

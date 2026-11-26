@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.8.3
+
+### 🇪🇸 Español
+- **Copia real de imágenes desde páginas web:**
+  - Al copiar una imagen desde navegadores (Firefox, Chrome, Brave, Edge, Vivaldi, etc.), Mklipper guarda ahora la imagen real en PNG sin pérdida con sus **dimensiones originales exactas** para pegarla directamente como imagen (incluso con *«Pegar sin formato»* activado), en lugar de quedarse solo con el enlace.
+  - Se conserva igualmente la URL de la página web de origen en la base de datos para abrirla en un clic desde el botón **Abrir enlace de origen** de la tarjeta.
+  - Se mantiene intacta la detección de archivos locales (`file://`) y tablas de hojas de cálculo (como LibreOffice Calc).
+- **Alineación visual de miniaturas:**
+  - Corregido el tamaño vertical de las miniaturas en tarjetas de imagen con metadatos de origen para evitar cualquier solapamiento con la línea inferior.
+
+### 🇬🇧 English
+- **True web image copying (full original resolution + webpage source link):**
+  - Copying an image from web browsers (Firefox, Chrome, Brave, Edge, Vivaldi, etc.) now stores the actual lossless PNG image at its **exact original dimensions** ready to paste as an image (even with *"Paste without formatting"* enabled), instead of falling back to the image URL.
+  - The source webpage URL is preserved in the database so you can still open the originating page with one click using the card's **Open source link** button.
+  - Local file copies (`file://`) and spreadsheet tables (such as LibreOffice Calc) continue to work as expected.
+- **Image thumbnail alignment:**
+  - Fixed thumbnail max height on image cards displaying source metadata so thumbnails never overlap the bottom metadata line.
+
+### 🇧🇷 Português (Brasil)
+- **Cópia real de imagens de páginas web:**
+  - Ao copiar uma imagem de navegadores (Firefox, Chrome, Brave, Edge etc.), o Mklipper agora salva a imagem PNG sem perda em suas **dimensões originais exatas** para colar como imagem (mesmo com *«Colar sem formatação»* ativo), mantendo a URL da página de origem no banco de dados para abrir pelo botão **Abrir link de origem**.
+- **Alinhamento de miniaturas:**
+  - Ajustada a altura das miniaturas em cartões de imagem com metadados de origem para evitar sobreposição.
+
+### 🇫🇷 Français
+- **Copie fidèle des images depuis le web :**
+  - Lors de la copie d'une image depuis un navigateur (Firefox, Chrome, Brave, Edge, etc.), Mklipper enregistre désormais l'image PNG sans perte dans ses **dimensions d'origine exactes** pour la coller comme image (même avec *« Coller sans mise en forme »* activé), tout en conservant l'URL de la page source pour le bouton **Ouvrir le lien d'origine**.
+- **Alignement des miniatures :**
+  - Correction de la hauteur des miniatures sur les cartes d'image affichant une ligne de source afin d'éviter tout chevauchement.
+
+### 🇮🇹 Italiano
+- **Copia reale delle immagini dalle pagine web:**
+  - Quando copi un'immagine dal browser (Firefox, Chrome, Brave, Edge, ecc.), Mklipper salva ora l'immagine PNG senza perdita con le **dimensioni originali esatte** pronta da incollare come immagine (anche con *«Incolla senza formattazione»* attivo), conservando nel database l'URL della pagina di origine per il pulsante **Apri link di origine**.
+- **Allineamento delle miniature:**
+  - Corretta l'altezza delle miniature sulle schede immagine con metadati di origine per evitare sovrapposizioni.
+
+### 🇩🇪 Deutsch
+- **Echtes Kopieren von Web-Bildern in Originalauflösung:**
+  - Beim Kopieren eines Bildes aus Browsern (Firefox, Chrome, Brave, Edge usw.) speichert Mklipper nun das verlustfreie PNG-Bild in seinen **exakten Originalabmessungen** zum direkten Einfügen als Bild (auch bei aktivem *„Unformatiert einfügen“*) und behält die Quell-Webseite für die Schaltfläche **Quell-Link öffnen** in der Datenbank.
+- **Ausrichtung von Bild-Vorschaubildern:**
+  - Maximale Höhe von Vorschaubildern auf Bildkarten mit Quellenangabe korrigiert, um Überlappungen zu vermeiden.
+
+### 🇷🇺 Русский
+- **Корректное копирование изображений с веб-страниц:**
+  - При копировании изображения из браузера (Firefox, Chrome, Brave, Edge и др.) Mklipper теперь сохраняет само изображение в PNG без потерь в **исходном разрешении** для вставки именно как картинки (даже при включённой опции *«Вставлять без форматирования»*), сохраняя при этом ссылку на исходную страницу в базе данных для кнопки **Открыть ссылку источника**.
+- **Выравнивание миниатюр:**
+  - Исправлена высота миниатюр на карточках изображений со строкой источника, чтобы исключить наложение текста.
+
 ## v1.8.2
 
 ### 🇪🇸 Español

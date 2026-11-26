@@ -97,7 +97,18 @@ void SystemClipboard::checkClipData(QClipboard::Mode mode, const QMimeData *data
         return;
     }
 
-    if (!data->hasUrls() && !data->hasText() && !data->hasImage()) {
+    bool hasImageFormat = data->hasImage();
+    if (!hasImageFormat) {
+        const QStringList fmts = data->formats();
+        for (const QString &fmt : fmts) {
+            if (fmt.startsWith(MimeTypes::imagePrefix)) {
+                hasImageFormat = true;
+                break;
+            }
+        }
+    }
+
+    if (!data->hasUrls() && !data->hasText() && !hasImageFormat) {
         return;
     }
 
