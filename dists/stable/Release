@@ -1,0 +1,24 @@
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Thu, 26 Nov 2026 10:52:53 +0000
+Description: Mklipper APT repository for Linux Mint and Ubuntu
+Label: Mklipper
+Origin: Mklipper
+Suite: stable
+MD5Sum:
+ 0ebd1db02df69cb0e3f27f469e63b774              203 Release
+ e0d11e12f68e9050df633fc2868409f8             1182 main/binary-amd64/Packages
+ d631dd6aee3221f1d458ea34d0fb518a              712 main/binary-amd64/Packages.gz
+SHA1:
+ 1c185ae0f3011b0f43822ade1c5b00a0cfe2acb8              203 Release
+ 65fe93ecd8b6b6911a8e10708d5bac2ed82afaa2             1182 main/binary-amd64/Packages
+ c6d8dffd775c933e710ff7ff0a5d8903d163581d              712 main/binary-amd64/Packages.gz
+SHA256:
+ d35522c7bafba74b4dcbb2fb57d2d381c75c5edc35d5fbd65cc724ccb14fee2d              203 Release
+ e11ac99d30d6e3db9e2f84b39ea72eb68c62e0d1d747f4948bf70234f4a152d5             1182 main/binary-amd64/Packages
+ 537e00f2138e4065d87db5c196ffc6ea67bcecb26a5b5c32c3698d64b50aa95c              712 main/binary-amd64/Packages.gz
+SHA512:
+ 0a50e071abafe490da16d37f798579eb958bad647cb15e20cb29d2bfa3f81920b961f8af83a600df96a0f94a0b4dbbc63042967c5f7e183cc6c9677fcccc7d66              203 Release
+ 3219ce46d856608b9c24bdcd5636e16b8186a05c415ccae6d366e92feac61e7d7a6483208a31d1f7e73bef1065aab406e085b84fb2310e78b821ac912b57ac7f             1182 main/binary-amd64/Packages
+ 018c111510e0c9c4dece4aba2a1f9d142adf798edabb5b8e1fe245fdd34ea60a5828e5ff6f349b35a76b565f5cffa805a6bc496576156b0088332009aaff57ed              712 main/binary-amd64/Packages.gz

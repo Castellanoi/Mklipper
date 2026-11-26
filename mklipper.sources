@@ -1,0 +1,7 @@
+X-Repolib-Name: Mklipper
+Types: deb
+URIs: https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/mklipper-archive-keyring.gpg
