@@ -210,7 +210,7 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     connect(okBtn, &QPushButton::clicked, this, [this]() {
         const QString pattern = m_regexEdit->text().trimmed();
         if (pattern.isEmpty() || !QRegularExpression(pattern).isValid()) {
-            QMessageBox::warning(this, tr("Expresión regular inválida"), tr("Ingresá una expresión regular válida."));
+            QMessageBox::warning(this, tr("Expresión regular inválida"), tr("Ingresa una expresión regular válida."));
             return;
         }
         accept();

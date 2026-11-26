@@ -73,6 +73,14 @@ KlipperApp::KlipperApp(QObject *parent)
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::onHistoryChanged);
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::clipboardHistoryUpdated);
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::updateTrayTooltip);
+    connect(m_historyModel.get(), &HistoryModel::capturePausedChanged, this, [this](bool paused) {
+        updateTrayIcon();
+        updateTrayTooltip();
+        if (m_togglePauseAct) {
+            QSignalBlocker blk(m_togglePauseAct);
+            m_togglePauseAct->setChecked(paused);
+        }
+    });
 
     connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
@@ -122,7 +130,7 @@ KlipperApp::~KlipperApp()
 void KlipperApp::setupTrayIcon()
 {
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
-    QIcon icon = FlatIcons::appLogoIcon(t.accent);
+    QIcon icon = FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused());
     if (icon.isNull()) {
         icon = QIcon(u":/icons/mklipper.svg"_s);
     }
@@ -133,6 +141,15 @@ void KlipperApp::setupTrayIcon()
     m_trayIcon->setContextMenu(m_trayMenu);
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &KlipperApp::onTrayActivated);
     m_trayIcon->show();
+}
+
+void KlipperApp::updateTrayIcon()
+{
+    if (!m_trayIcon) {
+        return;
+    }
+    const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
+    m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused()));
 }
 
 bool KlipperApp::eventFilter(QObject *watched, QEvent *ev)
@@ -161,7 +178,7 @@ void KlipperApp::syncThemeLive()
         qApp->setWindowIcon(themedIcon);
     }
     if (m_trayIcon) {
-        m_trayIcon->setIcon(themedIcon);
+        m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused()));
     }
     rebuildTrayMenu();
 
@@ -217,6 +234,7 @@ void KlipperApp::rebuildTrayMenu()
         m_trayMenu = new QMenu;
     }
     m_trayMenu->clear();
+    m_togglePauseAct = nullptr;
     m_toggleActionsAct = nullptr;
 
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
@@ -246,6 +264,13 @@ void KlipperApp::rebuildTrayMenu()
     auto *openAct = m_trayMenu->addAction(menuIcon(FlatIcon::Clipboard), tr("Abrir historial del portapapeles"));
     connect(openAct, &QAction::triggered, this, [this]() {
         m_popup->showNearTray(m_trayIcon ? m_trayIcon->geometry() : QRect());
+    });
+
+    m_togglePauseAct = m_trayMenu->addAction(tr("Pausar captura del portapapeles"));
+    m_togglePauseAct->setCheckable(true);
+    m_togglePauseAct->setChecked(m_historyModel->isCapturePaused());
+    connect(m_togglePauseAct, &QAction::toggled, this, [this](bool paused) {
+        m_historyModel->setCapturePaused(paused);
     });
 
     m_trayMenu->addSeparator();
@@ -324,6 +349,7 @@ void KlipperApp::registerShortcuts()
         const QList<CinnamonShortcutSpec> specs = {
             {u"mklipper-popup"_s, tr("Mklipper — Mostrar historial"), exe + u" --toggle"_s, QKeySequence::fromString(s->shortcutPopup())},
             {u"mklipper-toggle-plain-text"_s, tr("Mklipper — Alternar «Pegar sin formato»"), exe + u" --toggle-plain-text"_s, QKeySequence::fromString(s->shortcutTogglePlainText())},
+            {u"mklipper-toggle-pause"_s, tr("Mklipper — Pausar / reanudar captura"), exe + u" --toggle-pause"_s, QKeySequence::fromString(s->shortcutTogglePause())},
             {u"mklipper-edit-current"_s, tr("Mklipper — Editar contenido actual"), exe + u" --edit"_s, QKeySequence::fromString(s->shortcutEditCurrent())},
             {u"mklipper-show-qr"_s, tr("Mklipper — Mostrar código QR actual"), exe + u" --qr"_s, QKeySequence::fromString(s->shortcutShowQr())},
             {u"mklipper-repeat-action"_s, tr("Mklipper — Invocar acciones"), exe + u" --action"_s, QKeySequence::fromString(s->shortcutRepeatAction())},
@@ -344,6 +370,11 @@ void KlipperApp::registerShortcuts()
     if (!s->shortcutTogglePlainText().isEmpty()) {
         m_shortcuts->registerShortcut(u"togglePlainText"_s, QKeySequence::fromString(s->shortcutTogglePlainText()), [this]() {
             togglePastePlainText();
+        });
+    }
+    if (!s->shortcutTogglePause().isEmpty()) {
+        m_shortcuts->registerShortcut(u"togglePause"_s, QKeySequence::fromString(s->shortcutTogglePause()), [this]() {
+            toggleCapturePaused();
         });
     }
     if (!s->shortcutEditCurrent().isEmpty()) {
@@ -468,6 +499,10 @@ void KlipperApp::updateTrayTooltip()
     if (!m_trayIcon) {
         return;
     }
+    if (m_historyModel->isCapturePaused()) {
+        m_trayIcon->setToolTip(tr("Mklipper — Captura en pausa (modo incógnito)"));
+        return;
+    }
     const auto top = m_historyModel->first();
     if (!top) {
         m_trayIcon->setToolTip(tr("Mklipper — Portapapeles vacío"));
@@ -564,6 +599,16 @@ void KlipperApp::togglePastePlainText()
         2500);
 }
 
+void KlipperApp::toggleCapturePaused()
+{
+    const bool paused = m_historyModel->toggleCapturePaused();
+    Notifications::show(
+        tr("Captura del portapapeles"),
+        paused ? tr("En pausa (modo incógnito): no se guardará lo que copies.")
+               : tr("Reanudada: Mklipper vuelve a guardar el historial."),
+        2500);
+}
+
 void KlipperApp::editCurrentClipboard()
 {
     m_popup->editCurrentClipboard();
@@ -635,7 +680,7 @@ void KlipperApp::onUpdateAvailable(const ReleaseInfo &release, bool userInitiate
         }
         Notifications::show(
             tr("Nueva versión de Mklipper disponible"),
-            tr("Mklipper %1 ya está disponible. Hacé clic en el ícono de la bandeja → «Actualizar a Mklipper %1…» para instalarla.")
+            tr("Mklipper %1 ya está disponible. Haz clic en el icono de la bandeja → «Actualizar a Mklipper %1…» para instalarla.")
                 .arg(release.version),
             9000);
     }

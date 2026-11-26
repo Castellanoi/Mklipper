@@ -313,7 +313,7 @@ void ShortcutRecorder::openManualPicker()
     vl->setContentsMargins(16, 16, 16, 14);
     vl->setSpacing(12);
 
-    auto *hint = new QLabel(tr("Seleccioná los modificadores y la tecla principal:"), &dlg);
+    auto *hint = new QLabel(tr("Selecciona los modificadores y la tecla principal:"), &dlg);
     hint->setWordWrap(true);
     vl->addWidget(hint);
 
@@ -408,7 +408,7 @@ void ShortcutRecorder::updateDisplay()
     if (m_recording) {
         const QString text = (m_heldMods != Qt::NoModifier)
             ? formatModsPreview(m_heldMods)
-            : tr("Presioná el atajo… (Esc: cancelar)");
+            : tr("Presiona el atajo… (Esc: cancelar)");
         m_captureBtn->setText(text);
         m_captureBtn->setStyleSheet(
             QStringLiteral("QPushButton { background-color: %1; color: %2; border: 1.5px solid %3; "

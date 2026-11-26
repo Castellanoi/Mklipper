@@ -37,11 +37,12 @@ jobs:
             libqrencode-dev \
             zlib1g-dev
 
-      - name: Build .deb package and SHA256SUMS
+      - name: Build .deb package, run tests, and generate SHA256SUMS
         run: |
           rm -f dist/*.deb dist/SHA256SUMS
           chmod +x packaging/build-deb.sh
           ./packaging/build-deb.sh
+          ctest --test-dir build --output-on-failure
           (cd dist && sha256sum -c SHA256SUMS)
           dpkg-deb --info dist/mklipper_*_amd64.deb
 

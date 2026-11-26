@@ -155,6 +155,28 @@ const char *svgBodyFor(FlatIcon id)
     case FlatIcon::Book:
         return "<path d='M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22.5Z'/>"
                "<path d='M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5a2.5 2.5 0 0 1 2.5 2.5Z'/>";
+
+    case FlatIcon::Pause:
+        return "<rect x='6' y='5' width='4.2' height='14' rx='1.3'/>"
+               "<rect x='13.8' y='5' width='4.2' height='14' rx='1.3'/>";
+
+    case FlatIcon::Play:
+        return "<path d='M7 5.2 19 12 7 18.8Z'/>";
+
+    case FlatIcon::Eye:
+        return "<path d='M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z'/>"
+               "<circle cx='12' cy='12' r='2.8'/>";
+
+    case FlatIcon::Image:
+        return "<rect x='3.5' y='4.5' width='17' height='15' rx='2.2'/>"
+               "<circle cx='9' cy='9.5' r='1.4' fill='COLOR' stroke='none'/>"
+               "<path d='m4.5 17 5.2-5 3.6 3.5 2.5-2.3 3.7 3.8'/>";
+
+    case FlatIcon::FileText:
+        return "<path d='M14 3.5H6.8A1.8 1.8 0 0 0 5 5.3v13.4a1.8 1.8 0 0 0 1.8 1.8h10.4a1.8 1.8 0 0 0 1.8-1.8V8.5Z'/>"
+               "<path d='M14 3.5v5h5'/>"
+               "<path d='M8.5 13h7'/>"
+               "<path d='M8.5 16.5h4.8'/>";
     }
     return "";
 }
@@ -291,18 +313,27 @@ QIcon toggleIcon(FlatIcon offId,
     return ic;
 }
 
-QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr)
+QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, bool paused)
 {
     const qreal safeDpr = qMax<qreal>(1.0, dpr);
     const int px = qMax(16, qRound(logicalSize * safeDpr));
-    const QColor acc = accentColor.isValid() ? accentColor : QColor(255, 113, 57);
+    const QColor acc = paused ? QColor(126, 134, 146)
+                              : (accentColor.isValid() ? accentColor : QColor(255, 113, 57));
     const QByteArray accHex = acc.name(QColor::HexRgb).toLatin1();
 
     QByteArray svg;
-    svg.reserve(640);
+    svg.reserve(820);
     svg.append("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
-               "<rect x='11' y='11' width='42' height='48' rx='9' ry='9' fill='#3a414c'/>"
-               "<rect x='16' y='17' width='32' height='37' rx='5' ry='5' fill='#f5f7fa'/>"
+               "<rect x='11' y='11' width='42' height='48' rx='9' ry='9' fill='#3a414c'");
+    if (paused) {
+        svg.append(" fill-opacity='0.65'");
+    }
+    svg.append("/>"
+               "<rect x='16' y='17' width='32' height='37' rx='5' ry='5' fill='#f5f7fa'");
+    if (paused) {
+        svg.append(" fill-opacity='0.78'");
+    }
+    svg.append("/>"
                "<rect x='22' y='6' width='20' height='12' rx='6' ry='6' fill='");
     svg.append(accHex);
     svg.append("'/>"
@@ -312,7 +343,16 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr)
                "<rect x='22' y='40' width='18' height='3.2' rx='1.6' fill='#8b95a5'/>"
                "<rect x='22' y='47' width='11' height='3.2' rx='1.6' fill='");
     svg.append(accHex);
-    svg.append("'/></svg>");
+    svg.append("'/>");
+    if (paused) {
+        const QByteArray badgeHex = (accentColor.isValid() ? accentColor : QColor(245, 158, 11)).name(QColor::HexRgb).toLatin1();
+        svg.append("<circle cx='49' cy='49' r='13' fill='");
+        svg.append(badgeHex);
+        svg.append("' stroke='#ffffff' stroke-width='2.4'/>"
+                   "<rect x='43.8' y='42.8' width='3.6' height='12.4' rx='1.4' fill='#ffffff'/>"
+                   "<rect x='50.6' y='42.8' width='3.6' height='12.4' rx='1.4' fill='#ffffff'/>");
+    }
+    svg.append("</svg>");
 
     QSvgRenderer renderer(svg);
     QImage img(px, px, QImage::Format_ARGB32_Premultiplied);
@@ -327,12 +367,12 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr)
     return pm;
 }
 
-QIcon appLogoIcon(const QColor &accentColor)
+QIcon appLogoIcon(const QColor &accentColor, bool paused)
 {
     QIcon ic;
     for (int sz : {16, 22, 24, 32, 48, 64}) {
-        ic.addPixmap(appLogoPixmap(accentColor, sz, 1.0));
-        ic.addPixmap(appLogoPixmap(accentColor, sz, 2.0));
+        ic.addPixmap(appLogoPixmap(accentColor, sz, 1.0, paused));
+        ic.addPixmap(appLogoPixmap(accentColor, sz, 2.0, paused));
     }
     return ic;
 }

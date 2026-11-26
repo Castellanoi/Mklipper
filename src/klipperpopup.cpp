@@ -9,20 +9,24 @@
 #include "flaticons.h"
 #include "historyitem.h"
 #include "historymodel.h"
+#include "previewwidget.h"
 #include "qrcodewidget.h"
 #include "settings.h"
 #include "sourceinfo.h"
+#include "textutils.h"
 #include "themestyle.h"
 #include "x11paster.h"
 
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
+#include <QButtonGroup>
 #include <QCache>
 #include <QCursor>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QEvent>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -38,6 +42,7 @@
 #include <QPushButton>
 #include <QScreen>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QStyle>
 #include <QStyledItemDelegate>
 #include <QTimer>
@@ -62,6 +67,8 @@ enum class RowAction {
     OpenSource,
     Star,
     Action,
+    Preview,
+    SaveImage,
     Qr,
     Edit,
     Delete,
@@ -87,12 +94,27 @@ HistoryFilterProxyModel::HistoryFilterProxyModel(QObject *parent)
     setDynamicSortFilter(true);
 }
 
-void HistoryFilterProxyModel::setStarredOnly(bool starredOnly)
+void HistoryFilterProxyModel::setCategoryFilter(CategoryFilter filter)
 {
-    if (m_starredOnly == starredOnly) {
+    if (m_category == filter) {
         return;
     }
-    m_starredOnly = starredOnly;
+    m_category = filter;
+    invalidateFilter();
+}
+
+void HistoryFilterProxyModel::setStarredOnly(bool starredOnly)
+{
+    setCategoryFilter(starredOnly ? CategoryFilter::Starred : CategoryFilter::All);
+}
+
+void HistoryFilterProxyModel::setSearchQuery(const QString &query)
+{
+    if (m_rawQuery == query) {
+        return;
+    }
+    m_rawQuery = query;
+    m_foldedQuery = MklipperText::foldSearchText(query);
     invalidateFilter();
 }
 
@@ -103,29 +125,47 @@ bool HistoryFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
         return false;
     }
 
-    if (m_starredOnly && !idx.data(HistoryModel::StarredRole).toBool()) {
-        return false;
+    const auto type = static_cast<HistoryItemType>(idx.data(HistoryModel::TypeIntRole).toInt());
+    const QString text = idx.data(Qt::DisplayRole).toString();
+
+    switch (m_category) {
+    case CategoryFilter::All:
+        break;
+    case CategoryFilter::Text:
+        if (type == HistoryItemType::Image) {
+            return false;
+        }
+        break;
+    case CategoryFilter::Images:
+        if (type != HistoryItemType::Image) {
+            return false;
+        }
+        break;
+    case CategoryFilter::Links:
+        if (type != HistoryItemType::Url && !MklipperText::containsUrl(text)) {
+            return false;
+        }
+        break;
+    case CategoryFilter::Starred:
+        if (!idx.data(HistoryModel::StarredRole).toBool()) {
+            return false;
+        }
+        break;
     }
 
-    const QRegularExpression re = filterRegularExpression();
-    if (re.pattern().isEmpty()) {
+    if (m_foldedQuery.trimmed().isEmpty()) {
         return true;
     }
 
-    const QString text = idx.data(Qt::DisplayRole).toString();
-    if (text.contains(re)) {
+    // Accent- and case-insensitive match across text + source metadata
+    if (MklipperText::matchesFoldedQuery(text, m_foldedQuery)) {
         return true;
     }
     const QString srcApp = idx.data(HistoryModel::SourceAppRole).toString();
-    if (!srcApp.isEmpty() && srcApp.contains(re)) {
-        return true;
-    }
     const QString srcTitle = idx.data(HistoryModel::SourceTitleRole).toString();
-    if (!srcTitle.isEmpty() && srcTitle.contains(re)) {
-        return true;
-    }
     const QString srcUrl = idx.data(HistoryModel::SourceUrlRole).toString();
-    return !srcUrl.isEmpty() && srcUrl.contains(re);
+    const QString combined = text + QLatin1Char(' ') + srcApp + QLatin1Char(' ') + srcTitle + QLatin1Char(' ') + srcUrl;
+    return MklipperText::matchesFoldedQuery(combined, m_foldedQuery);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,12 +195,21 @@ public:
 
     static QString compactSourceFor(const QModelIndex &index)
     {
-        if (!MklipperSettings::self()->showSourceInfo()) {
-            return {};
+        QStringList parts;
+        if (MklipperSettings::self()->showSourceInfo()) {
+            const QString src = formatCompactSourceLabel(index.data(HistoryModel::SourceAppRole).toString(),
+                                                         index.data(HistoryModel::SourceTitleRole).toString(),
+                                                         index.data(HistoryModel::SourceUrlRole).toString());
+            if (!src.isEmpty()) {
+                parts.append(src);
+            }
         }
-        return formatCompactSourceLabel(index.data(HistoryModel::SourceAppRole).toString(),
-                                        index.data(HistoryModel::SourceTitleRole).toString(),
-                                        index.data(HistoryModel::SourceUrlRole).toString());
+        const qreal ts = index.data(HistoryModel::LastUsedTimeRole).toDouble();
+        const QString rel = MklipperText::formatRelativeTime(ts);
+        if (!rel.isEmpty()) {
+            parts.append(rel);
+        }
+        return parts.join(u" · "_s);
     }
 
     static QString sourceTooltipFor(const QModelIndex &index)
@@ -168,7 +217,8 @@ public:
         const QString app = index.data(HistoryModel::SourceAppRole).toString();
         const QString title = index.data(HistoryModel::SourceTitleRole).toString();
         const QString url = index.data(HistoryModel::SourceUrlRole).toString();
-        if (app.isEmpty() && title.isEmpty() && url.isEmpty()) {
+        const QString rel = MklipperText::formatRelativeTime(index.data(HistoryModel::LastUsedTimeRole).toDouble());
+        if (app.isEmpty() && title.isEmpty() && url.isEmpty() && rel.isEmpty()) {
             return {};
         }
         QStringList lines;
@@ -180,6 +230,9 @@ public:
         }
         if (!url.isEmpty()) {
             lines.append(tr("Enlace: %1").arg(url));
+        }
+        if (!rel.isEmpty()) {
+            lines.append(tr("Copiado: %1").arg(rel));
         }
         return lines.join(QLatin1Char('\n'));
     }
@@ -222,11 +275,20 @@ public:
         };
 
         pushBtn(RowAction::Delete, tr("Eliminar"), FlatIcon::Trash);
-        if (type == HistoryItemType::Text) {
-            pushBtn(RowAction::Edit, tr("Editar texto"), FlatIcon::Edit);
-        }
-        if (type == HistoryItemType::Text || type == HistoryItemType::Url) {
-            pushBtn(RowAction::Qr, tr("Mostrar código QR"), FlatIcon::QrCode);
+        if (type == HistoryItemType::Image) {
+            pushBtn(RowAction::SaveImage, tr("Guardar imagen como PNG…"), FlatIcon::Save);
+            pushBtn(RowAction::Preview, tr("Vista previa (Espacio)"), FlatIcon::Eye);
+        } else {
+            const QString text = index.data(Qt::DisplayRole).toString();
+            if (type == HistoryItemType::Text) {
+                pushBtn(RowAction::Edit, tr("Editar texto"), FlatIcon::Edit);
+            }
+            if (text.size() > 60 || text.contains(QLatin1Char('\n'))) {
+                pushBtn(RowAction::Preview, tr("Vista previa (Espacio)"), FlatIcon::Eye);
+            }
+            if (type == HistoryItemType::Text || type == HistoryItemType::Url) {
+                pushBtn(RowAction::Qr, tr("Mostrar código QR"), FlatIcon::QrCode);
+            }
         }
         if (hasAction) {
             pushBtn(RowAction::Action, tr("Ejecutar acción"), FlatIcon::Bolt);
@@ -637,13 +699,13 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_searchEdit->setFixedHeight(toolBtnSide);
     m_searchEdit->installEventFilter(this);
 
-    m_starFilterBtn = new QToolButton(listPage);
-    m_starFilterBtn->setObjectName(u"mklipperStarBtn"_s);
-    m_starFilterBtn->setCheckable(true);
-    m_starFilterBtn->setIconSize(QSize(16, 16));
-    m_starFilterBtn->setCursor(Qt::PointingHandCursor);
-    m_starFilterBtn->setToolTip(tr("Mostrar solo elementos fijados"));
-    m_starFilterBtn->setFixedSize(toolBtnSide, toolBtnSide);
+    m_pauseBtn = new QToolButton(listPage);
+    m_pauseBtn->setObjectName(u"mklipperStarBtn"_s);
+    m_pauseBtn->setCheckable(true);
+    m_pauseBtn->setIconSize(QSize(16, 16));
+    m_pauseBtn->setCursor(Qt::PointingHandCursor);
+    m_pauseBtn->setToolTip(tr("Pausar captura del portapapeles (modo incógnito)"));
+    m_pauseBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_clearBtn = new QToolButton(listPage);
     m_clearBtn->setObjectName(u"mklipperDangerBtn"_s);
@@ -668,11 +730,42 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     connect(m_closeBtn, &QToolButton::clicked, this, &QWidget::hide);
 
     topBar->addWidget(m_searchEdit, 1);
-    topBar->addWidget(m_starFilterBtn);
+    topBar->addWidget(m_pauseBtn);
     topBar->addWidget(m_clearBtn);
     topBar->addWidget(m_configBtn);
     topBar->addWidget(m_closeBtn);
     listLayout->addLayout(topBar);
+
+    // Quick category filter pills (All · Text · Images · Links · Pinned)
+    auto *filterBar = new QHBoxLayout;
+    filterBar->setContentsMargins(0, 0, 0, 0);
+    filterBar->setSpacing(4);
+
+    m_categoryGroup = new QButtonGroup(this);
+    m_categoryGroup->setExclusive(true);
+
+    auto makeFilterChip = [&](const QString &label, HistoryFilterProxyModel::CategoryFilter cat) {
+        auto *btn = new QPushButton(label, listPage);
+        btn->setProperty("filterChip", true);
+        btn->setCheckable(true);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setFocusPolicy(Qt::NoFocus);
+        QFont cf = btn->font();
+        cf.setPointSizeF(qMax(8.0, cf.pointSizeF() - 1.2));
+        btn->setFont(cf);
+        m_categoryGroup->addButton(btn, static_cast<int>(cat));
+        filterBar->addWidget(btn);
+        return btn;
+    };
+
+    m_filterAllBtn = makeFilterChip(tr("Todos"), HistoryFilterProxyModel::CategoryFilter::All);
+    m_filterTextBtn = makeFilterChip(tr("Texto"), HistoryFilterProxyModel::CategoryFilter::Text);
+    m_filterImagesBtn = makeFilterChip(tr("Imágenes"), HistoryFilterProxyModel::CategoryFilter::Images);
+    m_filterLinksBtn = makeFilterChip(tr("Enlaces"), HistoryFilterProxyModel::CategoryFilter::Links);
+    m_filterStarredBtn = makeFilterChip(tr("Fijados"), HistoryFilterProxyModel::CategoryFilter::Starred);
+    m_filterAllBtn->setChecked(true);
+    filterBar->addStretch();
+    listLayout->addLayout(filterBar);
 
     // Quick options strip: Plain-text paste toggle switch
     auto *modeBar = new QHBoxLayout;
@@ -681,7 +774,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
 
     m_plainTextSwitch = new PlainTextSwitch(tr("Pegar sin formato"), listPage);
     m_plainTextSwitch->setToolTip(
-        tr("Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos)"));
+        tr("Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos). Consejo: mantén Shift al pegar para invertirlo puntualmente."));
     m_plainTextSwitch->setChecked(MklipperSettings::self()->pastePlainText());
     connect(m_plainTextSwitch, &QAbstractButton::toggled, this, [](bool checked) {
         auto *s = MklipperSettings::self();
@@ -702,6 +795,32 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     modeBar->addStretch();
     modeBar->addWidget(m_plainTextHintLabel);
     listLayout->addLayout(modeBar);
+
+    // Capture paused banner (incognito mode)
+    auto *pauseBanner = new QFrame(listPage);
+    pauseBanner->setObjectName(u"mklipperPauseBanner"_s);
+    pauseBanner->setFrameShape(QFrame::NoFrame);
+    pauseBanner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+    m_pauseBanner = pauseBanner;
+    auto *pauseLayout = new QHBoxLayout(m_pauseBanner);
+    pauseLayout->setContentsMargins(10, 6, 8, 6);
+    pauseLayout->setSpacing(8);
+
+    m_pauseIconLabel = new QLabel(m_pauseBanner);
+    m_pauseIconLabel->setFixedSize(16, 16);
+    m_pauseLabel = new QLabel(tr("Captura en pausa (modo incógnito)"), m_pauseBanner);
+    m_pauseLabel->setWordWrap(true);
+    auto *resumeBtn = new QPushButton(tr("Reanudar"), m_pauseBanner);
+    resumeBtn->setProperty("ghost", true);
+    resumeBtn->setCursor(Qt::PointingHandCursor);
+    connect(resumeBtn, &QPushButton::clicked, this, [this]() {
+        m_model->setCapturePaused(false);
+    });
+    pauseLayout->addWidget(m_pauseIconLabel);
+    pauseLayout->addWidget(m_pauseLabel, 1);
+    pauseLayout->addWidget(resumeBtn);
+    m_pauseBanner->setVisible(false);
+    listLayout->addWidget(m_pauseBanner);
 
     // Password warning banner (flat vector lock icon, no emoji)
     auto *pwBanner = new QFrame(listPage);
@@ -783,7 +902,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_emptyLabel->setFont(emptyTitleFont);
     emptyLayout->addWidget(m_emptyLabel);
 
-    m_emptySubLabel = new QLabel(tr("Copiá texto, enlaces o imágenes para verlos aquí."), emptyPage);
+    m_emptySubLabel = new QLabel(tr("Copia texto, enlaces o imágenes para verlos aquí."), emptyPage);
     m_emptySubLabel->setAlignment(Qt::AlignCenter);
     m_emptySubLabel->setWordWrap(true);
     m_emptySubLabel->setTextFormat(Qt::PlainText);
@@ -874,21 +993,31 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     connect(m_qrWidget, &QRCodeWidget::backRequested, this, &KlipperPopup::returnToListPage);
     m_stack->addWidget(m_qrWidget);
 
+    // ======================== Page 3: Preview Page ========================
+    m_previewWidget = new PreviewWidget(this);
+    connect(m_previewWidget, &PreviewWidget::backRequested, this, &KlipperPopup::returnToListPage);
+    connect(m_previewWidget, &PreviewWidget::activateRequested, this, [this](const QString &uuid) {
+        activateItemByUuid(uuid, QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier));
+    });
+    connect(m_previewWidget, &PreviewWidget::editRequested, this, &KlipperPopup::openEditPageByUuid);
+    connect(m_previewWidget, &PreviewWidget::saveImageRequested, this, &KlipperPopup::saveImageByUuid);
+    m_stack->addWidget(m_previewWidget);
+
     // Connections
     connect(m_searchEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
-        m_proxy->setFilterFixedString(text);
+        m_proxy->setSearchQuery(text);
         if (m_proxy->rowCount() > 0) {
             m_listView->setCurrentIndex(m_proxy->index(0, 0));
         }
         updateStatusLabel();
     });
-    connect(m_starFilterBtn, &QToolButton::toggled, this, [this](bool checked) {
-        m_proxy->setStarredOnly(checked);
-        if (m_proxy->rowCount() > 0) {
-            m_listView->setCurrentIndex(m_proxy->index(0, 0));
-        }
-        updateStatusLabel();
+    connect(m_categoryGroup, &QButtonGroup::idClicked, this, [this](int id) {
+        setActiveCategory(static_cast<HistoryFilterProxyModel::CategoryFilter>(id));
     });
+    connect(m_pauseBtn, &QToolButton::toggled, this, [this](bool checked) {
+        m_model->setCapturePaused(checked);
+    });
+    connect(m_model.get(), &HistoryModel::capturePausedChanged, this, &KlipperPopup::updatePauseUi);
     connect(m_clearBtn, &QToolButton::clicked, this, [this]() {
         m_suppressAutoHide = true;
         m_model->clearHistoryInteractive(this);
@@ -916,6 +1045,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
 
     applyTheme();
     updatePasswordBanner();
+    updatePauseUi();
     updateStatusLabel();
     updatePersistentUi();
 }
@@ -945,11 +1075,19 @@ void KlipperPopup::applyTheme()
     if (m_searchIconAction) {
         m_searchIconAction->setIcon(FlatIcons::icon(FlatIcon::Search, t.textMuted, t.textSecondary, t.textMuted, 15));
     }
-    if (m_starFilterBtn) {
-        m_starFilterBtn->setIcon(FlatIcons::toggleIcon(
-            FlatIcon::StarOutline, t.textSecondary,
-            FlatIcon::StarFilled, t.warning,
+    if (m_pauseBtn) {
+        m_pauseBtn->setIcon(FlatIcons::toggleIcon(
+            FlatIcon::Pause, t.textSecondary,
+            FlatIcon::Play, t.warning,
             t.textPrimary, 16));
+    }
+    if (m_pauseIconLabel) {
+        m_pauseIconLabel->setPixmap(FlatIcons::pixmap(FlatIcon::Pause, t.warning, 16, devicePixelRatioF()));
+    }
+    if (m_pauseLabel) {
+        QPalette pp = appPal;
+        pp.setColor(QPalette::WindowText, t.textPrimary);
+        m_pauseLabel->setPalette(pp);
     }
     if (m_clearBtn) {
         m_clearBtn->setIcon(FlatIcons::icon(FlatIcon::Trash, t.textSecondary, t.danger, t.textMuted, 16));
@@ -1005,6 +1143,9 @@ void KlipperPopup::applyTheme()
     if (m_qrWidget) {
         m_qrWidget->refreshTheme();
     }
+    if (m_previewWidget) {
+        m_previewWidget->refreshTheme();
+    }
     if (m_plainTextSwitch) {
         m_plainTextSwitch->update();
     }
@@ -1030,14 +1171,15 @@ void KlipperPopup::showPositioned(const QPoint &anchorPos, bool anchorAbove)
 
     m_stack->setCurrentIndex(0);
     m_searchEdit->clear();
-    m_starFilterBtn->setChecked(false);
-    m_proxy->setStarredOnly(false);
+    m_proxy->setSearchQuery(QString());
+    setActiveCategory(HistoryFilterProxyModel::CategoryFilter::All);
 
     if (m_proxy->rowCount() > 0) {
         m_listView->setCurrentIndex(m_proxy->index(0, 0));
         m_listView->scrollToTop();
     }
     updatePasswordBanner();
+    updatePauseUi();
     updateStatusLabel();
 
     QScreen *screen = QGuiApplication::screenAt(anchorPos);
@@ -1180,8 +1322,13 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                 cur = m_proxy->index(0, 0);
             }
             if (cur.isValid()) {
-                activateItem(cur);
+                activateItem(cur, ke->modifiers().testFlag(Qt::ShiftModifier));
             }
+            return true;
+        }
+        if (ke->key() == Qt::Key_Tab && m_stack->currentIndex() == 0) {
+            const int nextCat = (static_cast<int>(m_proxy->categoryFilter()) + 1) % 5;
+            setActiveCategory(static_cast<HistoryFilterProxyModel::CategoryFilter>(nextCat));
             return true;
         }
     }
@@ -1193,7 +1340,16 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
         }
         const QModelIndex cur = m_listView->currentIndex();
         if ((ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) && cur.isValid()) {
-            activateItem(cur);
+            activateItem(cur, ke->modifiers().testFlag(Qt::ShiftModifier));
+            return true;
+        }
+        if (ke->key() == Qt::Key_Space && cur.isValid() && m_stack->currentIndex() == 0) {
+            openPreviewPage(cur);
+            return true;
+        }
+        if (ke->key() == Qt::Key_Tab && m_stack->currentIndex() == 0) {
+            const int nextCat = (static_cast<int>(m_proxy->categoryFilter()) + 1) % 5;
+            setActiveCategory(static_cast<HistoryFilterProxyModel::CategoryFilter>(nextCat));
             return true;
         }
         if (ke->key() == Qt::Key_Delete && cur.isValid()) {
@@ -1261,6 +1417,12 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                     case RowAction::Action:
                         invokeItemAction(idx);
                         return true;
+                    case RowAction::Preview:
+                        openPreviewPage(idx);
+                        return true;
+                    case RowAction::SaveImage:
+                        saveImageByUuid(sourceIndexFor(idx).data(HistoryModel::UuidRole).toString());
+                        return true;
                     case RowAction::Qr:
                         openQrPage(idx);
                         return true;
@@ -1271,7 +1433,7 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                         deleteItem(idx);
                         return true;
                     case RowAction::None:
-                        activateItem(idx);
+                        activateItem(idx, me->modifiers().testFlag(Qt::ShiftModifier));
                         return true;
                     }
                 }
@@ -1288,9 +1450,11 @@ bool KlipperPopup::tryQuickSelectDigit(QKeyEvent *ke, bool allowBareDigit)
         return false;
     }
 
-    const Qt::KeyboardModifiers mods = ke->modifiers() & ~Qt::KeypadModifier;
+    const Qt::KeyboardModifiers rawMods = ke->modifiers() & ~Qt::KeypadModifier;
+    const bool invertPlainText = rawMods.testFlag(Qt::ShiftModifier);
+    const Qt::KeyboardModifiers mods = rawMods & ~Qt::ShiftModifier;
     const bool hasQuickMod = (mods == Qt::AltModifier || mods == Qt::ControlModifier);
-    const bool isBare = (mods == Qt::NoModifier);
+    const bool isBare = (mods == Qt::NoModifier && !invertPlainText);
 
     if (!hasQuickMod && !(allowBareDigit && isBare)) {
         return false;
@@ -1306,7 +1470,7 @@ bool KlipperPopup::tryQuickSelectDigit(QKeyEvent *ke, bool allowBareDigit)
     }
 
     if (targetRow >= 0 && targetRow < m_proxy->rowCount()) {
-        activateItem(m_proxy->index(targetRow, 0));
+        activateItem(m_proxy->index(targetRow, 0), invertPlainText);
         return true;
     }
     return false;
@@ -1372,17 +1536,29 @@ QModelIndex KlipperPopup::sourceIndexFor(const QModelIndex &proxyIndex) const
     return m_proxy->mapToSource(proxyIndex);
 }
 
-void KlipperPopup::activateItem(const QModelIndex &proxyIndex)
+void KlipperPopup::activateItem(const QModelIndex &proxyIndex, bool invertPlainText)
 {
     const QModelIndex src = sourceIndexFor(proxyIndex);
     if (!src.isValid()) {
         return;
     }
+    activateItemByUuid(src.data(HistoryModel::UuidRole).toString(), invertPlainText);
+}
+
+void KlipperPopup::activateItemByUuid(const QString &uuid, bool invertPlainText)
+{
+    if (uuid.isEmpty()) {
+        return;
+    }
     const auto *s = MklipperSettings::self();
-    const QString uuid = src.data(HistoryModel::UuidRole).toString();
-    m_model->moveToTop(uuid);
+    const std::optional<bool> plainOverride = invertPlainText
+        ? std::optional<bool>(!s->pastePlainText())
+        : std::nullopt;
+    m_model->moveToTop(uuid, plainOverride);
     if (!s->keepPopupOpen()) {
         hide();
+    } else if (m_stack->currentIndex() != 0) {
+        returnToListPage();
     }
     if (s->autoPaste()) {
         if (s->keepPopupOpen()) {
@@ -1428,11 +1604,21 @@ void KlipperPopup::openEditPage(const QModelIndex &proxyIndex)
     if (!src.isValid()) {
         return;
     }
+    openEditPageByUuid(src.data(HistoryModel::UuidRole).toString());
+}
+
+void KlipperPopup::openEditPageByUuid(const QString &uuid)
+{
+    const int row = m_model->indexOf(uuid);
+    if (row < 0) {
+        return;
+    }
+    const QModelIndex src = m_model->index(row);
     const auto type = static_cast<HistoryItemType>(src.data(HistoryModel::TypeIntRole).toInt());
     if (type != HistoryItemType::Text) {
         return;
     }
-    m_editingUuid = src.data(HistoryModel::UuidRole).toString();
+    m_editingUuid = uuid;
     m_editArea->setPlainText(src.data(Qt::DisplayRole).toString());
     m_stack->setCurrentIndex(1);
     m_editArea->setFocus();
@@ -1455,6 +1641,79 @@ void KlipperPopup::openQrPage(const QModelIndex &proxyIndex)
     }
     m_qrWidget->setText(src.data(Qt::DisplayRole).toString());
     m_stack->setCurrentIndex(2);
+}
+
+void KlipperPopup::openPreviewPage(const QModelIndex &proxyIndex)
+{
+    const QModelIndex src = sourceIndexFor(proxyIndex);
+    if (!src.isValid() || !m_previewWidget) {
+        return;
+    }
+    const QString uuid = src.data(HistoryModel::UuidRole).toString();
+    const auto type = static_cast<HistoryItemType>(src.data(HistoryModel::TypeIntRole).toInt());
+    const QString metaLine = ClipboardItemDelegate::compactSourceFor(src);
+
+    if (type == HistoryItemType::Image) {
+        const QUrl imgUrl = src.data(HistoryModel::ImageUrlRole).toUrl();
+        m_previewWidget->setImagePreview(uuid, imgUrl.toLocalFile(), metaLine);
+    } else {
+        m_previewWidget->setTextPreview(uuid, type, src.data(Qt::DisplayRole).toString(), metaLine);
+    }
+    m_stack->setCurrentIndex(3);
+}
+
+void KlipperPopup::saveImageByUuid(const QString &uuid)
+{
+    if (uuid.isEmpty()) {
+        return;
+    }
+    const QString picsDir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+    const QString defaultName = (picsDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation) : picsDir)
+        + u"/mklipper-"_s + QDateTime::currentDateTime().toString(u"yyyyMMdd-HHmmss"_s) + u".png"_s;
+
+    m_suppressAutoHide = true;
+    const QString dest = QFileDialog::getSaveFileName(
+        this,
+        tr("Guardar imagen del historial"),
+        defaultName,
+        tr("Imagen PNG (*.png)"));
+    m_suppressAutoHide = false;
+
+    if (!dest.isEmpty()) {
+        m_model->exportImageToFile(uuid, dest);
+    }
+    raise();
+    activateWindow();
+}
+
+void KlipperPopup::setActiveCategory(HistoryFilterProxyModel::CategoryFilter cat)
+{
+    m_proxy->setCategoryFilter(cat);
+    if (m_categoryGroup) {
+        if (auto *btn = m_categoryGroup->button(static_cast<int>(cat))) {
+            QSignalBlocker blk(m_categoryGroup);
+            btn->setChecked(true);
+        }
+    }
+    if (m_proxy->rowCount() > 0) {
+        m_listView->setCurrentIndex(m_proxy->index(0, 0));
+    }
+    updateStatusLabel();
+}
+
+void KlipperPopup::updatePauseUi()
+{
+    const bool paused = m_model->isCapturePaused();
+    if (m_pauseBtn) {
+        QSignalBlocker blk(m_pauseBtn);
+        m_pauseBtn->setChecked(paused);
+        m_pauseBtn->setToolTip(paused
+                                   ? tr("Reanudar captura del portapapeles")
+                                   : tr("Pausar captura del portapapeles (modo incógnito)"));
+    }
+    if (m_pauseBanner) {
+        m_pauseBanner->setVisible(paused);
+    }
 }
 
 void KlipperPopup::toggleStar(const QModelIndex &proxyIndex)
@@ -1547,15 +1806,17 @@ void KlipperPopup::updateStatusLabel()
 
     m_listStack->setCurrentIndex(visible > 0 ? 0 : 1);
     if (visible == 0) {
-        if (!m_searchEdit->text().isEmpty() || m_starFilterBtn->isChecked()) {
+        const bool hasFilter = !m_searchEdit->text().isEmpty()
+            || m_proxy->categoryFilter() != HistoryFilterProxyModel::CategoryFilter::All;
+        if (hasFilter) {
             m_emptyLabel->setText(tr("No hay coincidencias."));
             if (m_emptySubLabel) {
-                m_emptySubLabel->setText(tr("Probá con otro término o quitá el filtro de fijados."));
+                m_emptySubLabel->setText(tr("Prueba con otro término o cambia el filtro activo."));
             }
         } else {
             m_emptyLabel->setText(tr("El historial del portapapeles está vacío."));
             if (m_emptySubLabel) {
-                m_emptySubLabel->setText(tr("Copiá texto, enlaces o imágenes para verlos aquí."));
+                m_emptySubLabel->setText(tr("Copia texto, enlaces o imágenes para verlos aquí."));
             }
         }
     }
@@ -1565,9 +1826,9 @@ void KlipperPopup::updateStatusLabel()
         text += tr(" (%1 fijados)").arg(starred);
     }
     if (MklipperSettings::self()->quickSelectDigits()) {
-        text += tr("  ·  1–0 / Clic: pegar  ·  Supr: borrar  ·  Esc: cerrar");
+        text += tr("  ·  1–0: pegar  ·  Espacio: ver  ·  Supr: borrar");
     } else {
-        text += tr("  ·  Clic / Enter: pegar  ·  Supr: borrar  ·  Esc: cerrar");
+        text += tr("  ·  Enter: pegar  ·  Espacio: ver  ·  Supr: borrar");
     }
     m_statusLabel->setText(text);
 }

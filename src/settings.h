@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QStringList>
 
 class MklipperSettings : public QObject
 {
@@ -64,6 +65,9 @@ public:
     QString language() const { return m_language; }
     void setLanguage(const QString &v) { m_language = v; }
 
+    QStringList ignoredApps() const { return m_ignoredApps; }
+    void setIgnoredApps(const QStringList &apps);
+
     // Actions (URLGrabber)
     bool urlGrabberEnabled() const { return m_urlGrabberEnabled; }
     void setUrlGrabberEnabled(bool v) { m_urlGrabberEnabled = v; }
@@ -92,6 +96,9 @@ public:
 
     QString shortcutTogglePlainText() const { return m_shortcutTogglePlainText; }
     void setShortcutTogglePlainText(const QString &v) { m_shortcutTogglePlainText = v; }
+
+    QString shortcutTogglePause() const { return m_shortcutTogglePause; }
+    void setShortcutTogglePause(const QString &v) { m_shortcutTogglePause = v; }
 
     QString shortcutEditCurrent() const { return m_shortcutEditCurrent; }
     void setShortcutEditCurrent(const QString &v) { m_shortcutEditCurrent = v; }
@@ -148,6 +155,7 @@ private:
     bool m_saveSourceInfo = true;
     bool m_showSourceInfo = true;
     QString m_language = QStringLiteral("system");
+    QStringList m_ignoredApps;
 
     bool m_urlGrabberEnabled = false;
     bool m_actionOnSelection = false;
@@ -159,6 +167,7 @@ private:
     bool m_quickSelectDigits = true;
     QString m_shortcutPopup = QStringLiteral("Meta+V");
     QString m_shortcutTogglePlainText;
+    QString m_shortcutTogglePause;
     QString m_shortcutEditCurrent;
     QString m_shortcutShowQr;
     QString m_shortcutRepeatAction;

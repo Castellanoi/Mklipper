@@ -466,7 +466,7 @@ void Updater::onCheckReplyFinished()
     if (reply->error() != QNetworkReply::NoError) {
         QString msg;
         if (httpStatus == 403 || httpStatus == 429) {
-            msg = tr("Se alcanzó el límite temporal de consultas de GitHub. Intentá de nuevo en unos minutos.");
+            msg = tr("Se alcanzó el límite temporal de consultas de GitHub. Intenta de nuevo en unos minutos.");
         } else {
             msg = tr("No se pudo conectar con GitHub para buscar actualizaciones (%1).").arg(reply->errorString());
         }
@@ -815,13 +815,13 @@ void Updater::launchPackageInstall(const QString &debPath)
         setState(State::Idle);
         Q_EMIT installFailed(
             tr("No se encontró 'pkexec' en el sistema para solicitar permisos de administrador."),
-            tr("Podés instalar el paquete manualmente con: sudo apt install ./%1")
+            tr("Puedes instalar el paquete manualmente con: sudo apt install ./%1")
                 .arg(m_pendingInstall.assetName));
         return;
     }
 
     setState(State::Installing);
-    Q_EMIT statusMessage(tr("Instalando actualización… Ingresá tu contraseña si el sistema la solicita."));
+    Q_EMIT statusMessage(tr("Instalando actualización… Ingresa tu contraseña si el sistema la solicita."));
 
     auto *proc = new QProcess(this);
     m_installProcess = proc;

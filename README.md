@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" /></a>
-  <img src="https://img.shields.io/badge/Version-1.7.1-blue.svg" alt="Version: 1.7.1" />
+  <img src="https://img.shields.io/badge/Version-1.8.0-blue.svg" alt="Version: 1.8.0" />
   <img src="https://img.shields.io/badge/Qt-6.4%2B-41cd52.svg" alt="Qt 6.4+" />
   <img src="https://img.shields.io/badge/Languages-7-orange.svg" alt="Languages: 7" />
   <img src="https://img.shields.io/badge/Tested%20on-Linux%20Mint%20Cinnamon%20(X11)-87cf3e.svg" alt="Tested on Linux Mint Cinnamon (X11)" />
@@ -38,35 +38,35 @@
 
 **Mklipper** es un gestor de portapapeles nativo para **Linux Mint**, basado en la arquitectura y lógica del clásico **Klipper** de KDE Plasma 6, pero porteado a **Qt 6 puro (C++20)** sin ninguna dependencia de KDE Frameworks ni Plasma.
 
-Está diseñado para integrarse de forma limpia y liviana en **Cinnamon (X11)**: adopta en vivo el tema GTK3, el color de acento y el tamaño de puntero del sistema, vive en la bandeja del sistema, sincroniza atajos globales con Cinnamon (`Super + V` por defecto) y ofrece pegado automático directo con teclado o mouse.
+Está diseñado para integrarse de forma limpia y liviana en **Cinnamon (X11)**: adopta en vivo el tema GTK3, el color de acento y el tamaño de puntero del sistema, vive en la bandeja del sistema, sincroniza atajos globales con Cinnamon (`Super + V` por defecto) y ofrece pegado automático directo con teclado o ratón.
 
 > [!WARNING]
-> **Aviso importante:** Este proyecto fue **vibecodeado** y **no se han realizado pruebas exhaustivas**. Únicamente fue testeado en **Linux Mint (Cinnamon sobre X11)**. Puede contener errores o comportamientos inesperados en otros escritorios o sesiones Wayland.
+> **Aviso importante:** Este proyecto fue **vibecodeado** y **no se han realizado pruebas exhaustivas**. Únicamente fue probado en **Linux Mint (Cinnamon sobre X11)**. Puede contener errores o comportamientos inesperados en otros escritorios o sesiones Wayland.
 
 ### Características principales
 
-- **Diseño flat estilo Cinnamon 6.6 y sincronización en vivo:** íconos vectoriales flat monocromáticos, jerarquía tonal limpia, adopción real del tema GTK3 y color de acento activo sin reiniciar al cambiar de tema, y herencia del tamaño y tema del puntero configurado en Cinnamon.
-- **Popup flotante estilo Klipper:** búsqueda instantánea, miniaturas de imágenes, edición de texto en línea, generador de códigos QR (copiar o guardar en PNG) y **modo ventana persistente** opcional (mantiene la ventana abierta al pegar, con botón `✕` y cierre opcional al hacer clic fuera).
-- **Pegado rápido (`1`–`0` opcional) y «Pegar sin formato»:** los elementos aparecen numerados (`1`–`9`, `0`) para pegarlos en un toque (o podés desactivar las teclas `1–0` en *Configuración → Atajos* para escribir números directo en el buscador). Incluye pegado automático inteligente (`Ctrl+V` en apps normales y `Ctrl+Shift+V` en terminales) e interruptor rápido de **Pegar sin formato** para quitar colores y estilos HTML sin afectar imágenes ni archivos.
-- **Compatibilidad universal con teclados estándar y gamer:** detección dinámica de modificadores en X11 (`XGetModifierMapping`), soporte completo de teclas extendidas **F1–F35** (incluidas teclas macro **F13–F24**), IME desactivado al grabar atajos y **selector manual visual** de teclas si el sistema o teclado intercepta `Super`/`Ctrl`/`Alt`.
+- **Diseño flat estilo Cinnamon 6.6 y sincronización en vivo:** iconos vectoriales flat monocromáticos, jerarquía tonal limpia, adopción real del tema GTK3 y color de acento activo sin reiniciar al cambiar de tema, y herencia del tamaño y tema del puntero configurado en Cinnamon.
+- **Ventana flotante estilo Klipper con filtros y vista previa:** búsqueda instantánea insensible a acentos, filtros rápidos (*Todos · Texto · Imágenes · Enlaces · Fijados* con clic o `Tab`), vista previa ampliada (`Espacio`), guardado de capturas en PNG, edición en línea, generador de códigos QR, marcas de tiempo relativas y **modo ventana persistente** opcional.
+- **Pegado rápido (`1`–`0` opcional) y «Pegar sin formato» (con inversión por `Shift`):** los elementos aparecen numerados (`1`–`9`, `0`) para pegarlos en un toque (o puedes desactivar las teclas `1–0` en *Configuración → Atajos* para escribir números directamente en el buscador). Incluye pegado automático inteligente (`Ctrl+V` / `Ctrl+Shift+V` en terminales), interruptor de **Pegar sin formato** e inversión puntual manteniendo **`Shift`** al pegar.
+- **Compatibilidad universal con teclados estándar y gaming:** detección dinámica de modificadores en X11 (`XGetModifierMapping`), soporte completo de teclas extendidas **F1–F35** (incluidas teclas macro **F13–F24**), IME desactivado al grabar atajos y **selector manual visual** de teclas si el sistema o teclado interceptan `Super`/`Ctrl`/`Alt`.
 - **Actualizaciones nativas en el Gestor de actualizaciones de Linux Mint (`mintupdate` / APT) con reinicio automático:** el paquete `.deb` configura el repositorio APT oficial firmado con GPG para recibir actualizaciones junto al sistema (`mintupdate` / `sudo apt upgrade`). Al actualizar el paquete, Mklipper detecta automáticamente el nuevo binario, guarda el historial y se reinicia solo. También incluye actualizador integrado con verificación obligatoria **SHA-256**, notas de versión filtradas al idioma del usuario e instalación vía `pkexec`.
-- **Historial persistente en SQLite con origen del copiado y cero residuos:** guarda texto, imágenes y enlaces en `~/.local/share/mklipper/history3.sqlite` (permisos `0700`/`0600`), registra opcionalmente la aplicación/ventana/URL de origen y usa `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON` y limpieza de huérfanos para no dejar residuos en disco.
-- **Privacidad, elementos fijados (`★`) y filtrado inteligente:** ignora secretos de gestores de contraseñas (KeePassXC, Bitwarden, 1Password, `x-kde-passwordManagerHint`), ignora eventos vacíos o provenientes de pantallas de bloqueo / salvapantallas (`cinnamon-screensaver`, etc.) y agentes `polkit`, y compila con hardening (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
-- **Acciones por regex (`URLGrabber`) y Manual de usuario integrado:** apertura de enlaces/archivos en un clic, reglas personalizadas por expresión regular, tooltips explicativos en toda la configuración y **Manual de usuario visual en 5 pestañas**.
+- **Historial persistente en SQLite con origen del copiado, respaldo y cero residuos:** guarda texto, imágenes y enlaces en `~/.local/share/mklipper/history3.sqlite` (permisos `0700`/`0600`), registra opcionalmente la aplicación/ventana/URL de origen, permite **exportar e importar elementos fijados** en JSON y usa `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON` y limpieza de huérfanos para no dejar residuos en disco.
+- **Privacidad, modo incógnito (pausa) y aplicaciones ignoradas:** botón y atajo para **pausar temporalmente la captura** (con insignia en la bandeja), lista personalizable de **aplicaciones ignoradas**, filtro automático de gestores de contraseñas (KeePassXC, Bitwarden, 1Password, `x-kde-passwordManagerHint`), pantallas de bloqueo (`cinnamon-screensaver`, etc.) y entradas vacías, además de compilación endurecida (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
+- **Acciones por regex (`URLGrabber`) y Manual de usuario integrado:** apertura de enlaces/archivos en un clic, reglas personalizadas por expresión regular, descripciones emergentes en toda la configuración y **Manual de usuario visual en 5 pestañas**.
 - **7 idiomas dinámicos (JSON) y soporte HiDPI:** incluye **Español, English, Português (Brasil), Français, Italiano, Deutsch y Русский** con detección automática del idioma del sistema y cambio instantáneo desde *Configuración → General*.
 
 ### Instalación
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.7.1_amd64.deb`](dist/mklipper_1.7.1_amd64.deb).
-2. Instalalo con `apt` (o doble clic en Linux Mint) para resolver automáticamente las dependencias de Qt 6:
+1. Descarga el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.8.0_amd64.deb`](dist/mklipper_1.8.0_amd64.deb).
+2. Instálalo con `apt` (o doble clic en Linux Mint) para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.7.1_amd64.deb
+sudo apt install ./mklipper_1.8.0_amd64.deb
 ```
 
-3. Iniciá **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper`. Arrancará automáticamente en los próximos inicios de sesión (`/etc/xdg/autostart/mklipper.desktop`) y **recibirás las futuras actualizaciones directamente en el Gestor de actualizaciones de Linux Mint**.
+3. Inicia **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper`. Arrancará automáticamente en los próximos inicios de sesión (`/etc/xdg/autostart/mklipper.desktop`) y **recibirás las futuras actualizaciones directamente en el Gestor de actualizaciones de Linux Mint**.
 
 #### Opción 2: Instalar directamente desde el repositorio APT firmado
 
@@ -90,7 +90,7 @@ git clone https://github.com/Castellanoi/Mklipper.git
 cd Mklipper
 chmod +x packaging/build-deb.sh
 ./packaging/build-deb.sh
-sudo apt install ./dist/mklipper_1.7.1_amd64.deb
+sudo apt install ./dist/mklipper_1.8.0_amd64.deb
 ```
 
 ### Desinstalación
@@ -103,7 +103,7 @@ sudo apt purge mklipper
 
 ### Licencia
 
-Software libre bajo licencia **GNU GPL v3**. Consultá [LICENSE](LICENSE) para más detalles.
+Software libre bajo licencia **GNU GPL v3**. Consulta [LICENSE](LICENSE) para más detalles.
 
 ---
 
@@ -123,12 +123,12 @@ It blends naturally into **Cinnamon (X11)**: it syncs live with your active GTK3
 ### Key Features
 
 - **Cinnamon 6.6-inspired flat UI & live desktop sync:** custom monochrome flat SVG icons, clean tonal surfaces, live GTK3 theme & accent color updates without restarting, and automatic cursor size/theme inheritance from Cinnamon.
-- **Klipper-style floating popup:** instant search, image thumbnails, inline text editing, QR code generator (copy or save as PNG), and optional **persistent window mode** (stays open while pasting multiple items, with a `✕` button and optional click-outside close).
-- **Quick `1`–`0` paste (toggleable) & "Paste without formatting":** numbered items (`1`–`9`, `0`) paste in a single tap—or disable `1–0` quick-paste in *Settings → Shortcuts* to type numbers directly into search. Auto-pastes intelligently (`Ctrl+V` in regular apps, `Ctrl+Shift+V` in terminals) with a quick **Paste without formatting** toggle that strips HTML styles without affecting images or files.
+- **Klipper-style floating popup with category filters & quick preview:** accent-insensitive instant search, quick filter chips (*All · Text · Images · Links · Pinned* via click or `Tab`), full-size image & long-text preview (`Space`), direct PNG saving on image cards, inline editing, QR code generator, relative timestamps, and optional **persistent window mode**.
+- **Quick `1`–`0` paste (toggleable) & "Paste without formatting" (`Shift` override):** numbered items (`1`–`9`, `0`) paste in a single tap—or disable `1–0` quick-paste in *Settings → Shortcuts* to type numbers directly into search. Auto-pastes intelligently (`Ctrl+V` / `Ctrl+Shift+V` in terminals), with a **Paste without formatting** toggle and one-shot inversion by holding **`Shift`** while pasting.
 - **Universal standard & gaming keyboard compatibility:** live X11 modifier discovery (`XGetModifierMapping`), full **F1–F35** extended key support (including **F13–F24** macro keys), IME disabled during capture, and a **visual manual key picker** whenever the OS or hardware intercepts `Super`/`Ctrl`/`Alt`.
 - **Native Linux Mint Update Manager (`mintupdate` / signed APT repo) with auto-restart:** installing the `.deb` registers Mklipper's GPG-signed APT repository so updates arrive alongside system packages. When upgraded via APT/Mint Update Manager, Mklipper automatically detects the new binary, saves history, and cleanly restarts itself. Also includes a built-in updater with mandatory **SHA-256** verification, language-filtered release notes, and `pkexec` installation.
-- **Persistent SQLite history with source tracking & zero disk residue:** stores text, screenshots/images, and URLs in `~/.local/share/mklipper/history3.sqlite` (`0700`/`0600` permissions), optionally records source app/window/URL, and uses `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON`, and orphan cleanup so deleted items leave no disk trace.
-- **Hardened privacy, pinned items (`★`) & smart filtering:** ignores secrets from password managers (KeePassXC, Bitwarden, 1Password, `x-kde-passwordManagerHint`), ignores empty entries and events from lockscreens/screensavers (`cinnamon-screensaver`, etc.) or `polkit` auth dialogs, and builds with binary hardening (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
+- **Persistent SQLite history with source tracking, backup & zero disk residue:** stores text, screenshots/images, and URLs in `~/.local/share/mklipper/history3.sqlite` (`0700`/`0600` permissions), optionally records source app/window/URL, lets you **export & import pinned items** as JSON, and uses `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON`, and orphan cleanup so deleted items leave no disk trace.
+- **Hardened privacy, incognito pause mode & ignored apps list:** toggleable **Pause capture** (tray badge + global shortcut), customizable **Ignored applications** list, automatic filtering of password managers (KeePassXC, Bitwarden, 1Password, `x-kde-passwordManagerHint`), lockscreens (`cinnamon-screensaver`, etc.), and empty entries, plus binary hardening (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
 - **Custom regex actions (`URLGrabber`) & built-in User Manual:** one-click link/file opening, custom regex command rules, helpful hover tooltips on every setting, and a friendly **5-tab User Manual**.
 - **7 dynamic JSON languages & HiDPI-ready:** ships with **Español, English, Português (Brasil), Français, Italiano, Deutsch, and Русский** with automatic system locale detection and instant switching in *Settings → General*.
 
@@ -136,11 +136,11 @@ It blends naturally into **Cinnamon (X11)**: it syncs live with your active GTK3
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.7.1_amd64.deb`](dist/mklipper_1.7.1_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.8.0_amd64.deb`](dist/mklipper_1.8.0_amd64.deb).
 2. Install via `apt` (or double-click in Linux Mint):
 
 ```bash
-sudo apt install ./mklipper_1.7.1_amd64.deb
+sudo apt install ./mklipper_1.8.0_amd64.deb
 ```
 
 3. Launch **Mklipper** from the application menu or by running `mklipper`. It starts automatically on login (`/etc/xdg/autostart/mklipper.desktop`) and **future updates appear directly in Linux Mint's Update Manager**.
@@ -167,7 +167,7 @@ git clone https://github.com/Castellanoi/Mklipper.git
 cd Mklipper
 chmod +x packaging/build-deb.sh
 ./packaging/build-deb.sh
-sudo apt install ./dist/mklipper_1.7.1_amd64.deb
+sudo apt install ./dist/mklipper_1.8.0_amd64.deb
 ```
 
 ### Uninstall
@@ -210,8 +210,8 @@ Ele se integra de forma natural ao **Cinnamon (X11)**: sincroniza ao vivo com o 
 ### Instalação rápida
 
 ```bash
-# Opção 1: Pacote .deb (baixe dist/mklipper_1.7.1_amd64.deb ou em GitHub Releases)
-sudo apt install ./mklipper_1.7.1_amd64.deb
+# Opção 1: Pacote .deb (baixe dist/mklipper_1.8.0_amd64.deb ou em GitHub Releases)
+sudo apt install ./mklipper_1.8.0_amd64.deb
 
 # Opção 2: Diretamente pelo repositório APT assinado
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -251,8 +251,8 @@ Il s'intègre naturellement à **Cinnamon (X11)** : synchronisation en direct av
 ### Installation rapide
 
 ```bash
-# Option 1 : Paquet .deb (téléchargez dist/mklipper_1.7.1_amd64.deb ou via GitHub Releases)
-sudo apt install ./mklipper_1.7.1_amd64.deb
+# Option 1 : Paquet .deb (téléchargez dist/mklipper_1.8.0_amd64.deb ou via GitHub Releases)
+sudo apt install ./mklipper_1.8.0_amd64.deb
 
 # Option 2 : Depuis le dépôt APT signé
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -292,8 +292,8 @@ Si integra perfettamente in **Cinnamon (X11)**: si adatta dal vivo al tema GTK3,
 ### Installazione rapida
 
 ```bash
-# Opzione 1: Pacchetto .deb (scarica dist/mklipper_1.7.1_amd64.deb o da GitHub Releases)
-sudo apt install ./mklipper_1.7.1_amd64.deb
+# Opzione 1: Pacchetto .deb (scarica dist/mklipper_1.8.0_amd64.deb o da GitHub Releases)
+sudo apt install ./mklipper_1.8.0_amd64.deb
 
 # Opzione 2: Direttamente dal repository APT firmato
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -333,8 +333,8 @@ Es fügt sich nahtlos in **Cinnamon (X11)** ein: synchronisiert sich live mit GT
 ### Schnellinstallation
 
 ```bash
-# Option 1: .deb-Paket (dist/mklipper_1.7.1_amd64.deb oder über GitHub Releases laden)
-sudo apt install ./mklipper_1.7.1_amd64.deb
+# Option 1: .deb-Paket (dist/mklipper_1.8.0_amd64.deb oder über GitHub Releases laden)
+sudo apt install ./mklipper_1.8.0_amd64.deb
 
 # Option 2: Direkt über das signierte APT-Repository
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \
@@ -374,8 +374,8 @@ Lizenz: **GNU GPL v3** ([LICENSE](LICENSE)).
 ### Быстрая установка
 
 ```bash
-# Вариант 1: Пакет .deb (скачайте dist/mklipper_1.7.1_amd64.deb или из GitHub Releases)
-sudo apt install ./mklipper_1.7.1_amd64.deb
+# Вариант 1: Пакет .deb (скачайте dist/mklipper_1.8.0_amd64.deb или из GitHub Releases)
+sudo apt install ./mklipper_1.8.0_amd64.deb
 
 # Вариант 2: Напрямую из подписанного APT-репозитория
 curl -fsSL https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo/mklipper-archive-keyring.gpg \

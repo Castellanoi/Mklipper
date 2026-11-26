@@ -123,7 +123,8 @@ void SystemClipboard::clear(SelectionMode mode)
     }
 }
 
-QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &item) const
+QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &item,
+                                                     std::optional<bool> plainTextOverride) const
 {
     if (!item) {
         return nullptr;
@@ -166,7 +167,10 @@ QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &
         return fallback;
     }
 
-    if (MklipperSettings::self()->pastePlainText() && item->type() != HistoryItemType::Image) {
+    const bool usePlainText = plainTextOverride.has_value()
+        ? plainTextOverride.value()
+        : MklipperSettings::self()->pastePlainText();
+    if (usePlainText && item->type() != HistoryItemType::Image) {
         bool hasUriList = false;
         QString plainText;
         bool hasPlainText = false;
@@ -228,13 +232,16 @@ QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &
     return mimeData;
 }
 
-void SystemClipboard::setMimeData(const HistoryItemConstPtr &item, SelectionMode mode, ClipboardUpdateReason updateReason)
+void SystemClipboard::setMimeData(const HistoryItemConstPtr &item,
+                                  SelectionMode mode,
+                                  ClipboardUpdateReason updateReason,
+                                  std::optional<bool> plainTextOverride)
 {
     if (!qobject_cast<QGuiApplication *>(QCoreApplication::instance()) || !item) {
         return;
     }
-    QMimeData *selData = (mode & Selection) ? loadMimeDataFromDatabase(item) : nullptr;
-    QMimeData *clipData = (mode & Clipboard) ? loadMimeDataFromDatabase(item) : nullptr;
+    QMimeData *selData = (mode & Selection) ? loadMimeDataFromDatabase(item, plainTextOverride) : nullptr;
+    QMimeData *clipData = (mode & Clipboard) ? loadMimeDataFromDatabase(item, plainTextOverride) : nullptr;
     setMimeDataInternal(selData, clipData, updateReason);
 }
 

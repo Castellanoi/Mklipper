@@ -63,6 +63,7 @@ void MklipperSettings::load()
     m_saveSourceInfo = m_settings.value(QStringLiteral("SaveSourceInfo"), true).toBool();
     m_showSourceInfo = m_settings.value(QStringLiteral("ShowSourceInfo"), true).toBool();
     m_language = m_settings.value(QStringLiteral("Language"), QStringLiteral("system")).toString();
+    setIgnoredApps(m_settings.value(QStringLiteral("IgnoredApps")).toStringList());
     m_urlGrabberEnabled = m_settings.value(QStringLiteral("URLGrabberEnabled"), false).toBool();
     m_actionOnSelection = m_settings.value(QStringLiteral("ActionOnSelection"), false).toBool();
     m_timeoutForActionPopups = qBound(0, m_settings.value(QStringLiteral("TimeoutForActionPopups"), 8).toInt(), 200);
@@ -78,6 +79,7 @@ void MklipperSettings::load()
     m_quickSelectDigits = m_settings.value(QStringLiteral("QuickSelectDigits"), true).toBool();
     m_shortcutPopup = m_settings.value(QStringLiteral("ShowPopup"), QStringLiteral("Meta+V")).toString();
     m_shortcutTogglePlainText = m_settings.value(QStringLiteral("TogglePlainText"), QString()).toString();
+    m_shortcutTogglePause = m_settings.value(QStringLiteral("TogglePause"), QString()).toString();
     m_shortcutEditCurrent = m_settings.value(QStringLiteral("EditCurrent"), QString()).toString();
     m_shortcutShowQr = m_settings.value(QStringLiteral("ShowQr"), QString()).toString();
     m_shortcutRepeatAction = m_settings.value(QStringLiteral("RepeatAction"), QString()).toString();
@@ -111,6 +113,7 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("SaveSourceInfo"), m_saveSourceInfo);
     m_settings.setValue(QStringLiteral("ShowSourceInfo"), m_showSourceInfo);
     m_settings.setValue(QStringLiteral("Language"), m_language);
+    m_settings.setValue(QStringLiteral("IgnoredApps"), m_ignoredApps);
     m_settings.setValue(QStringLiteral("URLGrabberEnabled"), m_urlGrabberEnabled);
     m_settings.setValue(QStringLiteral("ActionOnSelection"), m_actionOnSelection);
     m_settings.setValue(QStringLiteral("TimeoutForActionPopups"), m_timeoutForActionPopups);
@@ -126,6 +129,7 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("QuickSelectDigits"), m_quickSelectDigits);
     m_settings.setValue(QStringLiteral("ShowPopup"), m_shortcutPopup);
     m_settings.setValue(QStringLiteral("TogglePlainText"), m_shortcutTogglePlainText);
+    m_settings.setValue(QStringLiteral("TogglePause"), m_shortcutTogglePause);
     m_settings.setValue(QStringLiteral("EditCurrent"), m_shortcutEditCurrent);
     m_settings.setValue(QStringLiteral("ShowQr"), m_shortcutShowQr);
     m_settings.setValue(QStringLiteral("RepeatAction"), m_shortcutRepeatAction);
@@ -142,6 +146,29 @@ void MklipperSettings::save()
     m_settings.sync();
     enforcePrivateConfigPermissions(m_settings.fileName());
     Q_EMIT settingsChanged();
+}
+
+void MklipperSettings::setIgnoredApps(const QStringList &apps)
+{
+    QStringList cleaned;
+    cleaned.reserve(apps.size());
+    for (const QString &raw : apps) {
+        const QString item = raw.trimmed();
+        if (item.isEmpty()) {
+            continue;
+        }
+        bool dup = false;
+        for (const QString &existing : std::as_const(cleaned)) {
+            if (existing.compare(item, Qt::CaseInsensitive) == 0) {
+                dup = true;
+                break;
+            }
+        }
+        if (!dup) {
+            cleaned.append(item);
+        }
+    }
+    m_ignoredApps = std::move(cleaned);
 }
 
 static QString userAutostartPath()

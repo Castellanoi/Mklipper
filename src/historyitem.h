@@ -37,7 +37,9 @@ public:
                          QString text,
                          QString sourceApp = {},
                          QString sourceTitle = {},
-                         QString sourceUrl = {});
+                         QString sourceUrl = {},
+                         qreal addedTime = 0.0,
+                         qreal lastUsedTime = 0.0);
     ~HistoryItem() = default;
 
     HistoryItemType type() const;
@@ -47,6 +49,9 @@ public:
     const QString &sourceApp() const { return m_sourceApp; }
     const QString &sourceTitle() const { return m_sourceTitle; }
     const QString &sourceUrl() const { return m_sourceUrl; }
+    qreal addedTime() const { return m_addedTime; }
+    qreal lastUsedTime() const { return m_lastUsedTime > 0.0 ? m_lastUsedTime : m_addedTime; }
+    void setLastUsedTime(qreal ts) { m_lastUsedTime = ts; }
     bool hasSourceInfo() const { return !m_sourceApp.isEmpty() || !m_sourceTitle.isEmpty() || !m_sourceUrl.isEmpty(); }
     void setSourceInfo(QString app, QString title, QString url)
     {
@@ -67,4 +72,6 @@ private:
     QString m_sourceApp;
     QString m_sourceTitle;
     QString m_sourceUrl;
+    qreal m_addedTime = 0.0;
+    qreal m_lastUsedTime = 0.0;
 };

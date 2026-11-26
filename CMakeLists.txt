@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mklipper VERSION 1.7.1 LANGUAGES CXX)
+project(mklipper VERSION 1.8.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,12 +22,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
 pkg_check_modules(XTST REQUIRED IMPORTED_TARGET xtst)
 
-set(MKLIPPER_SOURCES
-    src/main.cpp
+set(MKLIPPER_CORE_SOURCES
     src/settings.cpp
     src/settings.h
     src/translations.cpp
     src/translations.h
+    src/textutils.cpp
+    src/textutils.h
     src/mimetypes.h
     src/historyitem.cpp
     src/historyitem.h
@@ -59,6 +60,8 @@ set(MKLIPPER_SOURCES
     src/themestyle.h
     src/qrcodewidget.cpp
     src/qrcodewidget.h
+    src/previewwidget.cpp
+    src/previewwidget.h
     src/klipperpopup.cpp
     src/klipperpopup.h
     src/editactiondialog.cpp
@@ -76,28 +79,17 @@ set(MKLIPPER_SOURCES
     resources.qrc
 )
 
-add_executable(mklipper ${MKLIPPER_SOURCES})
+add_library(mklipper_core OBJECT ${MKLIPPER_CORE_SOURCES})
 
-target_compile_definitions(mklipper PRIVATE
+target_include_directories(mklipper_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_compile_definitions(mklipper_core PUBLIC
     MKLIPPER_VERSION="${PROJECT_VERSION}"
 )
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(mklipper PRIVATE
-        -fstack-protector-strong
-        -Wformat
-        -Wformat-security
-        -fPIE
-        $<$<CONFIG:Release>:-D_FORTIFY_SOURCE=2>
-    )
-    target_link_options(mklipper PRIVATE
-        -pie
-        -Wl,-z,relro
-        -Wl,-z,now
-    )
-endif()
-
-target_link_libraries(mklipper PRIVATE
+target_link_libraries(mklipper_core PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -109,6 +101,47 @@ target_link_libraries(mklipper PRIVATE
     PkgConfig::XTST
     PkgConfig::QRENCODE
 )
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(mklipper_core PUBLIC
+        -fstack-protector-strong
+        -Wformat
+        -Wformat-security
+        -fPIE
+        $<$<CONFIG:Release>:-D_FORTIFY_SOURCE=2>
+    )
+endif()
+
+add_executable(mklipper src/main.cpp)
+target_link_libraries(mklipper PRIVATE mklipper_core)
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(mklipper PRIVATE
+        -pie
+        -Wl,-z,relro
+        -Wl,-z,now
+    )
+endif()
+
+include(CTest)
+if (BUILD_TESTING)
+    add_executable(mklipper_tests tests/test_mklipper.cpp)
+    target_link_libraries(mklipper_tests PRIVATE mklipper_core)
+    target_compile_definitions(mklipper_tests PRIVATE
+        MKLIPPER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    add_test(NAME mklipper_unit_tests COMMAND mklipper_tests)
+    set_tests_properties(mklipper_unit_tests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+
+    find_package(Python3 COMPONENTS Interpreter)
+    if (Python3_FOUND)
+        add_test(NAME mklipper_i18n_validation
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/validate_i18n.py ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    endif()
+endif()
 
 include(GNUInstallDirs)
 

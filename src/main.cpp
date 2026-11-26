@@ -43,6 +43,8 @@ bool tryFastForwardToExistingInstance(int argc, char *argv[])
             method = "clearClipboardHistoryInteractive";
         } else if (std::strcmp(argv[i], "--toggle-plain-text") == 0) {
             method = "togglePastePlainText";
+        } else if (std::strcmp(argv[i], "--toggle-pause") == 0) {
+            method = "toggleCapturePaused";
         } else if (std::strcmp(argv[i], "--edit") == 0) {
             method = "editCurrentClipboard";
         } else if (std::strcmp(argv[i], "--qr") == 0) {
@@ -138,6 +140,7 @@ int main(int argc, char *argv[])
     QCommandLineOption optClear(u"clear"_s, QObject::tr("Vaciar el historial del portapapeles"));
     QCommandLineOption optClearInteractive(u"clear-interactive"_s, QObject::tr("Vaciar el historial del portapapeles (con confirmación)"));
     QCommandLineOption optTogglePlainText(u"toggle-plain-text"_s, QObject::tr("Alternar el modo «Pegar sin formato»"));
+    QCommandLineOption optTogglePause(u"toggle-pause"_s, QObject::tr("Pausar o reanudar la captura del portapapeles"));
     QCommandLineOption optEdit(u"edit"_s, QObject::tr("Editar el contenido actual del portapapeles"));
     QCommandLineOption optQr(u"qr"_s, QObject::tr("Mostrar el código QR del elemento actual"));
     QCommandLineOption optConfigure(u"configure"_s, QObject::tr("Abrir la ventana de configuración"));
@@ -154,6 +157,7 @@ int main(int argc, char *argv[])
     parser.addOption(optClear);
     parser.addOption(optClearInteractive);
     parser.addOption(optTogglePlainText);
+    parser.addOption(optTogglePause);
     parser.addOption(optEdit);
     parser.addOption(optQr);
     parser.addOption(optConfigure);
@@ -173,6 +177,8 @@ int main(int argc, char *argv[])
             existing.call(u"clearClipboardHistory"_s);
         } else if (parser.isSet(optTogglePlainText)) {
             existing.call(u"togglePastePlainText"_s);
+        } else if (parser.isSet(optTogglePause)) {
+            existing.call(u"toggleCapturePaused"_s);
         } else if (parser.isSet(optEdit)) {
             existing.call(u"editCurrentClipboard"_s);
         } else if (parser.isSet(optQr)) {
@@ -205,6 +211,8 @@ int main(int argc, char *argv[])
         klipper.showKlipperPopupMenu();
     } else if (parser.isSet(optTogglePlainText)) {
         klipper.togglePastePlainText();
+    } else if (parser.isSet(optTogglePause)) {
+        klipper.toggleCapturePaused();
     } else if (parser.isSet(optEdit)) {
         klipper.editCurrentClipboard();
     } else if (parser.isSet(optQr)) {

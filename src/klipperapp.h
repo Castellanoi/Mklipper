@@ -57,6 +57,7 @@ public Q_SLOTS:
     Q_SCRIPTABLE void showKlipperPopupMenu();
     Q_SCRIPTABLE void toggleKlipperPopupMenu();
     Q_SCRIPTABLE void togglePastePlainText();
+    Q_SCRIPTABLE void toggleCapturePaused();
     Q_SCRIPTABLE void editCurrentClipboard();
     Q_SCRIPTABLE void showCurrentBarcode();
     Q_SCRIPTABLE void showKlipperManuallyInvokeActionMenu();
@@ -85,6 +86,7 @@ private Q_SLOTS:
 
 private:
     void setupTrayIcon();
+    void updateTrayIcon();
     void rebuildTrayMenu();
     void syncThemeLive();
     void recreatePopup();
@@ -109,6 +111,7 @@ private:
 
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
+    QAction *m_togglePauseAct = nullptr;
     QAction *m_toggleActionsAct = nullptr;
     QTimer *m_themeSyncTimer = nullptr;
     bool m_syncingTheme = false;

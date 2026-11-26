@@ -11,6 +11,7 @@
 
 class QCheckBox;
 class QComboBox;
+class QLineEdit;
 class QListWidget;
 class QSpinBox;
 class ShortcutRecorder;
@@ -32,6 +33,10 @@ private Q_SLOTS:
     void addAction();
     void editAction();
     void deleteAction();
+    void addIgnoredApp();
+    void removeIgnoredApp();
+    void exportPinnedItems();
+    void importPinnedItems();
 
 private:
     void refreshActionList();
@@ -56,6 +61,8 @@ private:
     QCheckBox *m_saveSourceInfo = nullptr;
     QCheckBox *m_showSourceInfo = nullptr;
     QSpinBox *m_maxItems = nullptr;
+    QLineEdit *m_ignoredAppEdit = nullptr;
+    QListWidget *m_ignoredAppsList = nullptr;
 
     // Actions tab
     QCheckBox *m_urlGrabberEnabled = nullptr;
@@ -70,6 +77,7 @@ private:
     QCheckBox *m_quickSelectDigits = nullptr;
     ShortcutRecorder *m_keyPopup = nullptr;
     ShortcutRecorder *m_keyTogglePlainText = nullptr;
+    ShortcutRecorder *m_keyTogglePause = nullptr;
     ShortcutRecorder *m_keyEditCurrent = nullptr;
     ShortcutRecorder *m_keyShowQr = nullptr;
     ShortcutRecorder *m_keyRepeatAction = nullptr;

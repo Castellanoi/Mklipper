@@ -15,12 +15,16 @@ HistoryItem::HistoryItem(QString uuid,
                          QString text,
                          QString sourceApp,
                          QString sourceTitle,
-                         QString sourceUrl)
+                         QString sourceUrl,
+                         qreal addedTime,
+                         qreal lastUsedTime)
     : m_uuid(std::move(uuid))
     , m_text(std::move(text))
     , m_sourceApp(std::move(sourceApp))
     , m_sourceTitle(std::move(sourceTitle))
     , m_sourceUrl(std::move(sourceUrl))
+    , m_addedTime(addedTime)
+    , m_lastUsedTime(lastUsedTime > 0.0 ? lastUsedTime : addedTime)
 {
     if (std::ranges::any_of(mimeTypes, [](const QString &mimeType) {
             return mimeType.startsWith(u"text/");
@@ -78,10 +82,14 @@ HistoryItemPtr HistoryItem::create(const QSqlQuery &query)
     QString sourceApp = query.value(u"source_app"_s).toString();
     QString sourceTitle = query.value(u"source_title"_s).toString();
     QString sourceUrl = query.value(u"source_url"_s).toString();
+    const qreal addedTime = query.value(u"added_time"_s).toDouble();
+    const qreal lastUsedTime = query.value(u"last_used_time"_s).toDouble();
     return std::make_shared<HistoryItem>(std::move(uuid),
                                          mimeTypes,
                                          std::move(text),
                                          std::move(sourceApp),
                                          std::move(sourceTitle),
-                                         std::move(sourceUrl));
+                                         std::move(sourceUrl),
+                                         addedTime,
+                                         lastUsedTime);
 }

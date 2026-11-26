@@ -6,6 +6,7 @@
 
 #include "editactiondialog.h"
 #include "flaticons.h"
+#include "historymodel.h"
 #include "settings.h"
 #include "shortcutrecorder.h"
 #include "themestyle.h"
@@ -13,17 +14,22 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDateTime>
+#include <QFileDialog>
 #include <QFontMetrics>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScreen>
 #include <QScrollArea>
 #include <QSpinBox>
+#include <QStandardPaths>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -179,12 +185,12 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_keepContents = new QCheckBox(tr("Guardar historial entre sesiones"), histCard);
     m_keepContents->setChecked(s->keepClipboardContents());
     m_keepContents->setToolTip(
-        tr("Conserva el historial del portapapeles en disco para recuperarlo al reiniciar la PC o cerrar sesión."));
+        tr("Conserva el historial del portapapeles en disco para recuperarlo al reiniciar el equipo o cerrar sesión."));
 
     m_preventEmpty = new QCheckBox(tr("Evitar que el portapapeles quede vacío al cerrar aplicaciones"), histCard);
     m_preventEmpty->setChecked(s->preventEmptyClipboard());
     m_preventEmpty->setToolTip(
-        tr("En X11, si cerrás la aplicación desde donde copiaste algo, el portapapeles suele vaciarse. Esta opción conserva el contenido automáticamente."));
+        tr("En X11, si cierras la aplicación desde donde copiaste algo, el portapapeles suele vaciarse. Esta opción conserva el contenido automáticamente."));
 
     m_saveImages = new QCheckBox(tr("Guardar imágenes (capturas de pantalla) en el historial"), histCard);
     m_saveImages->setChecked(s->saveImages());
@@ -223,7 +229,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_closePopupOnFocusOut->setChecked(s->closePopupOnFocusOut());
     m_closePopupOnFocusOut->setEnabled(m_keepPopupOpen->isChecked());
     m_closePopupOnFocusOut->setToolTip(
-        tr("Cuando la ventana flotante permanece abierta al pegar, la oculta automáticamente si hacés clic en otra aplicación."));
+        tr("Cuando la ventana flotante permanece abierta al pegar, la oculta automáticamente si haces clic en otra aplicación."));
     connect(m_keepPopupOpen, &QCheckBox::toggled, m_closePopupOnFocusOut, &QCheckBox::setEnabled);
     closeOutsideLayout->addWidget(m_closePopupOnFocusOut);
 
@@ -266,18 +272,91 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     selLayout->setContentsMargins(14, 12, 14, 12);
     selLayout->setSpacing(8);
 
-    m_saveSelection = new QCheckBox(tr("Guardar texto seleccionado con el mouse en el historial"), selCard);
+    m_saveSelection = new QCheckBox(tr("Guardar texto seleccionado con el ratón en el historial"), selCard);
     m_saveSelection->setChecked(s->saveSelection());
     m_saveSelection->setToolTip(
-        tr("Agrega automáticamente al historial cualquier texto que resaltes con el mouse (selección primaria de X11), sin necesidad de presionar Ctrl+C."));
+        tr("Agrega automáticamente al historial cualquier texto que resaltes con el ratón (selección primaria de X11), sin necesidad de presionar Ctrl+C."));
 
-    m_syncClipboards = new QCheckBox(tr("Sincronizar selección del mouse y portapapeles (Ctrl+C)"), selCard);
+    m_syncClipboards = new QCheckBox(tr("Sincronizar selección del ratón y portapapeles (Ctrl+C)"), selCard);
     m_syncClipboards->setChecked(s->syncClipboards());
     m_syncClipboards->setToolTip(
-        tr("Mantiene sincronizado el texto seleccionado con el mouse (botón central) y el portapapeles estándar (Ctrl+C / Ctrl+V)."));
+        tr("Mantiene sincronizado el texto seleccionado con el ratón (botón central) y el portapapeles estándar (Ctrl+C / Ctrl+V)."));
 
     selLayout->addWidget(m_saveSelection);
     selLayout->addWidget(m_syncClipboards);
+
+    auto *privCard = addSectionCard(genLayout, tr("Privacidad y respaldo"), t, generalPage);
+    auto *privLayout = new QVBoxLayout(privCard);
+    privLayout->setContentsMargins(14, 12, 14, 12);
+    privLayout->setSpacing(8);
+
+    const QString ignoredAppsTip = tr("Mklipper no guardará contenido copiado desde las aplicaciones que aparezcan en esta lista (los bloqueos de pantalla y gestores de contraseñas compatibles ya se filtran automáticamente).");
+    auto *ignoredLabel = new QLabel(tr("Aplicaciones ignoradas:"), privCard);
+    ignoredLabel->setToolTip(ignoredAppsTip);
+    privLayout->addWidget(ignoredLabel);
+
+    auto *ignoredInputRow = new QHBoxLayout;
+    ignoredInputRow->setSpacing(6);
+    m_ignoredAppEdit = new QLineEdit(privCard);
+    m_ignoredAppEdit->setPlaceholderText(tr("Ej: keepassxc, bitwarden, remmina…"));
+    m_ignoredAppEdit->setToolTip(ignoredAppsTip);
+    connect(m_ignoredAppEdit, &QLineEdit::returnPressed, this, &ConfigDialog::addIgnoredApp);
+
+    auto *addIgnoredBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Plus, t.textPrimary, t.textPrimary, t.textMuted, 14),
+        tr("Agregar"),
+        privCard);
+    addIgnoredBtn->setIconSize(QSize(14, 14));
+    addIgnoredBtn->setCursor(Qt::PointingHandCursor);
+    addIgnoredBtn->setToolTip(tr("Agrega el nombre de la aplicación a la lista de exclusión."));
+    connect(addIgnoredBtn, &QPushButton::clicked, this, &ConfigDialog::addIgnoredApp);
+
+    auto *removeIgnoredBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Trash, t.danger, t.danger, t.textMuted, 14),
+        tr("Eliminar"),
+        privCard);
+    removeIgnoredBtn->setIconSize(QSize(14, 14));
+    removeIgnoredBtn->setCursor(Qt::PointingHandCursor);
+    removeIgnoredBtn->setToolTip(tr("Quita la aplicación seleccionada de la lista de exclusión."));
+    connect(removeIgnoredBtn, &QPushButton::clicked, this, &ConfigDialog::removeIgnoredApp);
+
+    ignoredInputRow->addWidget(m_ignoredAppEdit, 1);
+    ignoredInputRow->addWidget(addIgnoredBtn);
+    ignoredInputRow->addWidget(removeIgnoredBtn);
+    privLayout->addLayout(ignoredInputRow);
+
+    m_ignoredAppsList = new QListWidget(privCard);
+    m_ignoredAppsList->setMaximumHeight(96);
+    m_ignoredAppsList->setToolTip(ignoredAppsTip);
+    m_ignoredAppsList->addItems(s->ignoredApps());
+    privLayout->addWidget(m_ignoredAppsList);
+
+    auto *backupRow = new QHBoxLayout;
+    backupRow->setSpacing(8);
+    auto *backupLabel = new QLabel(tr("Elementos fijados:"), privCard);
+    auto *exportPinnedBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Save, t.textPrimary, t.textPrimary, t.textMuted, 14),
+        tr("Exportar fijados…"),
+        privCard);
+    exportPinnedBtn->setIconSize(QSize(14, 14));
+    exportPinnedBtn->setCursor(Qt::PointingHandCursor);
+    exportPinnedBtn->setToolTip(tr("Guarda una copia de respaldo en formato JSON con todos tus elementos fijados."));
+    connect(exportPinnedBtn, &QPushButton::clicked, this, &ConfigDialog::exportPinnedItems);
+
+    auto *importPinnedBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::FileText, t.textPrimary, t.textPrimary, t.textMuted, 14),
+        tr("Importar fijados…"),
+        privCard);
+    importPinnedBtn->setIconSize(QSize(14, 14));
+    importPinnedBtn->setCursor(Qt::PointingHandCursor);
+    importPinnedBtn->setToolTip(tr("Restaura elementos fijados desde un archivo JSON exportado previamente."));
+    connect(importPinnedBtn, &QPushButton::clicked, this, &ConfigDialog::importPinnedItems);
+
+    backupRow->addWidget(backupLabel);
+    backupRow->addStretch();
+    backupRow->addWidget(exportPinnedBtn);
+    backupRow->addWidget(importPinnedBtn);
+    privLayout->addLayout(backupRow);
 
     auto *sysCard = addSectionCard(genLayout, tr("Sistema y actualizaciones"), t, generalPage);
     auto *sysLayout = new QVBoxLayout(sysCard);
@@ -287,16 +366,16 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_autostart = new QCheckBox(tr("Iniciar Mklipper automáticamente al iniciar sesión"), sysCard);
     m_autostart->setChecked(MklipperSettings::autostartEnabled());
     m_autostart->setToolTip(
-        tr("Lanza Mklipper en segundo plano en la bandeja del sistema cada vez que iniciás sesión en Linux Mint."));
+        tr("Lanza Mklipper en segundo plano en la bandeja del sistema cada vez que inicias sesión en Linux Mint."));
     sysLayout->addWidget(m_autostart);
 
     m_autoCheckUpdates = new QCheckBox(tr("Buscar actualizaciones automáticamente al iniciar"), sysCard);
     m_autoCheckUpdates->setChecked(s->autoCheckUpdates());
     m_autoCheckUpdates->setToolTip(
-        tr("Comprueba si hay una versión nueva en GitHub al iniciar y te avisa con una notificación (también recibís actualizaciones desde el Gestor de actualizaciones de Mint)."));
+        tr("Comprueba si hay una versión nueva en GitHub al iniciar y te avisa con una notificación (también recibes actualizaciones desde el Gestor de actualizaciones de Mint)."));
     sysLayout->addWidget(m_autoCheckUpdates);
 
-    const QString langTip = tr("Elige el idioma de la interfaz de Mklipper o seguí automáticamente el idioma configurado en tu sistema.");
+    const QString langTip = tr("Elige el idioma de la interfaz de Mklipper o sigue automáticamente el idioma configurado en tu sistema.");
     auto *langRow = new QHBoxLayout;
     auto *langLabel = new QLabel(tr("Idioma:"), sysCard);
     langLabel->setToolTip(langTip);
@@ -352,12 +431,12 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_urlGrabberEnabled = new QCheckBox(tr("Mostrar menú de acciones automáticamente al copiar"), actOptCard);
     m_urlGrabberEnabled->setChecked(s->urlGrabberEnabled());
     m_urlGrabberEnabled->setToolTip(
-        tr("Abre un menú contextual automático cuando copiás texto que coincide con una regla (por ejemplo, enlaces web o comandos personalizados)."));
+        tr("Abre un menú contextual automático cuando copias texto que coincide con una regla (por ejemplo, enlaces web o comandos personalizados)."));
 
     m_actionOnSelection = new QCheckBox(tr("Mostrar menú de acciones al seleccionar texto"), actOptCard);
     m_actionOnSelection->setChecked(s->actionOnSelection());
     m_actionOnSelection->setToolTip(
-        tr("También evalúa las reglas de acciones cuando resaltás texto con el mouse (selección primaria de X11)."));
+        tr("También evalúa las reglas de acciones cuando resaltas texto con el ratón (selección primaria de X11)."));
 
     m_replayInHistory = new QCheckBox(tr("Ejecutar acciones al elegir un elemento del historial"), actOptCard);
     m_replayInHistory->setChecked(s->replayActionInHistory());
@@ -378,7 +457,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_actionTimeout->setRange(0, 200);
     m_actionTimeout->setValue(s->timeoutForActionPopups());
     m_actionTimeout->setSuffix(tr(" s (0 = sin límite)"));
-    const QString timeoutTip = tr("Tiempo en segundos que permanece visible el menú automático de acciones antes de cerrarse solo. Usá 0 para que no se cierre automáticamente.");
+    const QString timeoutTip = tr("Tiempo en segundos que permanece visible el menú automático de acciones antes de cerrarse solo. Usa 0 para que no se cierre automáticamente.");
 
     actOptForm->addRow(m_urlGrabberEnabled);
     actOptForm->addRow(m_actionOnSelection);
@@ -399,7 +478,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_actionsList = new QListWidget(customCard);
     m_actionsList->setMinimumHeight(110);
     m_actionsList->setToolTip(
-        tr("Lista de reglas personalizadas que ejecutan comandos cuando el texto copiado coincide con una expresión regular. Hacé doble clic para editar."));
+        tr("Lista de reglas personalizadas que ejecutan comandos cuando el texto copiado coincide con una expresión regular. Haz doble clic para editar."));
     connect(m_actionsList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *) { editAction(); });
     customLayout->addWidget(m_actionsList, 1);
 
@@ -458,7 +537,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_quickSelectDigits = new QCheckBox(tr("Usar teclas 1–0 para pegar rápido desde la ventana flotante"), popupKeysCard);
     m_quickSelectDigits->setChecked(s->quickSelectDigits());
     m_quickSelectDigits->setToolTip(
-        tr("Permite presionar las teclas 1 a 0 (o Alt/Ctrl + 1–0) para pegar ese elemento al instante. Desactivalo si preferís escribir números directamente en el buscador."));
+        tr("Permite presionar las teclas 1 a 0 (o Alt/Ctrl + 1–0) para pegar ese elemento al instante. Desactívalo si prefieres escribir números directamente en el buscador."));
     popupKeysLayout->addWidget(m_quickSelectDigits);
 
     // Card 2: Global system shortcuts (verified real Mklipper actions)
@@ -476,6 +555,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     const QString tipPopup = tr("Abre u oculta la ventana flotante del historial del portapapeles justo debajo del cursor.");
     const QString tipPlainText = tr("Activa o desactiva el modo «Pegar sin formato» desde cualquier aplicación y muestra una notificación.");
+    const QString tipPause = tr("Pausa o reanuda temporalmente la captura del portapapeles (modo incógnito) y muestra una notificación.");
     const QString tipEdit = tr("Abre directamente el editor de texto de Mklipper para modificar el elemento actual del portapapeles.");
     const QString tipQr = tr("Genera y muestra al instante el código QR del elemento actual del portapapeles.");
     const QString tipAction = tr("Abre el menú de acciones disponibles (abrir enlaces/archivos o reglas personalizadas) para el elemento actual del portapapeles.");
@@ -485,6 +565,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     m_keyPopup = makeKeyRow(s->shortcutPopup(), tipPopup);
     m_keyTogglePlainText = makeKeyRow(s->shortcutTogglePlainText(), tipPlainText);
+    m_keyTogglePause = makeKeyRow(s->shortcutTogglePause(), tipPause);
     m_keyEditCurrent = makeKeyRow(s->shortcutEditCurrent(), tipEdit);
     m_keyShowQr = makeKeyRow(s->shortcutShowQr(), tipQr);
     m_keyRepeatAction = makeKeyRow(s->shortcutRepeatAction(), tipAction);
@@ -494,6 +575,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     addTooltipFormRow(keysForm, tr("Mostrar historial bajo el cursor:"), m_keyPopup, tipPopup, keysCard);
     addTooltipFormRow(keysForm, tr("Alternar «Pegar sin formato»:"), m_keyTogglePlainText, tipPlainText, keysCard);
+    addTooltipFormRow(keysForm, tr("Pausar / reanudar captura:"), m_keyTogglePause, tipPause, keysCard);
     addTooltipFormRow(keysForm, tr("Editar contenido actual:"), m_keyEditCurrent, tipEdit, keysCard);
     addTooltipFormRow(keysForm, tr("Mostrar código QR actual:"), m_keyShowQr, tipQr, keysCard);
     addTooltipFormRow(keysForm, tr("Invocar acciones del elemento actual:"), m_keyRepeatAction, tipAction, keysCard);
@@ -630,6 +712,101 @@ void ConfigDialog::deleteAction()
     refreshActionList();
 }
 
+void ConfigDialog::addIgnoredApp()
+{
+    if (!m_ignoredAppEdit || !m_ignoredAppsList) {
+        return;
+    }
+    const QString raw = m_ignoredAppEdit->text().trimmed();
+    if (raw.isEmpty()) {
+        return;
+    }
+    const QStringList parts = raw.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    for (const QString &part : parts) {
+        const QString name = part.trimmed();
+        if (name.isEmpty()) {
+            continue;
+        }
+        bool exists = false;
+        for (int i = 0; i < m_ignoredAppsList->count(); ++i) {
+            if (m_ignoredAppsList->item(i)->text().compare(name, Qt::CaseInsensitive) == 0) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            m_ignoredAppsList->addItem(name);
+        }
+    }
+    m_ignoredAppEdit->clear();
+}
+
+void ConfigDialog::removeIgnoredApp()
+{
+    if (!m_ignoredAppsList) {
+        return;
+    }
+    const int row = m_ignoredAppsList->currentRow();
+    if (row >= 0) {
+        delete m_ignoredAppsList->takeItem(row);
+    }
+}
+
+void ConfigDialog::exportPinnedItems()
+{
+    const QString docsDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString defaultPath = (docsDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation) : docsDir)
+        + QStringLiteral("/mklipper-pinned-") + QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd")) + QStringLiteral(".json");
+
+    const QString dest = QFileDialog::getSaveFileName(
+        this,
+        tr("Exportar elementos fijados"),
+        defaultPath,
+        tr("Archivo JSON (*.json)"));
+    if (dest.isEmpty()) {
+        return;
+    }
+
+    int count = 0;
+    if (HistoryModel::self()->exportStarredToJson(dest, &count)) {
+        QMessageBox::information(
+            this,
+            tr("Exportar elementos fijados"),
+            tr("Se exportaron %1 elementos fijados correctamente.").arg(count));
+    } else {
+        QMessageBox::warning(
+            this,
+            tr("Exportar elementos fijados"),
+            tr("No se pudo guardar el archivo de respaldo."));
+    }
+}
+
+void ConfigDialog::importPinnedItems()
+{
+    const QString docsDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString src = QFileDialog::getOpenFileName(
+        this,
+        tr("Importar elementos fijados"),
+        docsDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation) : docsDir,
+        tr("Archivo JSON (*.json)"));
+    if (src.isEmpty()) {
+        return;
+    }
+
+    int count = 0;
+    if (HistoryModel::self()->importStarredFromJson(src, &count)) {
+        QMessageBox::information(
+            this,
+            tr("Importar elementos fijados"),
+            tr("Se importaron %1 elementos fijados correctamente.").arg(count));
+    } else {
+        QMessageBox::warning(
+            this,
+            tr("Importar elementos fijados"),
+            tr("El archivo seleccionado no es un respaldo válido de Mklipper."));
+    }
+}
+
 void ConfigDialog::saveAndAccept()
 {
     auto *s = MklipperSettings::self();
@@ -647,6 +824,15 @@ void ConfigDialog::saveAndAccept()
     s->setSaveSourceInfo(m_saveSourceInfo->isChecked());
     s->setShowSourceInfo(m_showSourceInfo->isChecked());
 
+    if (m_ignoredAppsList) {
+        QStringList ignored;
+        ignored.reserve(m_ignoredAppsList->count());
+        for (int i = 0; i < m_ignoredAppsList->count(); ++i) {
+            ignored.append(m_ignoredAppsList->item(i)->text());
+        }
+        s->setIgnoredApps(ignored);
+    }
+
     s->setUrlGrabberEnabled(m_urlGrabberEnabled->isChecked());
     s->setActionOnSelection(m_actionOnSelection->isChecked());
     s->setReplayActionInHistory(m_replayInHistory->isChecked());
@@ -657,6 +843,7 @@ void ConfigDialog::saveAndAccept()
     s->setQuickSelectDigits(m_quickSelectDigits->isChecked());
     s->setShortcutPopup(m_keyPopup->keySequence().toString());
     s->setShortcutTogglePlainText(m_keyTogglePlainText->keySequence().toString());
+    s->setShortcutTogglePause(m_keyTogglePause->keySequence().toString());
     s->setShortcutEditCurrent(m_keyEditCurrent->keySequence().toString());
     s->setShortcutShowQr(m_keyShowQr->keySequence().toString());
     s->setShortcutRepeatAction(m_keyRepeatAction->keySequence().toString());

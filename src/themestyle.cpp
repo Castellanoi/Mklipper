@@ -537,10 +537,28 @@ QString popupStyleSheet(const ThemeTokens &t)
         QToolButton#mklipperDangerBtn:pressed {
             background-color: %DANGER_SOFT%;
         }
-        QFrame#mklipperPasswordBanner {
+        QFrame#mklipperPasswordBanner,
+        QFrame#mklipperPauseBanner {
             background-color: %WARNING_SOFT%;
             border: none;
             border-radius: 8px;
+        }
+        QPushButton[filterChip="true"] {
+            background-color: transparent;
+            color: %TEXT_MUTED%;
+            border: none;
+            border-radius: 7px;
+            padding: 3px 9px;
+            font-weight: 500;
+        }
+        QPushButton[filterChip="true"]:hover {
+            background-color: %SURFACE_HOVER%;
+            color: %TEXT%;
+        }
+        QPushButton[filterChip="true"]:checked {
+            background-color: %ACCENT_SOFT%;
+            color: %ACCENT%;
+            font-weight: 600;
         }
         QPushButton[flatAction="true"] {
             background-color: %SURFACE_HOVER%;
@@ -638,6 +656,7 @@ QString popupStyleSheet(const ThemeTokens &t)
     css.replace(QStringLiteral("%ACCENT_FG%"), rgbaCss(t.accentFg));
     css.replace(QStringLiteral("%ACCENT_HOVER%"), rgbaCss(t.accentHover));
     css.replace(QStringLiteral("%ACCENT_PRESSED%"), rgbaCss(t.accentPressed));
+    css.replace(QStringLiteral("%ACCENT_SOFT%"), rgbaCss(t.accentSoft));
     css.replace(QStringLiteral("%DANGER_SOFT%"), rgbaCss(t.dangerSoft));
     css.replace(QStringLiteral("%WARNING_SOFT%"), rgbaCss(t.warningSoft));
     css.replace(QStringLiteral("%SCROLL_HANDLE%"), rgbaCss(scrollHandle));

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include <QAbstractListModel>
 #include <QClipboard>
@@ -37,6 +38,8 @@ public:
         SourceAppRole,
         SourceTitleRole,
         SourceUrlRole,
+        AddedTimeRole,
+        LastUsedTimeRole,
     };
     Q_ENUM(RoleType)
 
@@ -64,9 +67,17 @@ public:
     void clearPasswords();
     void clearBuffers();
 
-    void moveToTop(const QString &uuid);
+    void moveToTop(const QString &uuid, std::optional<bool> plainTextOverride = std::nullopt);
     void moveTopToBack();
     void moveBackToTop();
+
+    bool isCapturePaused() const { return m_capturePaused; }
+    void setCapturePaused(bool paused);
+    bool toggleCapturePaused();
+
+    bool exportImageToFile(const QString &uuid, const QString &destPath) const;
+    bool exportStarredToJson(const QString &filePath, int *exportedCount = nullptr) const;
+    bool importStarredFromJson(const QString &filePath, int *importedCount = nullptr);
 
     int indexOf(const QString &uuid) const;
     int indexOf(const HistoryItem *item) const;
@@ -90,6 +101,7 @@ Q_SIGNALS:
     void selectionForAction(const HistoryItemConstPtr &item);
     void hasPasswordChanged();
     void starredCountChanged(int count);
+    void capturePausedChanged(bool paused);
 
 private Q_SLOTS:
     void checkClipData(QClipboard::Mode mode, const QMimeData *data);
@@ -135,4 +147,6 @@ private:
     bool m_bSaveSourceInfo = true;
     bool m_clipboardHasPassword = false;
     bool m_selectionHasPassword = false;
+    bool m_capturePaused = false;
+    std::optional<bool> m_nextPlainTextOverride;
 };

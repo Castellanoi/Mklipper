@@ -9,6 +9,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include <QClipboard>
 #include <QObject>
@@ -60,7 +61,8 @@ public:
     void clear(SelectionMode mode = SelectionMode(Selection | Clipboard));
     void setMimeData(const HistoryItemConstPtr &item,
                      SelectionMode mode,
-                     ClipboardUpdateReason updateReason = ClipboardUpdateReason::UpdateClipboard);
+                     ClipboardUpdateReason updateReason = ClipboardUpdateReason::UpdateClipboard,
+                     std::optional<bool> plainTextOverride = std::nullopt);
     void setMimeData(const QMimeData *mimeData,
                      SelectionMode mode,
                      ClipboardUpdateReason updateReason = ClipboardUpdateReason::UpdateClipboard);
@@ -78,7 +80,8 @@ private Q_SLOTS:
 private:
     SystemClipboard();
 
-    QMimeData *loadMimeDataFromDatabase(const HistoryItemConstPtr &item) const;
+    QMimeData *loadMimeDataFromDatabase(const HistoryItemConstPtr &item,
+                                        std::optional<bool> plainTextOverride = std::nullopt) const;
     void setMimeDataInternal(QMimeData *selectionMimeData, QMimeData *clipboardMimeData, ClipboardUpdateReason updateReason);
 
     QClipboard *m_clip = nullptr;

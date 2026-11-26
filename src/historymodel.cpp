@@ -22,6 +22,9 @@
 #include <QImage>
 #include <QImageReader>
 #include <QImageWriter>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSaveFile>
@@ -268,6 +271,9 @@ HistoryModel::HistoryModel()
     });
 
     connect(this, &HistoryModel::changed, this, [this](bool isTop) {
+        const std::optional<bool> plainOverride = m_nextPlainTextOverride;
+        m_nextPlainTextOverride.reset();
+
         const SystemClipboard::SelectionMode buffersWithoutPassword = buffersHolding(Holding::NoPassword);
         if (buffersWithoutPassword == 0) {
             return;
@@ -280,15 +286,20 @@ HistoryModel::HistoryModel()
             return;
         }
 
+        const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
         QSqlQuery query(m_db);
         query.prepare(u"UPDATE main SET last_used_time = ? WHERE uuid = ?"_s);
-        query.addBindValue(QDateTime::currentMSecsSinceEpoch() / 1000.0);
+        query.addBindValue(nowTs);
         query.addBindValue(m_items[0]->uuid());
         if (query.exec()) {
+            m_items[0]->setLastUsedTime(nowTs);
             if (m_clip->isLocked(QClipboard::Selection) || m_clip->isLocked(QClipboard::Clipboard)) {
                 return;
             }
-            m_clip->setMimeData(m_items[0], buffersWithoutPassword);
+            m_clip->setMimeData(m_items[0],
+                                buffersWithoutPassword,
+                                SystemClipboard::ClipboardUpdateReason::UpdateClipboard,
+                                plainOverride);
         }
     });
 
@@ -400,7 +411,7 @@ void HistoryModel::clearHistoryInteractive(QWidget *dialogParent)
     QMessageBox box(dialogParent);
     box.setIcon(QMessageBox::Warning);
     box.setWindowTitle(tr("Vaciar historial del portapapeles"));
-    box.setText(tr("¿Seguro que querés vaciar el historial del portapapeles?\n(Los elementos fijados se conservarán)."));
+    box.setText(tr("¿Seguro que quieres vaciar el historial del portapapeles?\n(Los elementos fijados se conservarán)."));
     auto *dontAsk = new QCheckBox(tr("No volver a preguntar"), &box);
     box.setCheckBox(dontAsk);
     box.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
@@ -539,6 +550,10 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
         return item->sourceTitle();
     case SourceUrlRole:
         return item->sourceUrl();
+    case AddedTimeRole:
+        return item->addedTime();
+    case LastUsedTimeRole:
+        return item->lastUsedTime();
     default:
         return {};
     }
@@ -617,12 +632,16 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
         const QString preservedApp = item->sourceApp();
         const QString preservedTitle = item->sourceTitle();
         const QString preservedUrl = item->sourceUrl();
+        const qreal preservedAdded = item->addedTime();
+        const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
         item = std::make_shared<HistoryItem>(std::move(newUuid),
                                              mimetypes,
                                              std::move(text),
                                              preservedApp,
                                              preservedTitle,
-                                             preservedUrl);
+                                             preservedUrl,
+                                             preservedAdded > 0.0 ? preservedAdded : nowTs,
+                                             nowTs);
         Q_EMIT dataChanged(index, index, {Qt::DisplayRole, UuidRole});
         moveToTop(item->uuid());
         return true;
@@ -714,7 +733,7 @@ bool HistoryModel::remove(const QString &uuid, bool askConfirmation, QWidget *di
     QMessageBox box(dialogParent);
     box.setIcon(QMessageBox::Warning);
     box.setWindowTitle(tr("Eliminar elemento fijado"));
-    box.setText(tr("Este elemento está fijado. ¿Seguro que querés eliminarlo del historial?"));
+    box.setText(tr("Este elemento está fijado. ¿Seguro que quieres eliminarlo del historial?"));
     auto *dontAsk = new QCheckBox(tr("No volver a preguntar"), &box);
     box.setCheckBox(dontAsk);
     box.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
@@ -986,11 +1005,12 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     if (text.toUtf8().size() > kMaxClipboardPayloadBytes) {
         return false;
     }
-    if (!persistMimeData(uuid, text, mimeData, timestamp, source)) {
+    const qreal ts = (timestamp == 0) ? (QDateTime::currentMSecsSinceEpoch() / 1000.0) : timestamp;
+    if (!persistMimeData(uuid, text, mimeData, ts, source)) {
         return false;
     }
 
-    auto item = std::make_shared<HistoryItem>(uuid, formats, text, source.app, source.title, source.url);
+    auto item = std::make_shared<HistoryItem>(uuid, formats, text, source.app, source.title, source.url, ts, ts);
     beginInsertRows(QModelIndex(), 0, 0);
     m_items.prepend(std::move(item));
     endInsertRows();
@@ -1119,7 +1139,7 @@ bool HistoryModel::loadHistory()
     QHash<QString, bool> starredMap;
     int starred = 0;
 
-    query.prepare(u"SELECT uuid, mimetypes, text, starred, source_app, source_title, source_url FROM main ORDER BY last_used_time DESC, added_time DESC LIMIT ?"_s);
+    query.prepare(u"SELECT uuid, mimetypes, text, starred, source_app, source_title, source_url, added_time, last_used_time FROM main ORDER BY last_used_time DESC, added_time DESC LIMIT ?"_s);
     query.addBindValue(static_cast<int>(qMax<qsizetype>(m_maxSize, 2048)));
     if (query.exec()) {
         while (query.next()) {
@@ -1210,14 +1230,215 @@ void HistoryModel::loadSettings()
     }
 }
 
-void HistoryModel::moveToTop(const QString &uuid)
+void HistoryModel::moveToTop(const QString &uuid, std::optional<bool> plainTextOverride)
 {
     const int idx = indexOf(uuid);
     if (idx < 0) {
         return;
     }
+    m_nextPlainTextOverride = plainTextOverride;
     clearHasPassword();
     moveToTop(static_cast<qsizetype>(idx));
+}
+
+void HistoryModel::setCapturePaused(bool paused)
+{
+    if (m_capturePaused == paused) {
+        return;
+    }
+    m_capturePaused = paused;
+    Q_EMIT capturePausedChanged(m_capturePaused);
+}
+
+bool HistoryModel::toggleCapturePaused()
+{
+    setCapturePaused(!m_capturePaused);
+    return m_capturePaused;
+}
+
+bool HistoryModel::exportImageToFile(const QString &uuid, const QString &destPath) const
+{
+    if (!m_db.isOpen() || !HistoryItem::isValidUuid(uuid) || destPath.isEmpty()) {
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(u"SELECT data_uuid FROM aux WHERE uuid = ? AND mimetype IN (%1) ORDER BY rowid ASC LIMIT 1"_s.arg(imageMimeTypesSqlList()));
+    query.addBindValue(uuid);
+    if (!query.exec() || !query.next()) {
+        return false;
+    }
+
+    const QString dataUuid = query.value(0).toString();
+    if (!HistoryItem::isValidUuid(dataUuid)) {
+        return false;
+    }
+
+    const QString srcPath = m_dbFolder + u"/data/"_s + uuid + u'/' + dataUuid;
+    QImageReader reader(srcPath);
+    reader.setAutoTransform(true);
+    const QImage img = reader.read();
+    if (img.isNull()) {
+        return false;
+    }
+
+    QSaveFile out(destPath);
+    if (!out.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    QImageWriter writer(&out, "PNG");
+    if (!writer.write(img)) {
+        out.cancelWriting();
+        return false;
+    }
+    return out.commit();
+}
+
+bool HistoryModel::exportStarredToJson(const QString &filePath, int *exportedCount) const
+{
+    if (exportedCount) {
+        *exportedCount = 0;
+    }
+    if (filePath.isEmpty()) {
+        return false;
+    }
+
+    constexpr qsizetype kMaxExportImageBytes = 10 * 1024 * 1024;
+    QJsonArray itemsArr;
+    int count = 0;
+
+    for (const auto &item : std::as_const(m_items)) {
+        if (!isItemStarred(item->uuid())) {
+            continue;
+        }
+        QJsonObject obj;
+        if (item->type() == HistoryItemType::Image) {
+            QSqlQuery query(m_db);
+            query.prepare(u"SELECT data_uuid FROM aux WHERE uuid = ? AND mimetype IN (%1) ORDER BY rowid ASC LIMIT 1"_s.arg(imageMimeTypesSqlList()));
+            query.addBindValue(item->uuid());
+            if (!query.exec() || !query.next()) {
+                continue;
+            }
+            const QString dataUuid = query.value(0).toString();
+            if (!HistoryItem::isValidUuid(dataUuid)) {
+                continue;
+            }
+            QFile imgFile(m_dbFolder + u"/data/"_s + item->uuid() + u'/' + dataUuid);
+            if (!imgFile.open(QIODevice::ReadOnly) || imgFile.size() <= 0 || imgFile.size() > kMaxExportImageBytes) {
+                continue;
+            }
+            obj.insert(u"type"_s, u"image"_s);
+            obj.insert(u"imagePngBase64"_s, QString::fromLatin1(imgFile.readAll().toBase64()));
+        } else {
+            obj.insert(u"type"_s, item->type() == HistoryItemType::Url ? u"url"_s : u"text"_s);
+            obj.insert(u"text"_s, item->text());
+        }
+        if (!item->sourceApp().isEmpty()) {
+            obj.insert(u"sourceApp"_s, item->sourceApp());
+        }
+        if (!item->sourceTitle().isEmpty()) {
+            obj.insert(u"sourceTitle"_s, item->sourceTitle());
+        }
+        if (!item->sourceUrl().isEmpty()) {
+            obj.insert(u"sourceUrl"_s, item->sourceUrl());
+        }
+        itemsArr.append(obj);
+        ++count;
+    }
+
+    QJsonObject root;
+    root.insert(u"format"_s, u"mklipper-pinned"_s);
+    root.insert(u"version"_s, 1);
+    root.insert(u"exportedAt"_s, QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    root.insert(u"items"_s, itemsArr);
+
+    QSaveFile out(filePath);
+    if (!out.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    out.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    const QByteArray payload = QJsonDocument(root).toJson(QJsonDocument::Indented);
+    if (out.write(payload) != payload.size() || !out.commit()) {
+        return false;
+    }
+    if (exportedCount) {
+        *exportedCount = count;
+    }
+    return true;
+}
+
+bool HistoryModel::importStarredFromJson(const QString &filePath, int *importedCount)
+{
+    if (importedCount) {
+        *importedCount = 0;
+    }
+    if (filePath.isEmpty()) {
+        return false;
+    }
+
+    constexpr qint64 kMaxBackupFileBytes = 50 * 1024 * 1024;
+    QFile in(filePath);
+    if (!in.open(QIODevice::ReadOnly) || in.size() > kMaxBackupFileBytes) {
+        return false;
+    }
+
+    const QJsonDocument doc = QJsonDocument::fromJson(in.readAll());
+    if (!doc.isObject()) {
+        return false;
+    }
+    const QJsonObject root = doc.object();
+    if (root.value(u"format"_s).toString() != u"mklipper-pinned"_s || !root.value(u"items"_s).isArray()) {
+        return false;
+    }
+
+    const QJsonArray itemsArr = root.value(u"items"_s).toArray();
+    int imported = 0;
+
+    // Import in reverse order so the top-most exported item remains on top
+    for (qsizetype i = itemsArr.size() - 1; i >= 0; --i) {
+        const QJsonObject obj = itemsArr.at(i).toObject();
+        const QString type = obj.value(u"type"_s).toString(u"text"_s);
+        ClipboardSourceInfo src;
+        src.app = obj.value(u"sourceApp"_s).toString();
+        src.title = obj.value(u"sourceTitle"_s).toString();
+        src.url = obj.value(u"sourceUrl"_s).toString();
+
+        auto mime = std::make_unique<QMimeData>();
+        if (type == u"image"_s) {
+            const QByteArray raw = QByteArray::fromBase64(obj.value(u"imagePngBase64"_s).toString().toLatin1());
+            const QImage img = QImage::fromData(raw, "PNG");
+            if (img.isNull()) {
+                continue;
+            }
+            mime->setImageData(img);
+            mime->setData(QString(MimeTypes::png), raw);
+        } else {
+            const QString text = obj.value(u"text"_s).toString();
+            if (text.trimmed().isEmpty()) {
+                continue;
+            }
+            mime->setText(text);
+        }
+
+        const QString uuid = computeUuid(mime.get());
+        const bool existed = (indexOf(uuid) >= 0);
+        const bool wasStarred = existed && isItemStarred(uuid);
+
+        if (insert(mime.get(), 0, src)) {
+            const int row = indexOf(uuid);
+            if (row >= 0 && !isItemStarred(uuid)) {
+                setData(index(row), true, StarredRole);
+            }
+            if (!existed || !wasStarred) {
+                ++imported;
+            }
+        }
+    }
+
+    if (importedCount) {
+        *importedCount = imported;
+    }
+    return true;
 }
 
 void HistoryModel::moveToTop(qsizetype row)
@@ -1400,12 +1621,17 @@ QHash<int, QByteArray> HistoryModel::roleNames() const
         {SourceAppRole, "sourceApp"},
         {SourceTitleRole, "sourceTitle"},
         {SourceUrlRole, "sourceUrl"},
+        {AddedTimeRole, "addedTime"},
+        {LastUsedTimeRole, "lastUsedTime"},
     };
 }
 
 void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
 {
-    if (isIgnoredClipboardSource(mode)) {
+    if (m_capturePaused) {
+        return;
+    }
+    if (isIgnoredClipboardSource(mode, MklipperSettings::self()->ignoredApps())) {
         return;
     }
 
@@ -1489,7 +1715,7 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
 
 void HistoryModel::slotReceivedEmptyClipboard(QClipboard::Mode mode)
 {
-    if (!m_bNoNullClipboard || isIgnoredClipboardSource(mode)) {
+    if (m_capturePaused || !m_bNoNullClipboard || isIgnoredClipboardSource(mode, MklipperSettings::self()->ignoredApps())) {
         return;
     }
     if (auto top = first()) {

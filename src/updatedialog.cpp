@@ -222,7 +222,7 @@ void UpdateDialog::onAlreadyUpToDate(const QString &currentVersion, bool /*userI
 {
     m_titleLabel->setText(tr("Mklipper está actualizado"));
     m_subtitleLabel->setTextFormat(Qt::PlainText);
-    m_subtitleLabel->setText(tr("Ya tenés instalada la última versión disponible (%1).").arg(currentVersion));
+    m_subtitleLabel->setText(tr("Ya tienes instalada la última versión disponible (%1).").arg(currentVersion));
     setMode(Mode::UpToDate);
 }
 
@@ -359,7 +359,7 @@ void UpdateDialog::setMode(Mode mode)
             sub += tr(" · Descarga: %1").arg(formatSize(m_release.assetSize).toHtmlEscaped());
         }
         if (!m_release.hasDebAsset()) {
-            sub += tr("<br><i>No se encontró un paquete .deb para %1 en este release; podés abrir GitHub para descargarlo manualmente.</i>")
+            sub += tr("<br><i>No se encontró un paquete .deb para %1 en esta versión; puedes abrir GitHub para descargarlo manualmente.</i>")
                        .arg(m_release.architecture.toHtmlEscaped());
         }
         m_subtitleLabel->setTextFormat(Qt::RichText);
@@ -369,7 +369,7 @@ void UpdateDialog::setMode(Mode mode)
         if (!localizedNotes.isEmpty()) {
             m_notesBrowser->setMarkdown(localizedNotes);
         } else {
-            m_notesBrowser->setPlainText(tr("No se incluyeron notas de versión para este release."));
+            m_notesBrowser->setPlainText(tr("No se incluyeron notas de versión para este lanzamiento."));
         }
         m_notesBrowser->setVisible(true);
 

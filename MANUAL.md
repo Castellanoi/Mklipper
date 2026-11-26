@@ -10,34 +10,34 @@
 Guía rápida para aprovechar al máximo **Mklipper**, tu gestor de portapapeles nativo para Linux Mint (Cinnamon).
 
 ### 1. Primeros pasos
-- **Abrir el historial:** presioná **`Super + V`** (personalizable) o hacé **clic izquierdo** en el ícono de Mklipper en la bandeja del sistema.
-- **Pegar un elemento:** hacé clic sobre cualquier tarjeta, presioná **`Enter`** en la fila seleccionada o usá las teclas **`1` a `0`** para pegar los primeros 10 elementos al instante.
+- **Abrir el historial:** presiona **`Super + V`** (personalizable) o haz **clic izquierdo** en el icono de Mklipper en la bandeja del sistema.
+- **Pegar un elemento:** haz clic sobre cualquier tarjeta, presiona **`Enter`** en la fila seleccionada o usa las teclas **`1` a `0`** para pegar los primeros 10 elementos al instante.
 - **Menú rápido (clic derecho en la bandeja):** permite abrir el historial, ejecutar acciones en el elemento actual, editar el contenido actual, generar un código QR, activar o desactivar el menú automático de acciones, vaciar el historial, abrir **Configuración**, abrir este **Manual de usuario** o buscar actualizaciones.
 
 ### 2. Buscar, fijar y organizar
-- **Búsqueda instantánea:** apenas abrís la ventana flotante podés escribir para filtrar por texto, aplicación de origen, título de ventana o enlace.
-- **Escribir números directo en el buscador:** si preferís buscar números en lugar de usar el pegado rápido, desactivá **Usar teclas 1–0 para pegar rápido desde la ventana flotante** en **Configuración → Atajos**.
-- **Fijar favoritos:** pasá el mouse sobre una tarjeta y hacé clic en la **estrella** para fijarla arriba y protegerla al vaciar el historial. El botón de **estrella** en la barra superior filtra para ver solo los elementos fijados.
+- **Búsqueda instantánea:** apenas abras la ventana flotante, puedes escribir para filtrar por texto, aplicación de origen, título de ventana o enlace.
+- **Escribir números directamente en el buscador:** si prefieres buscar números en lugar de usar el pegado rápido, desactiva **Usar teclas 1–0 para pegar rápido desde la ventana flotante** en **Configuración → Atajos**.
+- **Fijar favoritos:** pasa el ratón sobre una tarjeta y haz clic en la **estrella** para fijarla arriba y protegerla al vaciar el historial. El botón de **estrella** en la barra superior filtra para ver solo los elementos fijados.
 
 ### 3. Botones de cada tarjeta
-Al pasar el mouse o seleccionar un elemento aparecen sus botones rápidos a la derecha:
+Al pasar el ratón o seleccionar un elemento aparecen sus botones rápidos a la derecha:
 - **Estrella:** fija o desfija el elemento.
 - **Enlace externo:** abre nuevamente la página web desde donde copiaste ese contenido (cuando está disponible).
 - **Rayo (Acciones):** abre las acciones disponibles para ese elemento (abrir URL/archivo o ejecutar una regla personalizada).
-- **Código QR:** genera un código QR escaneable (podés copiarlo o guardarlo como imagen PNG).
+- **Código QR:** genera un código QR escaneable (puedes copiarlo o guardarlo como imagen PNG).
 - **Lápiz (Editar):** edita el texto copiado antes de pegarlo (**`Ctrl + Enter`** guarda).
 - **Papelera (Eliminar):** borra el elemento de forma definitiva (también con la tecla **`Supr`**).
 
 ### 4. Pegar sin formato
-- Activá el interruptor **Pegar sin formato** en la parte superior del popup (o asignale un atajo global) para quitar fuentes, colores y estilos HTML al pegar texto.
-- No afecta imágenes ni archivos copiados.
+- Activa el interruptor **Pegar sin formato** en la parte superior de la ventana emergente (o asígnale un atajo global) para quitar fuentes, colores y estilos HTML al pegar texto.
+- No afecta a imágenes ni archivos copiados.
 
 ### 5. Acciones automáticas y personalizadas
-- **Enlaces y archivos:** al copiar una dirección web (`https://...`) o la ruta de un archivo existente en tu PC, Mklipper ofrece abrirlo con la aplicación predeterminada desde el botón de rayo o con un menú automático (activable desde el menú de la bandeja o en **Configuración → Acciones**).
-- **Reglas por expresión regular (*Configuración → Acciones*):** podés crear reglas avanzadas que ejecutan un comando usando `%s` como el texto copiado y, opcionalmente, reemplazan o agregan la salida del comando al portapapeles.
+- **Enlaces y archivos:** al copiar una dirección web (`https://...`) o la ruta de un archivo existente en tu equipo, Mklipper ofrece abrirlo con la aplicación predeterminada desde el botón de rayo o con un menú automático (activable desde el menú de la bandeja o en **Configuración → Acciones**).
+- **Reglas por expresión regular (*Configuración → Acciones*):** puedes crear reglas avanzadas que ejecutan un comando usando `%s` como el texto copiado y, opcionalmente, reemplazan o agregan la salida del comando al portapapeles.
 
 ### 6. Atajos de teclado, estética y privacidad
-- **Atajos globales (*Configuración → Atajos*):** configurá combinaciones para abrir el historial, alternar *Pegar sin formato*, editar el contenido actual, mostrar el código QR, invocar acciones, rotar el historial o vaciarlo. Se sincronizan automáticamente con los atajos de teclado de Cinnamon.
+- **Atajos globales (*Configuración → Atajos*):** configura combinaciones para abrir el historial, alternar *Pegar sin formato*, editar el contenido actual, mostrar el código QR, invocar acciones, rotar el historial o vaciarlo. Se sincronizan automáticamente con los atajos de teclado de Cinnamon.
 - **Tema y puntero nativos:** Mklipper adopta automáticamente el tema claro/oscuro, el color de acento (incluso en vivo sin reiniciar) y el tamaño del puntero configurados en Cinnamon.
 - **Protección de contraseñas y borrado limpio:** los secretos copiados desde gestores de contraseñas compatibles (KeePassXC, Bitwarden, 1Password, etc.) no se guardan en el historial, y cada elemento eliminado se sobrescribe y libera del disco al instante sin dejar residuos.
 

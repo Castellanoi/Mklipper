@@ -15,6 +15,7 @@
 class HistoryModel;
 class QAbstractButton;
 class QAction;
+class QButtonGroup;
 class QLabel;
 class QLineEdit;
 class QListView;
@@ -22,6 +23,7 @@ class QPlainTextEdit;
 class QPushButton;
 class QStackedWidget;
 class QToolButton;
+class PreviewWidget;
 class QRCodeWidget;
 class ClipboardItemDelegate;
 class X11Paster;
@@ -31,16 +33,32 @@ class HistoryFilterProxyModel : public QSortFilterProxyModel
     Q_OBJECT
 
 public:
+    enum class CategoryFilter {
+        All,
+        Text,
+        Images,
+        Links,
+        Starred,
+    };
+
     explicit HistoryFilterProxyModel(QObject *parent = nullptr);
 
+    void setCategoryFilter(CategoryFilter filter);
+    CategoryFilter categoryFilter() const { return m_category; }
+
     void setStarredOnly(bool starredOnly);
-    bool starredOnly() const { return m_starredOnly; }
+    bool starredOnly() const { return m_category == CategoryFilter::Starred; }
+
+    void setSearchQuery(const QString &query);
+    QString searchQuery() const { return m_rawQuery; }
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 
 private:
-    bool m_starredOnly = false;
+    CategoryFilter m_category = CategoryFilter::All;
+    QString m_rawQuery;
+    QString m_foldedQuery;
 };
 
 class KlipperPopup : public QFrame
@@ -74,14 +92,19 @@ protected:
     void mouseReleaseEvent(QMouseEvent *ev) override;
 
 private Q_SLOTS:
-    void activateItem(const QModelIndex &proxyIndex);
+    void activateItem(const QModelIndex &proxyIndex, bool invertPlainText = false);
+    void activateItemByUuid(const QString &uuid, bool invertPlainText = false);
     void openEditPage(const QModelIndex &proxyIndex);
+    void openEditPageByUuid(const QString &uuid);
     void openQrPage(const QModelIndex &proxyIndex);
+    void openPreviewPage(const QModelIndex &proxyIndex);
+    void saveImageByUuid(const QString &uuid);
     void toggleStar(const QModelIndex &proxyIndex);
     void deleteItem(const QModelIndex &proxyIndex);
     void invokeItemAction(const QModelIndex &proxyIndex);
     void saveEditedText();
     void updatePasswordBanner();
+    void updatePauseUi();
     void updateStatusLabel();
     void updatePersistentUi();
     void onPasteFinished();
@@ -90,6 +113,7 @@ private:
     void applyTheme();
     void showPositioned(const QPoint &anchorPos, bool anchorAbove);
     void returnToListPage();
+    void setActiveCategory(HistoryFilterProxyModel::CategoryFilter cat);
     bool tryQuickSelectDigit(QKeyEvent *ke, bool allowBareDigit);
     QModelIndex sourceIndexFor(const QModelIndex &proxyIndex) const;
 
@@ -102,12 +126,21 @@ private:
     // Page 0: list
     QLineEdit *m_searchEdit = nullptr;
     QAction *m_searchIconAction = nullptr;
-    QToolButton *m_starFilterBtn = nullptr;
+    QToolButton *m_pauseBtn = nullptr;
     QToolButton *m_clearBtn = nullptr;
     QToolButton *m_configBtn = nullptr;
     QToolButton *m_closeBtn = nullptr;
+    QButtonGroup *m_categoryGroup = nullptr;
+    QPushButton *m_filterAllBtn = nullptr;
+    QPushButton *m_filterTextBtn = nullptr;
+    QPushButton *m_filterImagesBtn = nullptr;
+    QPushButton *m_filterLinksBtn = nullptr;
+    QPushButton *m_filterStarredBtn = nullptr;
     QAbstractButton *m_plainTextSwitch = nullptr;
     QLabel *m_plainTextHintLabel = nullptr;
+    QWidget *m_pauseBanner = nullptr;
+    QLabel *m_pauseIconLabel = nullptr;
+    QLabel *m_pauseLabel = nullptr;
     QWidget *m_passwordBanner = nullptr;
     QLabel *m_pwIconLabel = nullptr;
     QLabel *m_pwLabel = nullptr;
@@ -128,6 +161,9 @@ private:
 
     // Page 2: QR
     QRCodeWidget *m_qrWidget = nullptr;
+
+    // Page 3: Preview
+    PreviewWidget *m_previewWidget = nullptr;
 
     bool m_applyingTheme = false;
     bool m_suppressAutoHide = false;

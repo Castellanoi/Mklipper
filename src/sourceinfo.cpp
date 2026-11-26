@@ -147,38 +147,15 @@ struct X11WindowMeta {
     bool isMklipper = false;
 };
 
-bool isIgnoredAppIdentifier(const QString &raw)
+bool isIgnoredWindowMeta(const X11WindowMeta &meta, const QStringList &extraIgnored)
 {
-    const QString id = raw.trimmed().toLower();
-    if (id.isEmpty()) {
-        return false;
-    }
-
-    // Screen lockers, screensavers, and privilege auth agents should never pollute clipboard history
-    if (id.contains(u"screensaver"_s)
-        || id.contains(u"screenlocker"_s)
-        || id.contains(u"screen-locker"_s)
-        || id.contains(u"light-locker"_s)
-        || id.contains(u"xsecurelock"_s)
-        || id.contains(u"swaylock"_s)
-        || id.contains(u"gtklock"_s)
-        || id.contains(u"hyprlock"_s)
-        || id.contains(u"physlock"_s)
-        || (id.contains(u"polkit"_s) && id.contains(u"auth"_s))) {
+    if (isIgnoredAppIdentifier(meta.resClass, extraIgnored)
+        || isIgnoredAppIdentifier(meta.resName, extraIgnored)
+        || isIgnoredAppIdentifier(meta.procComm, extraIgnored)) {
         return true;
     }
-
-    return id == u"slock"_s
-        || id == u"i3lock"_s
-        || id == u"xlock"_s
-        || id == u"dm-tool"_s;
-}
-
-bool isIgnoredWindowMeta(const X11WindowMeta &meta)
-{
-    return isIgnoredAppIdentifier(meta.resClass)
-        || isIgnoredAppIdentifier(meta.resName)
-        || isIgnoredAppIdentifier(meta.procComm);
+    const QString pretty = prettifyAppName(meta.resClass, meta.resName);
+    return !pretty.isEmpty() && isIgnoredAppIdentifier(pretty, extraIgnored);
 }
 
 X11WindowMeta inspectX11Window(Display *dpy, Window win)
@@ -483,7 +460,44 @@ ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeDat
     return info;
 }
 
-bool isIgnoredClipboardSource(QClipboard::Mode mode)
+bool isIgnoredAppIdentifier(const QString &raw, const QStringList &extraIgnored)
+{
+    const QString id = raw.trimmed().toLower();
+    if (id.isEmpty()) {
+        return false;
+    }
+
+    // Screen lockers, screensavers, and privilege auth agents should never pollute clipboard history
+    if (id.contains(u"screensaver"_s)
+        || id.contains(u"screenlocker"_s)
+        || id.contains(u"screen-locker"_s)
+        || id.contains(u"light-locker"_s)
+        || id.contains(u"xsecurelock"_s)
+        || id.contains(u"swaylock"_s)
+        || id.contains(u"gtklock"_s)
+        || id.contains(u"hyprlock"_s)
+        || id.contains(u"physlock"_s)
+        || (id.contains(u"polkit"_s) && id.contains(u"auth"_s))) {
+        return true;
+    }
+
+    if (id == u"slock"_s
+        || id == u"i3lock"_s
+        || id == u"xlock"_s
+        || id == u"dm-tool"_s) {
+        return true;
+    }
+
+    for (const QString &entry : extraIgnored) {
+        const QString pattern = entry.trimmed().toLower();
+        if (!pattern.isEmpty() && id.contains(pattern)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isIgnoredClipboardSource(QClipboard::Mode mode, const QStringList &extraIgnored)
 {
     Display *dpy = x11Display();
     if (!dpy) {
@@ -496,7 +510,7 @@ bool isIgnoredClipboardSource(QClipboard::Mode mode)
     const Window ownerWin = (selAtom != None) ? XGetSelectionOwner(dpy, selAtom) : None;
     if (ownerWin != 0 && ownerWin != None) {
         const X11WindowMeta ownerMeta = inspectX11Window(dpy, ownerWin);
-        if (isIgnoredWindowMeta(ownerMeta)) {
+        if (isIgnoredWindowMeta(ownerMeta, extraIgnored)) {
             return true;
         }
     }
@@ -504,7 +518,7 @@ bool isIgnoredClipboardSource(QClipboard::Mode mode)
     const Window activeWin = queryActiveWindow(dpy);
     if (activeWin != 0 && activeWin != None && activeWin != ownerWin) {
         const X11WindowMeta activeMeta = inspectX11Window(dpy, activeWin);
-        if (isIgnoredWindowMeta(activeMeta)) {
+        if (isIgnoredWindowMeta(activeMeta, extraIgnored)) {
             return true;
         }
     }
@@ -516,7 +530,7 @@ bool isIgnoredClipboardSource(QClipboard::Mode mode)
     if (focusedWin != 0 && focusedWin != None && focusedWin != PointerRoot
         && focusedWin != ownerWin && focusedWin != activeWin) {
         const X11WindowMeta focusMeta = inspectX11Window(dpy, focusedWin);
-        if (isIgnoredWindowMeta(focusMeta)) {
+        if (isIgnoredWindowMeta(focusMeta, extraIgnored)) {
             return true;
         }
     }

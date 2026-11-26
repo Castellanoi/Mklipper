@@ -1,5 +1,96 @@
 # Changelog
 
+## v1.8.0
+
+### 🇪🇸 Español
+- **Modo «Pausar captura» (incógnito):**
+  - Nuevo interruptor en la ventana flotante, en el menú de la bandeja y como atajo global (`--toggle-pause` en CLI/D-Bus) para pausar temporalmente el registro del portapapeles. El icono de la bandeja muestra una insignia de pausa y el popup muestra un aviso discreto con botón *Reanudar*.
+- **Filtros rápidos por categoría y búsqueda insensible a acentos:**
+  - Nueva barra de filtros compactos (*Todos · Texto · Imágenes · Enlaces · Fijados*) navegables con clic o la tecla `Tab`.
+  - La búsqueda ahora ignora acentos/diacríticos y admite múltiples palabras en cualquier orden (por ejemplo, `configuracion codigo` encuentra *«Configuración del código»*).
+- **Vista previa ampliada, guardado de imágenes y pegado puntual con `Shift`:**
+  - Pulsa `Espacio` (o el botón de ojo en la tarjeta) para ver imágenes a tamaño grande o textos largos completos sin tener que pegarlos.
+  - Nuevo botón **Guardar imagen como PNG…** directamente en las tarjetas de capturas de pantalla y en la vista previa.
+  - Mantén **`Shift`** al pulsar `Enter`, hacer clic o usar `Alt/Ctrl + 1–0` para invertir puntualmente el modo *«Pegar sin formato»* solo para ese pegado.
+  - Las tarjetas y tooltips muestran ahora la fecha y hora relativa de copiado (*«Justo ahora»*, *«Hace 5 min»*, *«Ayer, 18:30»*).
+- **Privacidad avanzada y respaldo de elementos fijados:**
+  - Nueva sección **Privacidad y respaldo** en *Configuración → General* con lista editable de **aplicaciones ignoradas** y botones para **exportar e importar elementos fijados** en formato JSON (incluyendo imágenes y con permisos privados `0600`).
+- **Español neutro en toda la aplicación y suite de pruebas automatizadas:**
+  - Todo el español de la interfaz, el manual integrado, el `README` y los registros de cambios se unificó a **español neutro** internacional.
+  - Incorporada suite oficial de pruebas con `CTest` (`tests/test_mklipper.cpp` + `tests/validate_i18n.py`) y flujo de integración continua en GitHub Actions.
+
+### 🇬🇧 English
+- **"Pause capture" (incognito) mode:**
+  - New toggle in the floating popup, tray menu, and global shortcuts (`--toggle-pause` via CLI/D-Bus) to temporarily suspend clipboard recording, complete with a paused tray icon badge and a quick *Resume* banner.
+- **Category filter chips & accent-insensitive search:**
+  - New compact filter bar (*All · Text · Images · Links · Pinned*) accessible via click or `Tab`.
+  - Instant search now ignores diacritics/accents and supports multi-word queries across text and source metadata.
+- **Quick preview, image PNG export & one-shot `Shift` format toggle:**
+  - Press `Space` (or click the eye button) to inspect full-size screenshots or long multi-line text without pasting.
+  - New **Save image as PNG…** button directly on image cards and in the preview pane.
+  - Hold **`Shift`** while clicking or pressing `Enter` to invert *"Paste without formatting"* for that single paste without changing the global toggle.
+  - Cards and tooltips now display localized relative copy timestamps (*"Just now"*, *"5 min ago"*, *"Yesterday, 18:30"*).
+- **Custom ignored apps list & pinned items backup:**
+  - New **Privacy & Backup** section in *Settings → General* with an editable **Ignored applications** list and JSON **Export / Import pinned items** (with private `0600` permissions and deduplication).
+- **Neutral international Spanish & automated `CTest` CI suite:**
+  - Unified all Spanish UI strings, manual, README, and changelogs to neutral international Spanish.
+  - Added automated `CTest` unit tests (`tests/test_mklipper.cpp` + `tests/validate_i18n.py`) and GitHub Actions CI.
+
+### 🇧🇷 Português (Brasil)
+- **Modo «Pausar captura» (anônimo):**
+  - Novo botão na janela flutuante, no menu da bandeja e como atalho global (`--toggle-pause`) para suspender temporariamente o registro da área de transferência, com ícone de pausa na bandeja e aviso rápido para retomar.
+- **Filtros rápidos por categoria e busca sem acentos:**
+  - Nova barra de filtros (*Todos · Texto · Imagens · Links · Fixados*) navegável por clique ou tecla `Tab`, além de busca tolerante a acentos e com várias palavras.
+- **Prévia ampliada, salvamento de imagens em PNG e inversão com `Shift`:**
+  - Pressione `Espaço` (ou clique no ícone de olho) para visualizar capturas em tamanho maior ou textos longos; salve imagens do histórico direto em PNG; segure **`Shift`** ao colar para inverter pontualmente *«Colar sem formatação»*.
+  - Cartões e dicas agora exibem a data/hora relativa da cópia.
+- **Aplicativos ignorados, backup de fixados e testes automatizados:**
+  - Nova seção **Privacidade e backup** em *Configurações → Geral* para definir aplicativos ignorados e exportar/importar itens fixados em JSON, além de suíte de testes automatizados (`CTest` + GitHub Actions).
+
+### 🇫🇷 Français
+- **Mode « Pause de la capture » (privé) :**
+  - Nouveau bouton dans la fenêtre flottante, le menu de la zone de notification et les raccourcis globaux (`--toggle-pause`) pour suspendre temporairement l'enregistrement, avec badge sur l'icône et bannière *Reprendre*.
+- **Filtres par catégorie et recherche insensible aux accents :**
+  - Nouvelle barre de filtres (*Tous · Texte · Images · Liens · Épinglés*) accessible au clic ou via `Tab`, et recherche multi-mots insensible aux accents.
+- **Aperçu rapide, export PNG et inversion ponctuelle avec `Maj` :**
+  - Appuyez sur `Espace` (ou l'icône œil) pour afficher les captures en grand ou les textes longs ; enregistrez les images en PNG ; maintenez **`Maj`** lors du collage pour inverser ponctuellement *« Coller sans mise en forme »*.
+  - Horodatage relatif affiché sur les cartes et infobulles.
+- **Applications ignorées, sauvegarde des épinglés et tests CI :**
+  - Nouvelle section **Confidentialité et sauvegarde** dans *Paramètres → Général* pour exclure des applications et exporter/importer les éléments épinglés en JSON, plus une suite de tests automatisés (`CTest` + GitHub Actions).
+
+### 🇮🇹 Italiano
+- **Modalità «Pausa cattura» (in incognito):**
+  - Nuovo comando nella finestra mobile, nel menu dell'area di notifica e come scorciatoia globale (`--toggle-pause`) per sospendere temporaneamente la registrazione degli appunti, con icona di pausa e banner *Riprendi*.
+- **Filtri rapidi per categoria e ricerca senza accenti:**
+  - Nuova barra filtri (*Tutti · Testo · Immagini · Link · Fissati*) navigabile con clic o `Tab`, più ricerca multi-parola insensibile agli accenti.
+- **Anteprima rapida, salvataggio PNG e inversione con `Maiusc`:**
+  - Premi `Spazio` (o l'icona occhio) per visualizzare schermate in grande o testi lunghi; salva le immagini direttamente in PNG; tieni premuto **`Maiusc`** mentre incolli per invertire una volta *«Incolla senza formattazione»*.
+  - Data e ora relative visibili su schede e suggerimenti.
+- **Applicazioni ignorate, backup dei fissati e test automatici:**
+  - Nuova sezione **Privacy e backup** in *Impostazioni → Generale* per escludere applicazioni ed esportare/importare gli elementi fissati in JSON, più suite di test automatici (`CTest` + GitHub Actions).
+
+### 🇩🇪 Deutsch
+- **Modus „Erfassung pausieren“ (Inkognito):**
+  - Neuer Schalter im schwebenden Fenster, im Tray-Menü und als globales Tastenkürzel (`--toggle-pause`) zum vorübergehenden Pausieren der Aufzeichnung – inklusive pausiertem Tray-Symbol und *Fortsetzen*-Banner.
+- **Kategoriefilter & akzentunabhängige Suche:**
+  - Neue Filterleiste (*Alle · Text · Bilder · Links · Angeheftet*) per Klick oder `Tab` sowie akzentunabhängige Mehrwortsuche.
+- **Schnellvorschau, PNG-Export & einmaliges Umkehren mit `Umschalt`:**
+  - Mit `Leertaste` (oder Augensymbol) Bilder in voller Größe oder lange Texte ansehen; Verlaufsbilder direkt als PNG speichern; **`Umschalt`** beim Einfügen gedrückt halten, um *„Ohne Formatierung einfügen“* einmalig umzukehren.
+  - Relative Zeitstempel direkt auf Karten und in Tooltips.
+- **Ignorierte Anwendungen, Sicherung angehefteter Einträge & automatische Tests:**
+  - Neuer Bereich **Datenschutz & Sicherung** unter *Einstellungen → Allgemein* für eigene Ausschlusslisten sowie JSON-Export/-Import angehefteter Einträge, ergänzt durch `CTest`-Unit-Tests und GitHub Actions CI.
+
+### 🇷🇺 Русский
+- **Режим «Пауза захвата» (инкогнито):**
+  - Новый переключатель во всплывающем окне, меню трея и глобальных клавишах (`--toggle-pause`) для временной приостановки записи буфера обмена — со значком паузы в трее и кнопкой *Возобновить*.
+- **Быстрые фильтры по категориям и поиск без учёта диакритики:**
+  - Новая панель фильтров (*Все · Текст · Изображения · Ссылки · Закреплённые*) с переключением по клику или `Tab`, а также многословный поиск без учёта акцентов.
+- **Быстрый предпросмотр, сохранение PNG и разовое переключение по `Shift`:**
+  - Нажмите `Пробел` (или значок глаза) для просмотра изображений в полном размере или длинных текстов; сохраняйте снимки прямо в PNG; удерживайте **`Shift`** при вставке, чтобы временно инвертировать *«Вставлять без форматирования»*.
+  - Относительное время копирования отображается на карточках и в подсказках.
+- **Список игнорируемых приложений, резервная копия закреплённых и автотесты:**
+  - Новый раздел **Приватность и резервное копирование** в *Настройки → Основные* со списком исключённых приложений и экспортом/импортом закреплённых записей в JSON, плюс автоматические тесты (`CTest` + GitHub Actions).
+
 ## v1.7.1
 
 ### 🇪🇸 Español
@@ -89,7 +180,7 @@
   - Soporte completo para teclas extendidas **F1–F35** (incluidas **F13–F24** usadas por teclas macro en teclados como Corsair K95), teclado numérico (`KP_*`), layouts no latinos y re-sincronización automática ante eventos `XCB_MAPPING_NOTIFY` (al conectar teclados, iniciar `ckb-next` o cambiar de distribución).
   - Nuevo capturador propio de atajos (`ShortcutRecorder`) con IME desactivado (evita que `ibus`/`fcitx` traguen modificadores), detección combinada de 3 capas (Qt + `nativeModifiers` X11 + `XQueryKeymap` en vivo), resolución de tecla base por `nativeScanCode()`, vista previa en tiempo real al mantener modificadores y **selector manual visual** (`Ctrl`/`Alt`/`Super`/`Shift` + tecla) para casos donde el sistema o el teclado interceptan la tecla durante la grabación.
 - **Manual de usuario rediseñado en pestañas visuales y amigables:**
-  - Reemplazada la vista plana de texto por **5 pestañas organizadas** (*Inicio*, *Tarjetas*, *Acciones*, *Atajos* y *Privacidad*) con tarjetas visuales, íconos flat con el color de acento y textos breves y claros.
+  - Reemplazada la vista plana de texto por **5 pestañas organizadas** (*Inicio*, *Tarjetas*, *Acciones*, *Atajos* y *Privacidad*) con tarjetas visuales, iconos flat con el color de acento y textos breves y claros.
 - **Arquitectura de traducciones migrada a JSON dinámico:**
   - Todas las traducciones y las secciones del Manual de usuario se cargan ahora dinámicamente desde archivos JSON autocontenidos ([`data/i18n/es.json`](data/i18n/es.json) y [`data/i18n/en.json`](data/i18n/en.json)), dejando la base lista para incorporar nuevos idiomas sin modificar código C++.
 
@@ -109,7 +200,7 @@
 - **Opción para deshabilitar los atajos rápidos `1–0`:**
   - Nuevo ajuste en **Configuración → Atajos** (*«Usar teclas 1–0 para pegar rápido desde la ventana flotante»*): al desactivarlo, escribir números en la ventana flotante va directamente al buscador, se ocultan las insignias numéricas de las tarjetas y se actualiza la barra de ayuda inferior.
 - **Tooltips explicativos en toda la configuración:**
-  - Todas las opciones, selectores, botones y campos de **Configuración** (pestañas *General*, *Acciones* y *Atajos*) muestran ahora un tooltip estilizado al pasar el mouse explicando brevemente qué hace cada ajuste.
+  - Todas las opciones, selectores, botones y campos de **Configuración** (pestañas *General*, *Acciones* y *Atajos*) muestran ahora un tooltip estilizado al pasar el ratón explicando brevemente qué hace cada ajuste.
 - **Manual de usuario integrado y en el repositorio:**
   - Nuevo **Manual de usuario** breve, claro y bilingüe accesible desde **Clic derecho en la bandeja → Manual de usuario…**, desde el botón **Manual de usuario** en **Configuración** y en [`MANUAL.md`](MANUAL.md).
 - **Atajos globales ampliados y accesos de Acciones completos:**
@@ -137,12 +228,12 @@
 
 ### 🇪🇸 Español
 - **Rediseño minimalista y flat inspirado en Cinnamon 6.6:**
-  - Nuevo motor propio de íconos vectoriales flat monocromáticos (estilo simbólico de Cinnamon 6.6 / Adwaita) en toda la aplicación: búsqueda, fijar, papelera, ajustes, cerrar, editar, código QR, enlaces, diálogo de configuración, actualizador y menú de bandeja.
+  - Nuevo motor propio de iconos vectoriales flat monocromáticos (estilo simbólico de Cinnamon 6.6 / Adwaita) en toda la aplicación: búsqueda, fijar, papelera, ajustes, cerrar, editar, código QR, enlaces, diálogo de configuración, actualizador y menú de bandeja.
   - Botones minimalistas sin bordes pesados, barra superior limpia, eliminación del recuadro anidado alrededor del historial, jerarquía visual por capas tonales, pestañas tipo *pill*, checkboxes/spinboxes planos y botones primarios con el color de acento del sistema.
-  - Ícono de aplicación modernizado y completamente flat cuyo clip adopta dinámicamente el color de acento activo del usuario.
+  - Icono de aplicación modernizado y completamente flat cuyo clip adopta dinámicamente el color de acento activo del usuario.
 - **Integración nativa con el tema, color de acento y puntero de Cinnamon:**
   - Lectura directa del tema GTK3/Cinnamon activo (`org.cinnamon.desktop.interface gtk-theme`) y sus `@define-color` reales (fondo, superficies, texto y color de acento), resolviendo el fallo de `qt6-gtk-platformtheme` que caía en el azul genérico de Qt Fusion.
-  - **Actualización en vivo sin reiniciar:** al cambiar el tema o el color de acento en **Configuración → Temas** de Cinnamon, Mklipper actualiza al instante el popup, los diálogos abiertos, el menú y el ícono de la bandeja.
+  - **Actualización en vivo sin reiniciar:** al cambiar el tema o el color de acento en **Configuración → Temas** de Cinnamon, Mklipper actualiza al instante el popup, los diálogos abiertos, el menú y el icono de la bandeja.
   - Herencia automática del **tamaño y tema del puntero** configurado en Cinnamon (`cursor-size` y `cursor-theme`) para que el cursor no vuelva al tamaño por defecto al pasar sobre las ventanas de Mklipper.
 - **Menú de la bandeja más limpio y confiable:**
   - Corregida la sincronización del menú contextual D-Bus con `xapp-sn-watcher` reutilizando un único `QMenu` persistente sin ítems ocultos fantasma.
@@ -165,8 +256,8 @@
 
 ### 🇪🇸 Español
 - **Renovación estética moderna acorde a Linux Mint Cinnamon:**
-  - Ventana flotante refinada con barra de búsqueda y botones redondeados alineados, contenedor enmarcado del historial, barra de desplazamiento minimalista, insignia de estado para *«Pegar sin formato»* y tarjetas del historial con mejores márgenes, miniaturas de imágenes con bordes redondeados y cápsula flotante translúcida para los botones de acción al pasar el mouse.
-  - Estado vacío mejorado con ícono, título y texto guía centrado manteniendo exactamente la misma estructura y alineación del popup.
+  - Ventana flotante refinada con barra de búsqueda y botones redondeados alineados, contenedor enmarcado del historial, barra de desplazamiento minimalista, insignia de estado para *«Pegar sin formato»* y tarjetas del historial con mejores márgenes, miniaturas de imágenes con bordes redondeados y cápsula flotante translúcida para los botones de acción al pasar el ratón.
+  - Estado vacío mejorado con icono, título y texto guía centrado manteniendo exactamente la misma estructura y alineación del popup.
   - Ventana de Configuración modernizada con encabezado visual con versión, tarjetas redondeadas por sección y tarjeta destacada de consejos; diálogo de actualización con barra de progreso y notas refinadas; vista de código QR en tarjeta blanca redondeada legible incluso en temas oscuros.
   - Totalmente adaptable a temas claros, oscuros y colores de acento de Linux Mint (Mint-Y / GTK3).
 
@@ -216,8 +307,8 @@
 ### 🇪🇸 Español
 - **Registro y visualización del origen de lo copiado (aplicación y enlace/ventana):**
   - Captura automáticamente desde qué aplicación y ventana (o enlace web exacto cuando el navegador lo provee en el portapapeles) se copió cada elemento, con migración transparente de la base SQLite sin perder tu historial anterior.
-  - Diseño visual limpio y sutil: muestra una pequeña línea discreta al pie de cada tarjeta (`Firefox · github.com`, `VS Code · main.cpp`, `Terminal`), tooltip completo al pasar el mouse y botón rápido `↗` solo al pasar el cursor si hay un enlace web de origen.
-  - También podés buscar en el historial por nombre de aplicación, título de ventana o dominio.
+  - Diseño visual limpio y sutil: muestra una pequeña línea discreta al pie de cada tarjeta (`Firefox · github.com`, `VS Code · main.cpp`, `Terminal`), tooltip completo al pasar el ratón y botón rápido `↗` solo al pasar el cursor si hay un enlace web de origen.
+  - También puedes buscar en el historial por nombre de aplicación, título de ventana o dominio.
   - Nuevas casillas en *Configuración → General* para habilitar/deshabilitar el guardado del origen (privacidad) y/o ocultar la etiqueta visual en la lista.
 
 ### 🇬🇧 English
@@ -251,7 +342,7 @@
 - **Switch «Pegar sin formato» directo en la ventana flotante:**
   - Nuevo interruptor visual (*toggle switch*) en la ventana principal del portapapeles (y sincronizado en *Configuración → General*) para activar o desactivar el pegado como texto plano con un solo clic.
   - Al activarlo, quita colores, fuentes y estilos HTML/RTF tanto al elegir elementos del historial como al copiar texto con formato y pegarlo directamente con `Ctrl+V`, sin afectar imágenes ni archivos copiados.
-  - Conserva el formato original en el historial SQLite por si desactivás el switch más adelante.
+  - Conserva el formato original en el historial SQLite por si desactivas el interruptor más adelante.
 
 ### 🇬🇧 English
 - **"Paste without formatting" toggle switch in the floating popup:**
@@ -278,7 +369,7 @@
 ### 🇪🇸 Español
 - **Modo ventana persistente mejorado:**
   - Nueva sub-opción en *Configuración → General* (**«Cerrar la ventana al hacer clic fuera de ella»**, disponible al activar la ventana flotante persistente).
-  - Permite mantener la ventana abierta mientras hacés clic en varios elementos seguidos (incluso con pegado automático) y cerrarla tanto con la cruz (`✕`) / `Esc` como haciendo clic fuera de ella.
+  - Permite mantener la ventana abierta mientras haces clic en varios elementos seguidos (incluso con pegado automático) y cerrarla tanto con la cruz (`✕`) / `Esc` como haciendo clic fuera de ella.
   - Al actualizar desde versiones anteriores se conservan intactas todas tus configuraciones e historial.
 
 ### 🇬🇧 English
