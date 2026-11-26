@@ -159,3 +159,26 @@ Description: Native KDE Klipper clipboard manager port for Linux Mint
  password manager secret filtering, regex actions, D-Bus API, and global
  X11 shortcuts.
 
+Package: mklipper
+Version: 1.8.0
+Architecture: amd64
+Maintainer: Ivan Castellano <castellano.ivan.93@gmail.com>
+Installed-Size: 1300
+Depends: libqt6core6t64 (>= 6.4), libqt6gui6t64 (>= 6.4), libqt6widgets6t64 (>= 6.4), libqt6dbus6t64 (>= 6.4), libqt6network6t64 (>= 6.4), libqt6sql6t64 (>= 6.4), libqt6sql6-sqlite (>= 6.4), libqt6svg6 (>= 6.4), qt6-gtk-platformtheme (>= 6.4), libqrencode4, libx11-6, libxtst6, pkexec
+Filename: pool/main/m/mklipper/mklipper_1.8.0_amd64.deb
+Size: 450260
+MD5sum: 6589c31746f36e99454ebcfa947618d9
+SHA1: e425afd1f58f98669ea4ed0567a038bc49b0ad2a
+SHA256: 1e5aaf02e524887b4c16f77485ede9c1509b9d93b07059ee860f6e6a31ab2814
+Section: utils
+Priority: optional
+Description: Native KDE Klipper clipboard manager port for Linux Mint
+ Mklipper is a clean, lightweight, native Qt 6 port of KDE Plasma's Klipper
+ clipboard manager designed for Linux Mint (Cinnamon / X11) without KDE or
+ Plasma runtime dependencies.
+ .
+ Features include persistent SQLite history (text, images, URLs), pinned items,
+ instant search popup, system tray icon, inline editing, QR code generation,
+ password manager secret filtering, regex actions, D-Bus API, and global
+ X11 shortcuts.
+
