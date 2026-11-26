@@ -25,10 +25,36 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
 {
     setWindowTitle(tr("Actualizar Mklipper"));
     setWindowIcon(QIcon(u":/icons/mklipper.svg"_s));
-    setMinimumWidth(500);
+    setMinimumWidth(520);
+    setStyleSheet(uR"(
+        QTextBrowser {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        QPlainTextEdit {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 7px;
+            padding: 6px;
+        }
+        QProgressBar {
+            border: 1px solid palette(mid);
+            border-radius: 5px;
+            background-color: palette(base);
+            max-height: 10px;
+            text-align: center;
+        }
+        QProgressBar::chunk {
+            background-color: palette(highlight);
+            border-radius: 4px;
+        }
+    )"_s);
 
     auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(16, 16, 16, 14);
+    mainLayout->setSpacing(12);
 
     // Header
     auto *headerLayout = new QHBoxLayout;

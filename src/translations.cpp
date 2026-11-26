@@ -25,6 +25,7 @@ public:
         m_map = {
             // ConfigDialog
             {"Configurar Mklipper", u"Configure Mklipper"_s},
+            {"Gestor de portapapeles para Linux Mint", u"Clipboard manager for Linux Mint"_s},
             {"Historial y comportamiento", u"History & Behavior"_s},
             {"Guardar historial entre sesiones", u"Save clipboard history across sessions"_s},
             {"Evitar que el portapapeles quede vacío al cerrar aplicaciones", u"Prevent clipboard from becoming empty when apps close"_s},
@@ -173,6 +174,8 @@ public:
             {"Con formato original", u"Original formatting"_s},
             {"No hay coincidencias.", u"No matches found."_s},
             {"El historial del portapapeles está vacío.", u"Clipboard history is empty."_s},
+            {"Copiá texto, enlaces o imágenes para verlos aquí.", u"Copy text, links, or images to see them here."_s},
+            {"Probá con otro término o quitá el filtro de fijados.", u"Try a different search term or clear the pinned filter."_s},
             {"%1 elementos", u"%1 items"_s},
             {" (%1 fijados)", u" (%1 pinned)"_s},
             {"  ·  1–0 / Clic: pegar  ·  Supr: borrar  ·  Esc: cerrar",

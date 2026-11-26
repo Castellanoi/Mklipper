@@ -6,6 +6,7 @@
 
 #include <QClipboard>
 #include <QFileDialog>
+#include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -25,11 +26,13 @@ QRCodeWidget::QRCodeWidget(QWidget *parent)
     auto *headerLayout = new QHBoxLayout;
     auto *backBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("go-previous")), tr("Volver"), this);
     backBtn->setFlat(true);
+    backBtn->setCursor(Qt::PointingHandCursor);
     connect(backBtn, &QPushButton::clicked, this, &QRCodeWidget::backRequested);
 
     auto *titleLabel = new QLabel(tr("Código QR"), this);
     QFont titleFont = titleLabel->font();
     titleFont.setBold(true);
+    titleFont.setPointSizeF(titleFont.pointSizeF() + 0.5);
     titleLabel->setFont(titleFont);
 
     headerLayout->addWidget(backBtn);
@@ -38,21 +41,38 @@ QRCodeWidget::QRCodeWidget(QWidget *parent)
     headerLayout->addStretch();
     mainLayout->addLayout(headerLayout);
 
-    m_qrLabel = new QLabel(this);
+    auto *qrCard = new QFrame(this);
+    qrCard->setObjectName(QStringLiteral("mklipperQrCard"));
+    qrCard->setStyleSheet(QStringLiteral(
+        "QFrame#mklipperQrCard { background-color: #ffffff; border: 1px solid palette(mid); border-radius: 12px; }"));
+    auto *qrCardLayout = new QVBoxLayout(qrCard);
+    qrCardLayout->setContentsMargins(14, 14, 14, 14);
+
+    m_qrLabel = new QLabel(qrCard);
     m_qrLabel->setAlignment(Qt::AlignCenter);
     m_qrLabel->setMinimumSize(220, 220);
-    mainLayout->addWidget(m_qrLabel, 1);
+    m_qrLabel->setStyleSheet(QStringLiteral("QLabel { color: #333333; background: transparent; }"));
+    qrCardLayout->addWidget(m_qrLabel, 1);
+    mainLayout->addWidget(qrCard, 1, Qt::AlignCenter);
 
     m_previewLabel = new QLabel(this);
     m_previewLabel->setAlignment(Qt::AlignCenter);
     m_previewLabel->setTextFormat(Qt::PlainText);
     m_previewLabel->setWordWrap(true);
     m_previewLabel->setMaximumHeight(44);
+    QPalette pp = m_previewLabel->palette();
+    QColor pCol = pp.color(QPalette::WindowText);
+    pCol.setAlpha(170);
+    pp.setColor(QPalette::WindowText, pCol);
+    m_previewLabel->setPalette(pp);
     mainLayout->addWidget(m_previewLabel);
 
     auto *btnLayout = new QHBoxLayout;
+    btnLayout->setSpacing(8);
     m_copyBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), tr("Copiar QR"), this);
+    m_copyBtn->setCursor(Qt::PointingHandCursor);
     m_saveBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), tr("Guardar PNG"), this);
+    m_saveBtn->setCursor(Qt::PointingHandCursor);
     connect(m_copyBtn, &QPushButton::clicked, this, &QRCodeWidget::copyQrImage);
     connect(m_saveBtn, &QPushButton::clicked, this, &QRCodeWidget::saveQrImage);
     btnLayout->addStretch();

@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.6.1
+
+### 🇪🇸 Español
+- **Renovación estética moderna acorde a Linux Mint Cinnamon:**
+  - Ventana flotante refinada con barra de búsqueda y botones redondeados alineados, contenedor enmarcado del historial, barra de desplazamiento minimalista, insignia de estado para *«Pegar sin formato»* y tarjetas del historial con mejores márgenes, miniaturas de imágenes con bordes redondeados y cápsula flotante translúcida para los botones de acción al pasar el mouse.
+  - Estado vacío mejorado con ícono, título y texto guía centrado manteniendo exactamente la misma estructura y alineación del popup.
+  - Ventana de Configuración modernizada con encabezado visual con versión, tarjetas redondeadas por sección y tarjeta destacada de consejos; diálogo de actualización con barra de progreso y notas refinadas; vista de código QR en tarjeta blanca redondeada legible incluso en temas oscuros.
+  - Totalmente adaptable a temas claros, oscuros y colores de acento de Linux Mint (Mint-Y / GTK3).
+
+### 🇬🇧 English
+- **Modern Cinnamon-native visual polish across the entire app:**
+  - Refined floating popup with rounded search field and aligned toolbar buttons, framed history panel, slim modern scrollbar, status pill for "Paste without formatting", sleeker clipboard cards, rounded image thumbnails, and a translucent floating pill behind row hover action buttons.
+  - Enhanced empty state with icon, title, and helpful subtitle while keeping exact popup layout alignment.
+  - Modernized Settings dialog with a clean app header & version badge, rounded section cards, and styled tip banner; polished Update dialog with sleek progress bar and release notes frame; crisp white rounded card framing QR codes for dark-theme readability.
+  - Fully palette-driven to adapt seamlessly to Linux Mint light/dark themes and accent colors (Mint-Y / GTK3).
+
 ## v1.6.0
 
 ### 🇪🇸 Español

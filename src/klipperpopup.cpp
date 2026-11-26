@@ -253,7 +253,7 @@ public:
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, true);
 
-        const QRect cardRect = option.rect.adjusted(6, 3, -6, -3);
+        const QRect cardRect = option.rect.adjusted(6, 4, -6, -3);
         const bool isSelected = option.state & QStyle::State_Selected;
         const bool isHovered = (index == m_hoveredIndex) || (option.state & QStyle::State_MouseOver);
         const bool isStarred = index.data(HistoryModel::StarredRole).toBool();
@@ -261,47 +261,52 @@ public:
         const auto type = static_cast<HistoryItemType>(index.data(HistoryModel::TypeIntRole).toInt());
 
         const QPalette &pal = option.palette;
-        QColor bg = pal.color(QPalette::Base);
+        const bool isDark = pal.color(QPalette::Text).lightness() > 128;
+
+        QColor bg = pal.color(QPalette::AlternateBase);
         if (isSelected) {
             bg = pal.color(QPalette::Highlight);
-            bg.setAlpha(48);
+            bg.setAlpha(isDark ? 68 : 40);
         } else if (isHovered) {
             bg = pal.color(QPalette::Highlight);
-            bg.setAlpha(26);
-        } else {
-            bg = pal.color(QPalette::AlternateBase);
+            bg.setAlpha(isDark ? 40 : 22);
+        } else if (isTopItem) {
+            bg = pal.color(QPalette::Highlight);
+            bg.setAlpha(isDark ? 24 : 14);
         }
 
-        QColor border = isSelected ? pal.color(QPalette::Highlight) : pal.color(QPalette::Mid);
-        border.setAlpha(isSelected ? 190 : 80);
+        QColor border = isSelected ? pal.color(QPalette::Highlight)
+                      : isHovered  ? pal.color(QPalette::Highlight)
+                                   : pal.color(QPalette::Mid);
+        border.setAlpha(isSelected ? 195 : (isHovered ? 115 : (isDark ? 70 : 55)));
 
         QPainterPath path;
-        path.addRoundedRect(cardRect, 7, 7);
+        path.addRoundedRect(QRectF(cardRect).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
         painter->fillPath(path, bg);
         painter->setPen(QPen(border, 1.0));
         painter->drawPath(path);
 
-        // Active top item subtle accent strip on the left
+        // Active top item sleek accent pill on the left
         if (isTopItem) {
             QPainterPath accentBar;
-            accentBar.addRoundedRect(QRectF(cardRect.left() + 1, cardRect.top() + 6, 3, cardRect.height() - 12), 1.5, 1.5);
+            accentBar.addRoundedRect(QRectF(cardRect.left() + 2, cardRect.top() + 8, 3.0, cardRect.height() - 16), 1.5, 1.5);
             painter->fillPath(accentBar, pal.color(QPalette::Highlight));
         }
 
         // Compute right margin depending on whether hover buttons or star badge are shown
         const bool showButtons = isHovered || isSelected;
-        int rightReserved = 10;
+        int rightReserved = 12;
         QList<ButtonRect> btns;
         if (showButtons) {
             btns = buttonRects(cardRect, index);
             if (!btns.isEmpty()) {
-                rightReserved = cardRect.right() - btns.last().rect.left() + 8;
+                rightReserved = cardRect.right() - btns.last().rect.left() + 12;
             }
         } else if (isStarred) {
-            rightReserved = 28;
+            rightReserved = 30;
         }
 
-        QRect contentRect = cardRect.adjusted(10, 6, -rightReserved, -6);
+        QRect contentRect = cardRect.adjusted(12, 7, -rightReserved, -7);
 
         // Numbered badge (1..9, 0 for 10th shortcut, 11+ plain)
         const int rowNum = index.row();
@@ -317,32 +322,32 @@ public:
                               badgeH);
 
         QPainterPath badgePath;
-        badgePath.addRoundedRect(badgeRect, 5, 5);
+        badgePath.addRoundedRect(QRectF(badgeRect).adjusted(0.5, 0.5, -0.5, -0.5), 6.0, 6.0);
         QColor badgeBg = hasDigitShortcut ? pal.color(QPalette::Highlight) : pal.color(QPalette::Mid);
-        badgeBg.setAlpha(hasDigitShortcut ? (isTopItem ? 190 : 70) : 45);
+        badgeBg.setAlpha(hasDigitShortcut ? (isTopItem ? 220 : (isDark ? 72 : 42)) : 38);
         painter->fillPath(badgePath, badgeBg);
 
         QColor badgeBorder = hasDigitShortcut ? pal.color(QPalette::Highlight) : pal.color(QPalette::Mid);
-        badgeBorder.setAlpha(hasDigitShortcut ? 140 : 75);
+        badgeBorder.setAlpha(hasDigitShortcut ? (isTopItem ? 230 : 120) : 65);
         painter->setPen(QPen(badgeBorder, 1.0));
         painter->drawPath(badgePath);
 
         QFont badgeFont = option.font;
-        badgeFont.setPointSizeF(qMax(8.0, badgeFont.pointSizeF() - 1.0));
+        badgeFont.setPointSizeF(qMax(8.0, badgeFont.pointSizeF() - 1.2));
         badgeFont.setBold(hasDigitShortcut);
         painter->setFont(badgeFont);
         QColor badgeFg = (hasDigitShortcut && isTopItem) ? pal.color(QPalette::HighlightedText) : pal.color(QPalette::Text);
         if (!hasDigitShortcut) {
-            badgeFg.setAlpha(155);
+            badgeFg.setAlpha(145);
         }
         painter->setPen(badgeFg);
         painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
 
-        contentRect.setLeft(badgeRect.right() + 9);
+        contentRect.setLeft(badgeRect.right() + 10);
 
         // Reserve a clean subtle bottom row for source info (app / domain / title) when enabled
         const QString sourceLabel = compactSourceFor(index);
-        const bool hasSourceUrl = !index.data(HistoryModel::SourceUrlRole).toString().isEmpty();
+        const bool hasSourceUrl = isSafeExternalHttpUrl(QUrl(index.data(HistoryModel::SourceUrlRole).toString()));
         QRect metaRect;
         if (!sourceLabel.isEmpty()) {
             const int metaH = qMax(15, option.fontMetrics.height() - 1);
@@ -353,14 +358,23 @@ public:
         if (type == HistoryItemType::Image) {
             const QUrl imgUrl = index.data(HistoryModel::ImageUrlRole).toUrl();
             const QString uuid = index.data(HistoryModel::UuidRole).toString();
-            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(96, cardRect.height() - 14));
+            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(96, cardRect.height() - 16));
 
             if (!thumb.isNull()) {
                 const QRect thumbRect(contentRect.left(),
                                       contentRect.center().y() - thumb.height() / 2,
                                       thumb.width(),
                                       thumb.height());
+                painter->save();
+                QPainterPath thumbClip;
+                thumbClip.addRoundedRect(QRectF(thumbRect), 5.0, 5.0);
+                painter->setClipPath(thumbClip);
                 painter->drawPixmap(thumbRect, thumb);
+                painter->restore();
+                QColor thumbBorder = pal.color(QPalette::Mid);
+                thumbBorder.setAlpha(110);
+                painter->setPen(QPen(thumbBorder, 1.0));
+                painter->drawRoundedRect(QRectF(thumbRect).adjusted(0.5, 0.5, -0.5, -0.5), 5.0, 5.0);
                 contentRect.setLeft(thumbRect.right() + 10);
             }
 
@@ -409,7 +423,7 @@ public:
                 subFont.setPointSizeF(qMax(8.0, subFont.pointSizeF() - 1.0));
                 painter->setFont(subFont);
                 QColor muted = pal.color(QPalette::Text);
-                muted.setAlpha(165);
+                muted.setAlpha(155);
                 painter->setPen(muted);
                 const QFontMetrics fm2(subFont);
                 painter->drawText(r2, Qt::AlignVCenter | Qt::AlignLeft,
@@ -426,13 +440,13 @@ public:
             const int dotSize = 5;
             const QRectF dotRect(metaRect.left(), metaRect.center().y() - dotSize / 2.0, dotSize, dotSize);
             QColor dotColor = hasSourceUrl ? pal.color(QPalette::Highlight) : pal.color(QPalette::Text);
-            dotColor.setAlpha(hasSourceUrl ? 190 : 105);
+            dotColor.setAlpha(hasSourceUrl ? 200 : 105);
             painter->setPen(Qt::NoPen);
             painter->setBrush(dotColor);
             painter->drawEllipse(dotRect);
 
             QColor metaColor = pal.color(QPalette::Text);
-            metaColor.setAlpha(135);
+            metaColor.setAlpha(140);
             painter->setPen(metaColor);
             const QRect textMetaRect = metaRect.adjusted(dotSize + 5, 0, 0, 0);
             const QFontMetrics fmMeta(metaFont);
@@ -440,24 +454,43 @@ public:
                               fmMeta.elidedText(sourceLabel, Qt::ElideRight, textMetaRect.width()));
         }
 
-        // Draw buttons or persistent star indicator
-        if (showButtons) {
+        // Draw buttons (inside a soft floating pill) or persistent star indicator
+        if (showButtons && !btns.isEmpty()) {
+            const QRect pillRect(btns.last().rect.left() - 3,
+                                 btns.first().rect.top() - 2,
+                                 btns.first().rect.right() - btns.last().rect.left() + 7,
+                                 btns.first().rect.height() + 4);
+            QColor pillBg = pal.color(QPalette::Window);
+            if (pillBg.alpha() == 0) {
+                pillBg = isDark ? QColor(45, 45, 48) : QColor(250, 250, 252);
+            }
+            pillBg.setAlpha(isDark ? 215 : 230);
+            QColor pillBorder = pal.color(QPalette::Mid);
+            pillBorder.setAlpha(isDark ? 75 : 55);
+            QPainterPath pillPath;
+            pillPath.addRoundedRect(QRectF(pillRect).adjusted(0.5, 0.5, -0.5, -0.5), 7.0, 7.0);
+            painter->fillPath(pillPath, pillBg);
+            painter->setPen(QPen(pillBorder, 1.0));
+            painter->drawPath(pillPath);
+
             for (const auto &b : btns) {
                 const bool btnHover = isHovered && b.rect.contains(m_hoverPos);
                 if (btnHover) {
                     QPainterPath bp;
-                    bp.addRoundedRect(b.rect, 5, 5);
-                    QColor hbg = (b.action == RowAction::Delete) ? QColor(210, 60, 60, 170) : pal.color(QPalette::Highlight);
+                    bp.addRoundedRect(b.rect, 5.5, 5.5);
+                    QColor hbg = (b.action == RowAction::Delete) ? QColor(215, 62, 62, 195) : pal.color(QPalette::Highlight);
                     if (b.action != RowAction::Delete) {
-                        hbg.setAlpha(110);
+                        hbg.setAlpha(145);
                     }
                     painter->fillPath(bp, hbg);
                 }
                 QColor glyphColor = pal.color(QPalette::Text);
                 if (b.active) {
-                    glyphColor = QColor(240, 175, 45);
+                    glyphColor = QColor(235, 168, 35);
                 } else if (btnHover && b.action == RowAction::Delete) {
                     glyphColor = Qt::white;
+                } else if (btnHover) {
+                    glyphColor = pal.color(QPalette::HighlightedText);
                 }
                 painter->setPen(glyphColor);
                 QFont bf = option.font;
@@ -466,8 +499,8 @@ public:
                 painter->drawText(b.rect, Qt::AlignCenter, b.fallbackGlyph);
             }
         } else if (isStarred) {
-            QRect starRect(cardRect.right() - 24, cardRect.center().y() - 10, 20, 20);
-            painter->setPen(QColor(240, 175, 45));
+            QRect starRect(cardRect.right() - 26, cardRect.center().y() - 10, 20, 20);
+            painter->setPen(QColor(235, 168, 35));
             QFont sf = option.font;
             sf.setPointSize(11);
             painter->setFont(sf);
@@ -597,6 +630,80 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     setLineWidth(1);
     setFixedSize(kPopupWidth, kPopupHeight);
 
+    setStyleSheet(uR"(
+        QFrame#mklipperPopup {
+            background-color: palette(window);
+            border: 1px solid palette(mid);
+        }
+        QLineEdit#mklipperSearch {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 7px;
+            padding: 3px 8px;
+        }
+        QLineEdit#mklipperSearch:focus {
+            border: 1px solid palette(highlight);
+        }
+        QToolButton#mklipperToolBtn, QToolButton#mklipperCloseBtn {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 7px;
+            padding: 2px;
+        }
+        QToolButton#mklipperToolBtn:hover {
+            border-color: palette(highlight);
+            background-color: palette(alternate-base);
+        }
+        QToolButton#mklipperToolBtn:checked {
+            border-color: #e6a825;
+            background-color: rgba(235, 168, 35, 45);
+            color: #d99512;
+        }
+        QToolButton#mklipperCloseBtn:hover {
+            border-color: #d73e3e;
+            background-color: rgba(215, 62, 62, 42);
+            color: #d73e3e;
+        }
+        QFrame#mklipperListFrame {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 9px;
+        }
+        QFrame#mklipperPasswordBanner {
+            background-color: rgba(235, 168, 35, 36);
+            border: 1px solid rgba(215, 145, 20, 140);
+            border-radius: 7px;
+        }
+        QPlainTextEdit#mklipperEditArea {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        QPlainTextEdit#mklipperEditArea:focus {
+            border: 1px solid palette(highlight);
+        }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 8px;
+            margin: 4px 2px 4px 0px;
+        }
+        QScrollBar::handle:vertical {
+            background: palette(mid);
+            min-height: 28px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: palette(highlight);
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            background: none;
+        }
+    )"_s);
+
     auto *rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(1, 1, 1, 1);
     rootLayout->setSpacing(0);
@@ -607,39 +714,49 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     // ======================== Page 0: History List ========================
     auto *listPage = new QWidget(this);
     auto *listLayout = new QVBoxLayout(listPage);
-    listLayout->setContentsMargins(8, 8, 8, 6);
-    listLayout->setSpacing(6);
+    listLayout->setContentsMargins(10, 10, 10, 8);
+    listLayout->setSpacing(8);
 
     // Top bar
     auto *topBar = new QHBoxLayout;
-    topBar->setSpacing(4);
+    topBar->setSpacing(5);
+
+    const int toolBtnSide = qMax(32, fontMetrics().height() + 14);
 
     m_searchEdit = new QLineEdit(listPage);
+    m_searchEdit->setObjectName(u"mklipperSearch"_s);
     m_searchEdit->setPlaceholderText(tr("Buscar en el historial…"));
     m_searchEdit->setClearButtonEnabled(true);
     m_searchEdit->addAction(QIcon::fromTheme(u"edit-find"_s), QLineEdit::LeadingPosition);
+    m_searchEdit->setFixedHeight(toolBtnSide);
     m_searchEdit->installEventFilter(this);
 
-    const int toolBtnSide = qMax(30, fontMetrics().height() + 14);
-
     m_starFilterBtn = new QToolButton(listPage);
+    m_starFilterBtn->setObjectName(u"mklipperToolBtn"_s);
     m_starFilterBtn->setCheckable(true);
     m_starFilterBtn->setText(u"★"_s);
+    m_starFilterBtn->setCursor(Qt::PointingHandCursor);
     m_starFilterBtn->setToolTip(tr("Mostrar solo elementos fijados"));
     m_starFilterBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_clearBtn = new QToolButton(listPage);
+    m_clearBtn->setObjectName(u"mklipperToolBtn"_s);
     m_clearBtn->setIcon(QIcon::fromTheme(u"edit-clear-history"_s, QIcon::fromTheme(u"edit-clear"_s)));
+    m_clearBtn->setCursor(Qt::PointingHandCursor);
     m_clearBtn->setToolTip(tr("Vaciar historial"));
     m_clearBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_configBtn = new QToolButton(listPage);
+    m_configBtn->setObjectName(u"mklipperToolBtn"_s);
     m_configBtn->setIcon(QIcon::fromTheme(u"preferences-system"_s, QIcon::fromTheme(u"configure"_s)));
+    m_configBtn->setCursor(Qt::PointingHandCursor);
     m_configBtn->setToolTip(tr("Configurar Mklipper"));
     m_configBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_closeBtn = new QToolButton(listPage);
+    m_closeBtn->setObjectName(u"mklipperCloseBtn"_s);
     m_closeBtn->setText(u"✕"_s);
+    m_closeBtn->setCursor(Qt::PointingHandCursor);
     m_closeBtn->setToolTip(tr("Cerrar ventana"));
     m_closeBtn->setFixedSize(toolBtnSide, toolBtnSide);
     connect(m_closeBtn, &QToolButton::clicked, this, &QWidget::hide);
@@ -682,15 +799,17 @@ KlipperPopup::KlipperPopup(QWidget *parent)
 
     // Password warning banner
     auto *pwBanner = new QFrame(listPage);
-    pwBanner->setFrameShape(QFrame::StyledPanel);
+    pwBanner->setObjectName(u"mklipperPasswordBanner"_s);
+    pwBanner->setFrameShape(QFrame::NoFrame);
     pwBanner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_passwordBanner = pwBanner;
     auto *pwLayout = new QHBoxLayout(m_passwordBanner);
-    pwLayout->setContentsMargins(8, 4, 8, 4);
+    pwLayout->setContentsMargins(10, 5, 8, 5);
     auto *pwLabel = new QLabel(tr("🔒 El portapapeles contiene una contraseña (no guardada)"), m_passwordBanner);
     pwLabel->setWordWrap(true);
     auto *pwClearBtn = new QPushButton(tr("Limpiar"), m_passwordBanner);
     pwClearBtn->setFlat(true);
+    pwClearBtn->setCursor(Qt::PointingHandCursor);
     connect(pwClearBtn, &QPushButton::clicked, this, [this]() {
         m_model->clearPasswords();
     });
@@ -699,13 +818,20 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_passwordBanner->setVisible(false);
     listLayout->addWidget(m_passwordBanner);
 
-    // Proxy & ListView / Empty placeholder inside a dedicated QStackedWidget so header/footer never shift
+    // Proxy & ListView / Empty placeholder inside a framed QStackedWidget so header/footer never shift
     m_proxy = new HistoryFilterProxyModel(this);
     m_proxy->setSourceModel(m_model.get());
 
     m_delegate = new ClipboardItemDelegate(this);
 
-    m_listStack = new QStackedWidget(listPage);
+    auto *listFrame = new QFrame(listPage);
+    listFrame->setObjectName(u"mklipperListFrame"_s);
+    listFrame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *listFrameLayout = new QVBoxLayout(listFrame);
+    listFrameLayout->setContentsMargins(2, 4, 2, 4);
+    listFrameLayout->setSpacing(0);
+
+    m_listStack = new QStackedWidget(listFrame);
     m_listStack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_listView = new QListView(m_listStack);
@@ -717,27 +843,59 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_listView->setSelectionMode(QAbstractItemView::SingleSelection);
     m_listView->setFrameShape(QFrame::NoFrame);
     m_listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_listView->setStyleSheet(u"QListView { background: transparent; border: none; outline: none; }"_s);
     m_listView->viewport()->setMouseTracking(true);
     m_listView->viewport()->installEventFilter(this);
     m_listView->installEventFilter(this);
 
-    m_emptyLabel = new QLabel(tr("El historial está vacío."), m_listStack);
+    auto *emptyPage = new QWidget(m_listStack);
+    emptyPage->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *emptyLayout = new QVBoxLayout(emptyPage);
+    emptyLayout->setContentsMargins(24, 24, 24, 24);
+    emptyLayout->setSpacing(6);
+    emptyLayout->addStretch();
+
+    auto *emptyIconLabel = new QLabel(emptyPage);
+    emptyIconLabel->setAlignment(Qt::AlignCenter);
+    const QIcon clipIcon = QIcon::fromTheme(u"edit-paste"_s, QIcon(u":/icons/mklipper.svg"_s));
+    emptyIconLabel->setPixmap(clipIcon.pixmap(36, 36));
+    emptyLayout->addWidget(emptyIconLabel);
+    emptyLayout->addSpacing(4);
+
+    m_emptyLabel = new QLabel(tr("El historial está vacío."), emptyPage);
     m_emptyLabel->setAlignment(Qt::AlignCenter);
     m_emptyLabel->setWordWrap(true);
     m_emptyLabel->setTextFormat(Qt::PlainText);
-    m_emptyLabel->setContentsMargins(16, 16, 16, 16);
-    m_emptyLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_emptyLabel->setAutoFillBackground(true);
+    QFont emptyTitleFont = m_emptyLabel->font();
+    emptyTitleFont.setBold(true);
+    m_emptyLabel->setFont(emptyTitleFont);
     QPalette ep = m_emptyLabel->palette();
-    ep.setColor(QPalette::Window, ep.color(QPalette::Base));
     QColor emptyColor = ep.color(QPalette::Text);
-    emptyColor.setAlpha(155);
+    emptyColor.setAlpha(185);
     ep.setColor(QPalette::WindowText, emptyColor);
     m_emptyLabel->setPalette(ep);
+    emptyLayout->addWidget(m_emptyLabel);
+
+    m_emptySubLabel = new QLabel(tr("Copiá texto, enlaces o imágenes para verlos aquí."), emptyPage);
+    m_emptySubLabel->setAlignment(Qt::AlignCenter);
+    m_emptySubLabel->setWordWrap(true);
+    m_emptySubLabel->setTextFormat(Qt::PlainText);
+    QFont emptySubFont = m_emptySubLabel->font();
+    emptySubFont.setPointSizeF(qMax(8.0, emptySubFont.pointSizeF() - 1.2));
+    m_emptySubLabel->setFont(emptySubFont);
+    QPalette esp = m_emptySubLabel->palette();
+    QColor emptySubColor = esp.color(QPalette::Text);
+    emptySubColor.setAlpha(125);
+    esp.setColor(QPalette::WindowText, emptySubColor);
+    m_emptySubLabel->setPalette(esp);
+    emptyLayout->addWidget(m_emptySubLabel);
+
+    emptyLayout->addStretch();
 
     m_listStack->addWidget(m_listView);
-    m_listStack->addWidget(m_emptyLabel);
-    listLayout->addWidget(m_listStack, 1);
+    m_listStack->addWidget(emptyPage);
+    listFrameLayout->addWidget(m_listStack);
+    listLayout->addWidget(listFrame, 1);
 
     // Footer status
     m_statusLabel = new QLabel(listPage);
@@ -748,7 +906,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     QPalette sp = m_statusLabel->palette();
     QColor muted = sp.color(QPalette::WindowText);
-    muted.setAlpha(155);
+    muted.setAlpha(150);
     sp.setColor(QPalette::WindowText, muted);
     m_statusLabel->setPalette(sp);
     listLayout->addWidget(m_statusLabel);
@@ -758,16 +916,18 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     // ======================== Page 1: Edit Page ========================
     auto *editPage = new QWidget(this);
     auto *editLayout = new QVBoxLayout(editPage);
-    editLayout->setContentsMargins(10, 10, 10, 10);
-    editLayout->setSpacing(8);
+    editLayout->setContentsMargins(12, 10, 12, 12);
+    editLayout->setSpacing(10);
 
     auto *editHeader = new QHBoxLayout;
     auto *editBackBtn = new QPushButton(QIcon::fromTheme(u"go-previous"_s), tr("Volver"), editPage);
     editBackBtn->setFlat(true);
+    editBackBtn->setCursor(Qt::PointingHandCursor);
     connect(editBackBtn, &QPushButton::clicked, this, &KlipperPopup::returnToListPage);
     auto *editTitle = new QLabel(tr("Editar contenido"), editPage);
     QFont etFont = editTitle->font();
     etFont.setBold(true);
+    etFont.setPointSizeF(etFont.pointSizeF() + 0.5);
     editTitle->setFont(etFont);
     editHeader->addWidget(editBackBtn);
     editHeader->addStretch();
@@ -776,6 +936,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     editLayout->addLayout(editHeader);
 
     m_editArea = new QPlainTextEdit(editPage);
+    m_editArea->setObjectName(u"mklipperEditArea"_s);
     editLayout->addWidget(m_editArea, 1);
 
     auto *editBtns = new QHBoxLayout;
@@ -1335,13 +1496,25 @@ void KlipperPopup::updatePersistentUi()
     }
     if (m_plainTextHintLabel) {
         m_plainTextHintLabel->setText(plainText ? tr("Solo texto plano") : tr("Con formato original"));
-        QPalette hp = m_plainTextHintLabel->palette();
-        QColor c = plainText ? palette().color(QPalette::Highlight) : palette().color(QPalette::WindowText);
-        if (!plainText) {
-            c.setAlpha(140);
+        if (plainText) {
+            const QColor hl = palette().color(QPalette::Highlight);
+            m_plainTextHintLabel->setStyleSheet(
+                QStringLiteral("QLabel { color: %1; background-color: rgba(%2, %3, %4, 34); "
+                               "border: 1px solid rgba(%2, %3, %4, 110); border-radius: 9px; padding: 2px 8px; }")
+                    .arg(hl.name())
+                    .arg(hl.red())
+                    .arg(hl.green())
+                    .arg(hl.blue()));
+        } else {
+            m_plainTextHintLabel->setStyleSheet(
+                u"QLabel { color: palette(window-text); background-color: transparent; "
+                u"border: 1px solid transparent; border-radius: 9px; padding: 2px 6px; }"_s);
+            QPalette hp = m_plainTextHintLabel->palette();
+            QColor c = palette().color(QPalette::WindowText);
+            c.setAlpha(145);
+            hp.setColor(QPalette::WindowText, c);
+            m_plainTextHintLabel->setPalette(hp);
         }
-        hp.setColor(QPalette::WindowText, c);
-        m_plainTextHintLabel->setPalette(hp);
     }
     if (m_listView) {
         m_listView->doItemsLayout();
@@ -1359,8 +1532,14 @@ void KlipperPopup::updateStatusLabel()
     if (visible == 0) {
         if (!m_searchEdit->text().isEmpty() || m_starFilterBtn->isChecked()) {
             m_emptyLabel->setText(tr("No hay coincidencias."));
+            if (m_emptySubLabel) {
+                m_emptySubLabel->setText(tr("Probá con otro término o quitá el filtro de fijados."));
+            }
         } else {
             m_emptyLabel->setText(tr("El historial del portapapeles está vacío."));
+            if (m_emptySubLabel) {
+                m_emptySubLabel->setText(tr("Copiá texto, enlaces o imágenes para verlos aquí."));
+            }
         }
     }
 

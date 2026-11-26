@@ -12,6 +12,7 @@
 #include <QDialogButtonBox>
 #include <QFontMetrics>
 #include <QFormLayout>
+#include <QFrame>
 #include <QGroupBox>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -60,7 +61,58 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 {
     setWindowTitle(tr("Configurar Mklipper"));
     setWindowIcon(QIcon(QStringLiteral(":/icons/mklipper.svg")));
-    setMinimumSize(460, 360);
+    setMinimumSize(500, 400);
+    setStyleSheet(QStringLiteral(R"(
+        QGroupBox {
+            font-weight: 600;
+            border: 1px solid palette(mid);
+            border-radius: 9px;
+            margin-top: 12px;
+            padding: 14px 12px 10px 12px;
+            background-color: palette(base);
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 12px;
+            padding: 0px 6px;
+            background-color: palette(window);
+            border-radius: 4px;
+        }
+        QTabWidget::pane {
+            border: 1px solid palette(mid);
+            border-radius: 8px;
+            background-color: palette(window);
+            top: -1px;
+        }
+        QTabBar::tab {
+            padding: 7px 16px;
+            margin-right: 3px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            border: 1px solid transparent;
+            border-bottom: none;
+        }
+        QTabBar::tab:selected {
+            background-color: palette(window);
+            border-color: palette(mid);
+            font-weight: 600;
+        }
+        QTabBar::tab:!selected:hover {
+            background-color: palette(alternate-base);
+        }
+        QListWidget {
+            border: 1px solid palette(mid);
+            border-radius: 7px;
+            padding: 4px;
+            background-color: palette(base);
+        }
+        QFrame#mklipperTipCard {
+            background-color: palette(base);
+            border: 1px solid palette(mid);
+            border-radius: 8px;
+        }
+    )"));
 
     // Clone existing actions for safe editing
     if (m_urlGrabber) {
@@ -75,12 +127,69 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     auto *s = MklipperSettings::self();
     auto *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(14, 14, 14, 12);
+    mainLayout->setSpacing(10);
+
+    // Clean Cinnamon-style header banner
+    auto *headerLayout = new QHBoxLayout;
+    headerLayout->setSpacing(10);
+    auto *logoLabel = new QLabel(this);
+    logoLabel->setPixmap(QIcon(QStringLiteral(":/icons/mklipper.svg")).pixmap(36, 36));
+    logoLabel->setFixedSize(36, 36);
+    headerLayout->addWidget(logoLabel);
+
+    auto *headerTextLayout = new QVBoxLayout;
+    headerTextLayout->setSpacing(1);
+    auto *titleRow = new QHBoxLayout;
+    titleRow->setSpacing(8);
+    auto *appTitle = new QLabel(QStringLiteral("Mklipper"), this);
+    QFont atFont = appTitle->font();
+    atFont.setBold(true);
+    atFont.setPointSizeF(atFont.pointSizeF() + 2.5);
+    appTitle->setFont(atFont);
+
+    const QColor hl = palette().color(QPalette::Highlight);
+    auto *verPill = new QLabel(QStringLiteral("v%1").arg(QStringLiteral(MKLIPPER_VERSION)), this);
+    verPill->setTextFormat(Qt::PlainText);
+    QFont vpFont = verPill->font();
+    vpFont.setPointSizeF(qMax(8.0, vpFont.pointSizeF() - 1.2));
+    vpFont.setBold(true);
+    verPill->setFont(vpFont);
+    verPill->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; background-color: rgba(%2, %3, %4, 34); "
+                       "border: 1px solid rgba(%2, %3, %4, 110); border-radius: 9px; padding: 1px 8px; }")
+            .arg(hl.name())
+            .arg(hl.red())
+            .arg(hl.green())
+            .arg(hl.blue()));
+
+    titleRow->addWidget(appTitle);
+    titleRow->addWidget(verPill);
+    titleRow->addStretch();
+
+    auto *appSubtitle = new QLabel(tr("Gestor de portapapeles para Linux Mint"), this);
+    QFont subFont = appSubtitle->font();
+    subFont.setPointSizeF(qMax(8.5, subFont.pointSizeF() - 1.0));
+    appSubtitle->setFont(subFont);
+    QPalette subPal = appSubtitle->palette();
+    QColor subCol = subPal.color(QPalette::WindowText);
+    subCol.setAlpha(155);
+    subPal.setColor(QPalette::WindowText, subCol);
+    appSubtitle->setPalette(subPal);
+
+    headerTextLayout->addLayout(titleRow);
+    headerTextLayout->addWidget(appSubtitle);
+    headerLayout->addLayout(headerTextLayout, 1);
+    mainLayout->addLayout(headerLayout);
+
     auto *tabs = new QTabWidget(this);
     mainLayout->addWidget(tabs, 1);
 
     // ==================== Tab 1: General ====================
     auto *generalPage = new QWidget(this);
     auto *genLayout = new QVBoxLayout(generalPage);
+    genLayout->setContentsMargins(12, 10, 12, 12);
+    genLayout->setSpacing(10);
 
     auto *histGroup = new QGroupBox(tr("Historial y comportamiento"), generalPage);
     auto *histForm = new QFormLayout(histGroup);
@@ -305,13 +414,18 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     keysLayout->addLayout(keysForm);
 
+    auto *tipCard = new QFrame(keysPage);
+    tipCard->setObjectName(QStringLiteral("mklipperTipCard"));
+    auto *tipLayout = new QHBoxLayout(tipCard);
+    tipLayout->setContentsMargins(12, 10, 12, 10);
     auto *tip = new QLabel(
         tr("Consejo: También podés asignar un atajo nativo en Cinnamon (Configuración del sistema → Teclado → Atajos personalizados) "
            "apuntando al comando <b>mklipper --toggle</b>."),
-        keysPage);
+        tipCard);
     tip->setWordWrap(true);
-    keysLayout->addSpacing(12);
-    keysLayout->addWidget(tip);
+    tipLayout->addWidget(tip);
+    keysLayout->addSpacing(10);
+    keysLayout->addWidget(tipCard);
     keysLayout->addStretch();
 
     tabs->addTab(makeScrollTab(keysPage, this), tr("Atajos"));

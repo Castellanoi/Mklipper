@@ -83,9 +83,11 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(action ? tr("Editar acción") : tr("Nueva acción"));
-    setMinimumSize(520, 380);
+    setMinimumSize(540, 400);
 
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(14, 14, 14, 12);
+    layout->setSpacing(10);
     auto *form = new QFormLayout;
 
     m_regexEdit = new QLineEdit(this);
@@ -110,6 +112,7 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     m_cmdTable = new QTableWidget(0, 3, this);
     m_cmdTable->setHorizontalHeaderLabels({tr("Comando"), tr("Descripción"), tr("Salida")});
     m_cmdTable->horizontalHeader()->setStretchLastSection(true);
+    m_cmdTable->setAlternatingRowColors(true);
     m_cmdTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_cmdTable->setSelectionMode(QAbstractItemView::SingleSelection);
     m_cmdTable->setEditTriggers(QAbstractItemView::NoEditTriggers);

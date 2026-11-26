@@ -107,6 +107,7 @@ private:
     QStackedWidget *m_listStack = nullptr;
     QListView *m_listView = nullptr;
     QLabel *m_emptyLabel = nullptr;
+    QLabel *m_emptySubLabel = nullptr;
     QLabel *m_statusLabel = nullptr;
 
     // Page 1: edit
