@@ -4,41 +4,41 @@ Hash: SHA512
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Thu, 26 Nov 2026 12:50:22 +0000
+Date: Thu, 26 Nov 2026 13:20:39 +0000
 Description: Mklipper APT repository for Linux Mint and Ubuntu
 Label: Mklipper
 Origin: Mklipper
 Suite: stable
 MD5Sum:
- d6f2cabed8de57e7f56ce8f7ce001ac2              203 Release
- 0d4f8532f01af426a6ca5576d1cb8106             4730 main/binary-amd64/Packages
- 175e96fcf0ae2de05fba5f819aeeace1             1090 main/binary-amd64/Packages.gz
+ f9af5f92a2ca48eb93613214744565a8              203 Release
+ 6e2207dde12d8e10f52ee38e74a85481             5913 main/binary-amd64/Packages
+ 19d31a397dfa71920d3f431e709384ab             1207 main/binary-amd64/Packages.gz
 SHA1:
- 78b160b62ff3341e1f118aa1d095569eb9cf1eba              203 Release
- 611cce583a879650aebf9fa9ada5e93ac48f080b             4730 main/binary-amd64/Packages
- 364826dbb37be0af560d23b6bb3a6d8080ac5f62             1090 main/binary-amd64/Packages.gz
+ d59976744d906044a662026798c3eb5a356ee4f0              203 Release
+ 926b401882679ae5610e4804962db108bce58d62             5913 main/binary-amd64/Packages
+ cfc1d47e8333b9e96c7441649f09fd5df5a938c5             1207 main/binary-amd64/Packages.gz
 SHA256:
- 9298b0d3f172d62574ece7b82d5db54ed55ffb5b0d07a09e2e8c8056d5565cf2              203 Release
- 98c438db7b858cd1304e37d39a364bf6e1a43de7a1634b1ebc6d68e858ab5ef3             4730 main/binary-amd64/Packages
- d76b963c3c85b006ab30497adaa80588eb262c826bf672665a5f883dd9d1e98b             1090 main/binary-amd64/Packages.gz
+ d97677a86f48223e1361084d743ba9e63eea37e7ff9eda374dc74b4c360bc538              203 Release
+ 0cc2bae68bfaa07d907a7e29e4d4fcd05dd700bb3bb6282649a7ca0c4b54fd52             5913 main/binary-amd64/Packages
+ da9a95dfc6fe603b91d6ec81654dd31f8b55ff590c6f5643e6ecd62d0a0b87e7             1207 main/binary-amd64/Packages.gz
 SHA512:
- 5a8c9757818ca7450d08b03ac0695ad3f44f79eab28784824637c0395025238018af230348c92a2c302cbeda21084388d87d1a77dfec9cfa4584ea5de54a6e9a              203 Release
- bb83e7eef0e0f1acef5b62c70c98d28cd9c71bd4b8c44b1fbc683c9b48c0027446469f08680f180ad84fb26ba9022cad178eddc881699c7d49e8638f4268bb11             4730 main/binary-amd64/Packages
- 2c789406cb2b7482c56ff131b94b99ed4ebe19bd11f81ce7d275842e79d57aced196e8e8bab48ee5e74e194f37218239b5a320110dff9a7e90f3dbb9db730cae             1090 main/binary-amd64/Packages.gz
+ 7800b9fec07604b1e59e08fc6ab0bf8b64149714fa3fcc009cbd9233009db7d78e1eb94e6f1897cdc3be18fdef5a1124c310dfc8ff5fea9f35b4c8441ba8ae3f              203 Release
+ d30ae847840800d1a7a9c3713509567cf5be6d8b637e6e8be7e7cca57fc73263c72d7b5cbd70466c6c90453d1737630c70adf66dd668955762a19f28063f3ada             5913 main/binary-amd64/Packages
+ dfff66c1138617207317a9f86373b5fbc4ec9e85f1117d977e368b05379e068609a8d9df56093c4fba0b1e04989fbb7e2833620512b32f397032de88d25821f3             1207 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iQJRBAEBCgA7FiEEt3QxO0edOibeHBAch6EXFBksBBUFAmsIKw4dHGNhc3RlbGxh
-bm8uaXZhbi45M0BnbWFpbC5jb20ACgkQh6EXFBksBBVTjQ//d4/BuHgPiCKiF2OH
-0N6kG/mnvWtdkidqThOGtpCLqtuqNtIPDUAf9gC3+Sga7myK9/28tt+xuUU/AbeW
-XsA41X8Q0vXYGfcMJowBsXsgUJAyu8r+Uz4DzidJT4DJR7s33STeXGVWXhZs9ZgX
-VXhUXFVS2EqLD1APjm2WdwP82U8FqfTEOXFtP1MWsa9b/pRAhXuWgJgqJ/sF/VpQ
-KvtYR2CxkG+qesf4JSdu9i1s0l3uVHGJCe1khITZfshmM+I6NsMFeUUcNZ480FnI
-KJ6QxjM3B9yjS8N5VJu8/CMVvpjYl0t70+hL8G/ZMhGoM4B6zVMeLZVY9TKup/jD
-Lr8XHqPTBIBR2KmuvLtMWu/6MW6rev91pLc/HDd/bGWFZ8odiKH0CTfTXWQvKbEh
-t20ayHegZBC5I+6xAo+07nWdaN85n8kMmLA11kBhSARimCFZ9qNS7tWwGILNDyWp
-b1kKRul6xqFZYzZlZkd9TKJcK0Cw24aIHlQpuSF4+xmqmWVAaq42FpA++v/QQNTY
-kLpuwjFAN/3sPOxGqqoZKQIk1AppSNR3q1qq1AFSl6PtAyQbD9I/SA74zSSauANl
-gpEVpfEYw66vmx9E2chi7Kwa39ZzQ62lY0vCrCpH7ptU6rdP4TluwYJvZRAAdQS0
-0y79fEUramc17ZdtByPTy8SGg4g=
-=1m3w
+iQJRBAEBCgA7FiEEt3QxO0edOibeHBAch6EXFBksBBUFAmsIMicdHGNhc3RlbGxh
+bm8uaXZhbi45M0BnbWFpbC5jb20ACgkQh6EXFBksBBUANQ//YDnD5+dpzf9GSOUB
+2tCn2BXE4sqK6NdkCCsoVaizaXkjrH8elvDcdPpM7gd2FDOjUuKLn+XH1SfYrRQb
+AhjVat5yBwiFC8zqCESFrAt75o5q0iQyY/RfFZqmDj3R9CVDkrk4iK4Pn+i8VN0X
+vZbUA4XS7/9T5pVkyPkE1t7OpxJSr2crV6s2MaTFaUBisuqfMneDlya6t7kX1QHZ
+OY8rQif5bfawG1yuSytE6pCMh8Kx76dtls73lvGFs3XBMjY2TAQS4R6emAev33Q3
+hNlDcpHtg0uVCIOQIk8icYORDfzOsBF1/M3itVKDUZ0RUDFtMT4K0JxNcf+3Rlb5
+8SOziKw3GyW5we8JNR3eKqQc+lZtpOQIubmfDSha0hkYtHwwJI+MjSO3+KqB7OYz
+jNaYXydzs6FQBcz1WOS9S9q6NM8qtyvTnvd6iGeFsgN8R4N+cY//SJc1VaSN1PJ4
+u2UsUmpPVwJLH4GQP7ibrphXbcL4R/Q5tE5Yr4u4dF+irRn4lu+U81crGCT2zO+0
+274iuU2iS2r4RdAup6WMpsEdfK0DvOnbJ+I1FluxWMbxd4LvtYERDU4W/r5cPRj+
+Be+XI103/PBH/dyvsmU3Zb3iIKDIkTvCPCNdFz12aKhrfvZltRiXWFq3Bxvz7OSG
+W2qPy8Q+rk4xHhyyXA5onXnPs/c=
+=iRTI
 -----END PGP SIGNATURE-----
