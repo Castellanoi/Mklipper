@@ -27,14 +27,19 @@
 #include <QCoreApplication>
 #include <QCursor>
 #include <QDBusConnection>
+#include <QDir>
 #include <QEvent>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QIcon>
 #include <QKeySequence>
 #include <QMenu>
 #include <QMimeData>
 #include <QProcess>
 #include <QTimer>
+
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace Qt::StringLiterals;
 
@@ -79,6 +84,7 @@ KlipperApp::KlipperApp(QObject *parent)
     setupTrayIcon();
     reloadConfig();
     updateTrayTooltip();
+    setupUpgradeWatcher();
 
     m_themeSyncTimer = new QTimer(this);
     m_themeSyncTimer->setSingleShot(true);
@@ -645,8 +651,88 @@ void KlipperApp::onUpdateInstallSucceeded(const ReleaseInfo &release)
     restartAfterUpdate();
 }
 
+void KlipperApp::setupUpgradeWatcher()
+{
+    const QString exePath = QCoreApplication::applicationFilePath();
+    if (exePath != u"/usr/bin/mklipper"_s && exePath != u"/usr/local/bin/mklipper"_s) {
+        return;
+    }
+
+    struct stat st{};
+    if (stat(exePath.toUtf8().constData(), &st) != 0) {
+        return;
+    }
+    m_watchedExePath = exePath;
+    m_exeDev = static_cast<quint64>(st.st_dev);
+    m_exeIno = static_cast<quint64>(st.st_ino);
+
+    m_upgradeDebounceTimer = new QTimer(this);
+    m_upgradeDebounceTimer->setSingleShot(true);
+    m_upgradeDebounceTimer->setInterval(2000);
+    connect(m_upgradeDebounceTimer, &QTimer::timeout, this, &KlipperApp::checkInstalledBinaryUpdated);
+
+    // Watch /usr/bin so package upgrades via Mint Update Manager / apt / dpkg trigger an automatic clean restart
+    m_exeWatcher = new QFileSystemWatcher(this);
+    const QString parentDir = QFileInfo(exePath).absolutePath();
+    if (!parentDir.isEmpty()) {
+        m_exeWatcher->addPath(parentDir);
+    }
+    m_exeWatcher->addPath(exePath);
+    connect(m_exeWatcher, &QFileSystemWatcher::directoryChanged, this, [this]() {
+        if (m_upgradeDebounceTimer && !m_restarting) {
+            m_upgradeDebounceTimer->start();
+        }
+    });
+    connect(m_exeWatcher, &QFileSystemWatcher::fileChanged, this, [this]() {
+        if (m_upgradeDebounceTimer && !m_restarting) {
+            m_upgradeDebounceTimer->start();
+        }
+    });
+
+    // Lightweight fallback poll in case system inotify watches are exhausted
+    auto *fallbackTimer = new QTimer(this);
+    fallbackTimer->setInterval(30000);
+    connect(fallbackTimer, &QTimer::timeout, this, &KlipperApp::checkInstalledBinaryUpdated);
+    fallbackTimer->start();
+}
+
+void KlipperApp::checkInstalledBinaryUpdated()
+{
+    if (m_restarting || m_watchedExePath.isEmpty()) {
+        return;
+    }
+    if (m_updater && m_updater->isBusy()) {
+        // In-app updater already handles its own restart once pkexec finishes
+        return;
+    }
+
+    const QByteArray pathUtf8 = m_watchedExePath.toUtf8();
+    struct stat st{};
+    if (stat(pathUtf8.constData(), &st) != 0) {
+        // Package was removed or is mid-replace; do not restart
+        return;
+    }
+    if (!S_ISREG(st.st_mode) || access(pathUtf8.constData(), X_OK) != 0) {
+        return;
+    }
+
+    const quint64 curDev = static_cast<quint64>(st.st_dev);
+    const quint64 curIno = static_cast<quint64>(st.st_ino);
+    if (curDev == m_exeDev && curIno == m_exeIno) {
+        return;
+    }
+
+    m_restarting = true;
+    Notifications::show(
+        tr("Mklipper actualizado"),
+        tr("Se detectó una nueva versión instalada. Reiniciando Mklipper…"),
+        4000);
+    restartAfterUpdate();
+}
+
 void KlipperApp::restartAfterUpdate()
 {
+    m_restarting = true;
     saveClipboardHistory();
 
     QDBusConnection bus = QDBusConnection::sessionBus();
@@ -654,7 +740,10 @@ void KlipperApp::restartAfterUpdate()
     bus.unregisterService(u"org.mklipper.App"_s);
     bus.unregisterService(u"org.kde.klipper"_s);
 
-    QString targetExe = u"/usr/bin/mklipper"_s;
+    QString targetExe = !m_watchedExePath.isEmpty() ? m_watchedExePath : u"/usr/bin/mklipper"_s;
+    if (!QFileInfo::exists(targetExe)) {
+        targetExe = u"/usr/bin/mklipper"_s;
+    }
     if (!QFileInfo::exists(targetExe)) {
         targetExe = QCoreApplication::applicationFilePath();
     }

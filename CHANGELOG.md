@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.0
+
+### 🇪🇸 Español
+- **5 nuevos paquetes de idiomas completos (7 idiomas en total):**
+  - Agregado soporte completo para **Português (Brasil)** ([`pt_br.json`](data/i18n/pt_br.json)), **Français** ([`fr.json`](data/i18n/fr.json)), **Italiano** ([`it.json`](data/i18n/it.json)), **Deutsch** ([`de.json`](data/i18n/de.json)) y **Русский** ([`ru.json`](data/i18n/ru.json)), sumándose a **Español** y **English**.
+  - Cada paquete incluye el 100 % de los textos de la interfaz, tooltips de configuración, notificaciones y las 5 pestañas completas del **Manual de usuario**, con detección automática del idioma del sistema y selección manual inmediata desde *Configuración → General*.
+- **Reinicio automático al actualizar desde el Gestor de actualizaciones de Linux Mint (`mintupdate` / `apt` / `dpkg`):**
+  - Mklipper detecta ahora automáticamente cuando el binario instalado (`/usr/bin/mklipper`) es reemplazado por una actualización del sistema (verificación de dispositivo/inode vía `QFileSystemWatcher` con debounce de 2 s y respaldo ligero), guarda el historial de forma segura, muestra una notificación y reinicia limpiamente la instancia para que la nueva versión quede activa al instante sin tener que cerrarla manualmente. *(Activo para todas las actualizaciones a partir de v1.7.0).*
+
+### 🇬🇧 English
+- **5 new complete language packs (7 languages total):**
+  - Added full support for **Português (Brasil)** ([`pt_br.json`](data/i18n/pt_br.json)), **Français** ([`fr.json`](data/i18n/fr.json)), **Italiano** ([`it.json`](data/i18n/it.json)), **Deutsch** ([`de.json`](data/i18n/de.json)), and **Русский** ([`ru.json`](data/i18n/ru.json)), alongside **Español** and **English**.
+  - Every pack translates 100% of UI strings, settings tooltips, notifications, and all 5 tabs of the built-in **User Manual**, with automatic system locale detection and instant switching in *Settings → General*.
+- **Automatic restart after Linux Mint Update Manager (`mintupdate` / `apt` / `dpkg`) upgrades:**
+  - Mklipper now automatically detects when the installed binary (`/usr/bin/mklipper`) is replaced by a system package upgrade (inode/device watcher via `QFileSystemWatcher` with a 2 s debounce and lightweight fallback), safely saves history, notifies the user, and cleanly restarts itself so the newly installed version takes effect immediately without manual relaunch. *(Takes effect for all upgrades starting from v1.7.0).*
+
 ## v1.6.4
 
 ### 🇪🇸 Español

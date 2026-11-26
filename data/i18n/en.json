@@ -169,6 +169,7 @@
     "Nueva versión de Mklipper disponible": "New version of Mklipper available",
     "Mklipper %1 ya está disponible. Hacé clic en el ícono de la bandeja → «Actualizar a Mklipper %1…» para instalarla.": "Mklipper %1 is now available. Click the tray icon → \"Update to Mklipper %1…\" to install it.",
     "Mklipper actualizado": "Mklipper updated",
+    "Se detectó una nueva versión instalada. Reiniciando Mklipper…": "A newly installed version was detected. Restarting Mklipper…",
     "Se instaló Mklipper %1 correctamente. Reiniciando…": "Mklipper %1 was installed successfully. Restarting…",
     "Historial del portapapeles": "Clipboard History",
     "Más reciente: %1": "Newer: %1",

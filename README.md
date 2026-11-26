@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" /></a>
-  <img src="https://img.shields.io/badge/Version-1.6.4-blue.svg" alt="Version: 1.6.4" />
+  <img src="https://img.shields.io/badge/Version-1.7.0-blue.svg" alt="Version: 1.7.0" />
   <img src="https://img.shields.io/badge/Qt-6.4%2B-41cd52.svg" alt="Qt 6.4+" />
   <img src="https://img.shields.io/badge/Tested%20on-Linux%20Mint%20Cinnamon%20(X11)-87cf3e.svg" alt="Tested on Linux Mint Cinnamon (X11)" />
 </p>
@@ -39,23 +39,23 @@ Está pensado para integrarse de forma limpia y liviana en el escritorio **Cinna
 - **Popup flotante estilo Klipper:** búsqueda instantánea, miniaturas de imágenes, edición de texto en línea, generador de códigos QR (copiar o guardar en PNG) y **modo ventana persistente** opcional (mantiene la ventana abierta al hacer clic entre elementos, con botón `✕` y opción adicional para cerrarla al hacer clic fuera de ella).
 - **Numeración y pegado rápido (`1`–`0`):** los elementos aparecen numerados (`1` a `9`, `0` para el 10.º); con el popup abierto podés presionar la tecla numérica correspondiente (o `Alt+1`..`Alt+0` mientras buscás) para pegarlo al instante.
 - **Pegado automático directo y switch «Pegar sin formato»:** al hacer clic en un elemento (o elegirlo con `Enter` / `1`–`0`), además de dejarlo en el portapapeles, lo pega directamente en la ventana anterior (`Ctrl+V` en aplicaciones normales y `Ctrl+Shift+V` en terminales). Incluye un interruptor rápido en la propia ventana para quitar colores, fuentes y estilos HTML/RTF al pegar texto (sin afectar imágenes ni archivos).
-- **Actualizaciones nativas en el Gestor de actualizaciones de Linux Mint (`mintupdate` / APT):** al instalar el `.deb` se configura automáticamente el repositorio APT oficial firmado con GPG, por lo que todas las versiones futuras aparecen directamente junto a las actualizaciones del sistema (y también funcionan con `sudo apt update && sudo apt upgrade`). Además conserva el actualizador integrado en la app con verificación obligatoria de **SHA-256** e instalación vía `pkexec`.
+- **Actualizaciones nativas en el Gestor de actualizaciones de Linux Mint (`mintupdate` / APT) con reinicio automático:** al instalar el `.deb` se configura automáticamente el repositorio APT oficial firmado con GPG, por lo que todas las versiones futuras aparecen directamente junto a las actualizaciones del sistema (y también funcionan con `sudo apt update && sudo apt upgrade`). Al actualizar el paquete, Mklipper detecta el reemplazo del binario y se reinicia automáticamente guardando el historial. Además conserva el actualizador integrado en la app con verificación obligatoria de **SHA-256** e instalación vía `pkexec`.
 - **Historial persistente en SQLite con origen del copiado y cero residuos:** guarda texto, imágenes/capturas y URLs en `~/.local/share/mklipper/history3.sqlite` (con permisos estrictos `0700`/`0600`), registrando opcionalmente desde qué aplicación y enlace/ventana se copió cada elemento (con etiqueta discreta, tooltip completo, búsqueda por app/dominio y casillas en configuración para activarlo o desactivarlo). Usa `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON` y limpieza de huérfanos para que todo lo borrado se elimine realmente del disco y no acumule espacio residual.
 - **Elementos fijados (`★`):** protegidos al vaciar el historial o alcanzar el límite máximo.
 - **Privacidad y seguridad endurecida:** ignora secretos marcados por gestores de contraseñas (`x-kde-passwordManagerHint`, KeePassXC, Bitwarden, 1Password, `ExcludeClipboardContentFromMonitorProcessing`), protege contra inyección de shell en acciones personalizadas y path traversal, valida integridad criptográfica en actualizaciones y compila con hardening (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
 - **Acciones personalizadas por regex (`URLGrabber`)** y apertura rápida de enlaces/archivos.
-- **Multilenguaje (Español / English) y soporte HiDPI:** adopta automáticamente el idioma del sistema y permite cambiar manualmente entre Español e English desde *Configuración → General*; la interfaz se adapta al escalado de pantalla y fuentes grandes.
+- **Multilenguaje (7 idiomas) y soporte HiDPI:** incluye **Español, English, Português (Brasil), Français, Italiano, Deutsch y Русский** mediante paquetes JSON dinámicos; adopta automáticamente el idioma del sistema y permite cambiar manualmente desde *Configuración → General*; la interfaz se adapta al escalado de pantalla y fuentes grandes.
 - **Integración nativa con Cinnamon:** registra `Super + V` directamente en los atajos de Cinnamon, expone API D-Bus (`org.mklipper.App` / `org.kde.klipper`) y cuenta con comandos CLI (`mklipper --toggle`, `--popup`, `--configure`, `--check-updates`, `--clear`, `--quit`).
 
 ### Instalación
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.6.4_amd64.deb`](dist/mklipper_1.6.4_amd64.deb).
+1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.7.0_amd64.deb`](dist/mklipper_1.7.0_amd64.deb).
 2. Instalalo con `apt` (o doble clic en Linux Mint) para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.6.4_amd64.deb
+sudo apt install ./mklipper_1.7.0_amd64.deb
 ```
 
 3. Iniciá **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper`. A partir del próximo inicio de sesión arrancará automáticamente (`/etc/xdg/autostart/mklipper.desktop`), y **las futuras actualizaciones te aparecerán automáticamente en el Gestor de actualizaciones de Linux Mint** (también podés buscar actualizaciones manualmente desde el ícono de la bandeja → *Buscar actualizaciones…*).
@@ -93,7 +93,7 @@ chmod +x packaging/build-deb.sh
 3. Instalá el paquete generado:
 
 ```bash
-sudo apt install ./dist/mklipper_1.6.4_amd64.deb
+sudo apt install ./dist/mklipper_1.7.0_amd64.deb
 ```
 
 ### Desinstalación
@@ -129,23 +129,23 @@ It is designed to blend naturally into **Cinnamon (X11)**: it inherits your syst
 - **Klipper-style floating popup:** instant search, image thumbnails, inline text editing, built-in QR code generation (copy or save as PNG), and optional **persistent window mode** (stays open while clicking between items, with a `✕` close button and an optional setting to also close when clicking outside).
 - **Numbered items & instant `1`–`0` paste:** entries are numbered (`1`–`9`, `0` for the 10th item); press `1`–`0` while the popup is open (or `Alt+1`..`Alt+0` while filtering) to paste immediately.
 - **Direct auto-paste & "Paste without formatting" toggle switch:** clicking an item (or pressing `Enter` / `1`–`0`) keeps it in the clipboard **and** automatically pastes it into the previously active window (`Ctrl+V` in regular apps, `Ctrl+Shift+V` in terminal emulators). Includes a quick toggle switch right inside the popup to strip HTML/RTF colors, fonts, and styles when pasting text (without affecting images or copied files).
-- **Native Linux Mint Update Manager (`mintupdate` / signed APT repo) integration:** installing the `.deb` automatically registers Mklipper's GPG-signed APT repository so future updates appear directly alongside system updates (and via `sudo apt update && sudo apt upgrade`). Also includes a hardened built-in in-app updater with mandatory **SHA-256** verification and `pkexec` installation.
+- **Native Linux Mint Update Manager (`mintupdate` / signed APT repo) integration with automatic restart:** installing the `.deb` automatically registers Mklipper's GPG-signed APT repository so future updates appear directly alongside system updates (and via `sudo apt update && sudo apt upgrade`). When updated via APT/Mint Update Manager, Mklipper automatically detects the new binary and cleanly restarts itself while preserving history. Also includes a hardened built-in in-app updater with mandatory **SHA-256** verification and `pkexec` installation.
 - **Persistent SQLite history with copy-source tracking & zero residual disk growth:** stores text, images/screenshots, and URLs in `~/.local/share/mklipper/history3.sqlite` (strict `0700`/`0600` owner-only permissions), optionally recording the source application and link/window (subtle label, hover tooltip, searchable by app/domain, configurable in Settings). Uses `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON`, and startup orphan cleanup so deleted items are zeroed out and disk space is reclaimed immediately.
 - **Pinned items (`★`):** protected from history clearing and max-size eviction.
 - **Hardened security & privacy:** skips secrets flagged by password managers (`x-kde-passwordManagerHint`, KeePassXC, Bitwarden, 1Password, `ExcludeClipboardContentFromMonitorProcessing`), prevents shell injection in custom actions and path traversal, verifies cryptographic integrity on updates, and builds with binary hardening (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
 - **Custom regex actions (`URLGrabber`)** and quick URL/file opening.
-- **Multilingual (English / Spanish) & HiDPI-ready:** automatically follows your system language and lets you switch manually between English and Spanish in *Settings → General*; dialogs and popup scale cleanly with display scaling and large fonts.
+- **Multilingual (7 languages) & HiDPI-ready:** ships with **Español, English, Português (Brasil), Français, Italiano, Deutsch, and Русский** via dynamic JSON packs; automatically follows your system language and lets you switch manually in *Settings → General*; dialogs and popup scale cleanly with display scaling and large fonts.
 - **Native Cinnamon integration:** registers `Super + V` directly in Cinnamon's custom keybindings, exposes a Klipper-compatible D-Bus API (`org.mklipper.App` / `org.kde.klipper`), and provides CLI flags (`mklipper --toggle`, `--popup`, `--configure`, `--check-updates`, `--clear`, `--quit`).
 
 ### Installation
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.6.4_amd64.deb`](dist/mklipper_1.6.4_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.7.0_amd64.deb`](dist/mklipper_1.7.0_amd64.deb).
 2. Install it via `apt` (or double-click in Linux Mint) so Qt 6 runtime dependencies are resolved automatically:
 
 ```bash
-sudo apt install ./mklipper_1.6.4_amd64.deb
+sudo apt install ./mklipper_1.7.0_amd64.deb
 ```
 
 3. Launch **Mklipper** from your application menu or by running `mklipper`. It will start automatically on subsequent logins via `/etc/xdg/autostart/mklipper.desktop`, and **future updates will automatically appear in Linux Mint's Update Manager** (you can also check manually via tray icon → *Check for updates…*).
@@ -183,7 +183,7 @@ chmod +x packaging/build-deb.sh
 3. Install the generated package:
 
 ```bash
-sudo apt install ./dist/mklipper_1.6.4_amd64.deb
+sudo apt install ./dist/mklipper_1.7.0_amd64.deb
 ```
 
 ### Uninstall

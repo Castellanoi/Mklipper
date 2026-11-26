@@ -24,6 +24,7 @@ class HistoryModel;
 class KlipperPopup;
 class QAction;
 class QEvent;
+class QFileSystemWatcher;
 class QMenu;
 class QTimer;
 class SystemClipboard;
@@ -91,6 +92,8 @@ private:
     void offerActions(const HistoryItemConstPtr &item, bool fromSelection);
     QString cycleNotificationText() const;
     UpdateDialog *ensureUpdateDialog();
+    void setupUpgradeWatcher();
+    void checkInstalledBinaryUpdated();
     void restartAfterUpdate();
 
     std::shared_ptr<SystemClipboard> m_clip;
@@ -109,6 +112,13 @@ private:
     QAction *m_toggleActionsAct = nullptr;
     QTimer *m_themeSyncTimer = nullptr;
     bool m_syncingTheme = false;
+
+    QFileSystemWatcher *m_exeWatcher = nullptr;
+    QTimer *m_upgradeDebounceTimer = nullptr;
+    QString m_watchedExePath;
+    quint64 m_exeDev = 0;
+    quint64 m_exeIno = 0;
+    bool m_restarting = false;
 
     bool m_urlGrabberEnabled = false;
     QString m_lastUrlGrabberText;
