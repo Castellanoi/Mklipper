@@ -1,24 +1,24 @@
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Thu, 26 Nov 2026 13:20:39 +0000
+Date: Thu, 26 Nov 2026 13:41:47 +0000
 Description: Mklipper APT repository for Linux Mint and Ubuntu
 Label: Mklipper
 Origin: Mklipper
 Suite: stable
 MD5Sum:
- f9af5f92a2ca48eb93613214744565a8              203 Release
- 6e2207dde12d8e10f52ee38e74a85481             5913 main/binary-amd64/Packages
- 19d31a397dfa71920d3f431e709384ab             1207 main/binary-amd64/Packages.gz
+ ae2e9568c8824e9c1490fe3bc9681c8b              203 Release
+ 2b3cc2c5edc2b26bf15a26d49639a06b             7096 main/binary-amd64/Packages
+ e85c80558f74a0b56adba6c8ead74c9a             1330 main/binary-amd64/Packages.gz
 SHA1:
- d59976744d906044a662026798c3eb5a356ee4f0              203 Release
- 926b401882679ae5610e4804962db108bce58d62             5913 main/binary-amd64/Packages
- cfc1d47e8333b9e96c7441649f09fd5df5a938c5             1207 main/binary-amd64/Packages.gz
+ 56f7c6da1d368a2df54501cb5a2b6a3399ac28c6              203 Release
+ c59dc38c3b1ad2356b972c2c8d50ebf303e049d7             7096 main/binary-amd64/Packages
+ 47bcf3954eef9113d42983b24008fb4c131e76be             1330 main/binary-amd64/Packages.gz
 SHA256:
- d97677a86f48223e1361084d743ba9e63eea37e7ff9eda374dc74b4c360bc538              203 Release
- 0cc2bae68bfaa07d907a7e29e4d4fcd05dd700bb3bb6282649a7ca0c4b54fd52             5913 main/binary-amd64/Packages
- da9a95dfc6fe603b91d6ec81654dd31f8b55ff590c6f5643e6ecd62d0a0b87e7             1207 main/binary-amd64/Packages.gz
+ d215bdc3e48b4e45a205132354dcc05df12ea8ca4c7901aea55e2e43dc684918              203 Release
+ 8c1842466de2e694cf4024a26bfffabfca4cd3144c435c564bd4976ce1c79ec8             7096 main/binary-amd64/Packages
+ a6aca3a5ccc723ab9e185fd74a9c85172fc9110834a8e72e3790f017441d0411             1330 main/binary-amd64/Packages.gz
 SHA512:
- 7800b9fec07604b1e59e08fc6ab0bf8b64149714fa3fcc009cbd9233009db7d78e1eb94e6f1897cdc3be18fdef5a1124c310dfc8ff5fea9f35b4c8441ba8ae3f              203 Release
- d30ae847840800d1a7a9c3713509567cf5be6d8b637e6e8be7e7cca57fc73263c72d7b5cbd70466c6c90453d1737630c70adf66dd668955762a19f28063f3ada             5913 main/binary-amd64/Packages
- dfff66c1138617207317a9f86373b5fbc4ec9e85f1117d977e368b05379e068609a8d9df56093c4fba0b1e04989fbb7e2833620512b32f397032de88d25821f3             1207 main/binary-amd64/Packages.gz
+ a6b5329803286d6c244c9986905f4941e788cf122616592e41fa6159ab99a51733f7d8d366d3df30d84eb685c52692594e5820aeb9ddb89f42cfb566a6281fc9              203 Release
+ 79e4fd7344c52307e63ed5566b948804cf55b1dab344999cf6bf5316b3d0c23ade76bb9a0e4de7f60d28c7546b24cab47c0fe0d3aee8ba673fd06a632645412f             7096 main/binary-amd64/Packages
+ da603c0fbb0b0be0abf0f403113e7a09ea0267331ebc7d79f2920faa5d2e9d9d239ec6c32e6191e61aaa07be77646f5b42048a7899ab9ad46844eaaec0144844             1330 main/binary-amd64/Packages.gz
