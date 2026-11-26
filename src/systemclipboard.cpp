@@ -136,6 +136,10 @@ QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &
         return fallback;
     }
 
+    if (!HistoryItem::isValidUuid(item->uuid())) {
+        return nullptr;
+    }
+
     QMap<qint64, std::pair<QString, QByteArray>> mimeDataStore;
     QSqlQuery query(db);
     query.prepare(u"SELECT mimetype, data_uuid, rowid FROM aux WHERE uuid = ? ORDER BY rowid ASC"_s);
@@ -145,7 +149,7 @@ QMimeData *SystemClipboard::loadMimeDataFromDatabase(const HistoryItemConstPtr &
             const QString mimeType = query.value(0).toString();
             const QString dataUuid = query.value(1).toString();
             const qint64 rowId = query.value(2).toLongLong();
-            if (mimeType.isEmpty() || dataUuid.isEmpty()) {
+            if (mimeType.isEmpty() || !HistoryItem::isValidUuid(dataUuid)) {
                 continue;
             }
             const QString dataPath = m_dataFolder + u"/data/"_s + item->uuid() + u'/' + dataUuid;

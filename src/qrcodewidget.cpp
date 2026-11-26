@@ -45,6 +45,7 @@ QRCodeWidget::QRCodeWidget(QWidget *parent)
 
     m_previewLabel = new QLabel(this);
     m_previewLabel->setAlignment(Qt::AlignCenter);
+    m_previewLabel->setTextFormat(Qt::PlainText);
     m_previewLabel->setWordWrap(true);
     m_previewLabel->setMaximumHeight(44);
     mainLayout->addWidget(m_previewLabel);
@@ -66,7 +67,13 @@ void QRCodeWidget::setText(const QString &text)
     const QByteArray utf8 = text.toUtf8();
     m_qrImage = QImage();
 
-    QRcode *qr = QRcode_encodeString(utf8.constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
+    constexpr qsizetype kMaxQrPayloadBytes = 2331;
+    QRcode *qr = (!utf8.isEmpty() && utf8.size() <= kMaxQrPayloadBytes)
+        ? QRcode_encodeData(static_cast<int>(utf8.size()),
+                            reinterpret_cast<const unsigned char *>(utf8.constData()),
+                            0,
+                            QR_ECLEVEL_M)
+        : nullptr;
     if (!qr) {
         m_qrLabel->setPixmap(QPixmap());
         m_qrLabel->setText(tr("No se pudo generar el código QR\n(el texto es demasiado largo o está vacío)."));

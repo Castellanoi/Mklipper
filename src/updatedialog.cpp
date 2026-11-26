@@ -42,6 +42,7 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
     auto *titleLayout = new QVBoxLayout;
     titleLayout->setSpacing(3);
     m_titleLabel = new QLabel(this);
+    m_titleLabel->setTextFormat(Qt::PlainText);
     QFont titleFont = m_titleLabel->font();
     titleFont.setBold(true);
     titleFont.setPointSize(titleFont.pointSize() + 2);
@@ -56,9 +57,16 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
     headerLayout->addLayout(titleLayout, 1);
     mainLayout->addLayout(headerLayout);
 
-    // Release notes
+    // Release notes (only open safe http/https links when clicked)
     m_notesBrowser = new QTextBrowser(this);
-    m_notesBrowser->setOpenExternalLinks(true);
+    m_notesBrowser->setOpenExternalLinks(false);
+    m_notesBrowser->setOpenLinks(false);
+    connect(m_notesBrowser, &QTextBrowser::anchorClicked, this, [](const QUrl &url) {
+        const QString scheme = url.scheme().toLower();
+        if (url.isValid() && !url.host().isEmpty() && (scheme == u"https"_s || scheme == u"http"_s)) {
+            QDesktopServices::openUrl(url);
+        }
+    });
     m_notesBrowser->setMinimumHeight(160);
     m_notesBrowser->setMaximumHeight(280);
     m_notesBrowser->setVisible(false);
@@ -66,6 +74,7 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
 
     // Status + Progress
     m_statusLabel = new QLabel(this);
+    m_statusLabel->setTextFormat(Qt::PlainText);
     m_statusLabel->setWordWrap(true);
     m_statusLabel->setVisible(false);
     mainLayout->addWidget(m_statusLabel);
@@ -177,6 +186,7 @@ void UpdateDialog::onUpdateAvailable(const ReleaseInfo &release, bool /*userInit
 void UpdateDialog::onAlreadyUpToDate(const QString &currentVersion, bool /*userInitiated*/)
 {
     m_titleLabel->setText(tr("Mklipper está actualizado"));
+    m_subtitleLabel->setTextFormat(Qt::PlainText);
     m_subtitleLabel->setText(tr("Ya tenés instalada la última versión disponible (%1).").arg(currentVersion));
     setMode(Mode::UpToDate);
 }
@@ -184,6 +194,7 @@ void UpdateDialog::onAlreadyUpToDate(const QString &currentVersion, bool /*userI
 void UpdateDialog::onCheckFailed(const QString &errorMessage, bool /*userInitiated*/)
 {
     m_titleLabel->setText(tr("No se pudo buscar actualizaciones"));
+    m_subtitleLabel->setTextFormat(Qt::PlainText);
     m_subtitleLabel->setText(errorMessage);
     setMode(Mode::CheckError);
 }
@@ -217,6 +228,7 @@ void UpdateDialog::onInstallSucceeded(const ReleaseInfo &release)
 {
     m_release = release;
     m_titleLabel->setText(tr("Actualización completada"));
+    m_subtitleLabel->setTextFormat(Qt::PlainText);
     m_subtitleLabel->setText(
         tr("Mklipper se actualizó correctamente a la versión %1. Reiniciando…").arg(release.version));
     setMode(Mode::InstallSuccess);
@@ -225,6 +237,7 @@ void UpdateDialog::onInstallSucceeded(const ReleaseInfo &release)
 void UpdateDialog::onInstallFailed(const QString &errorMessage, const QString &details)
 {
     m_titleLabel->setText(tr("No se pudo completar la actualización"));
+    m_subtitleLabel->setTextFormat(Qt::PlainText);
     m_subtitleLabel->setText(errorMessage);
     if (!details.isEmpty()) {
         m_detailsEdit->setPlainText(details);
@@ -269,7 +282,9 @@ void UpdateDialog::onSkipVersionClicked()
 
 void UpdateDialog::onOpenReleasePageClicked()
 {
-    if (m_release.htmlUrl.isValid()) {
+    const QString scheme = m_release.htmlUrl.scheme().toLower();
+    if (m_release.htmlUrl.isValid() && !m_release.htmlUrl.host().isEmpty()
+        && (scheme == u"https"_s || scheme == u"http"_s)) {
         QDesktopServices::openUrl(m_release.htmlUrl);
     }
 }
@@ -293,6 +308,7 @@ void UpdateDialog::setMode(Mode mode)
     switch (mode) {
     case Mode::Checking:
         m_titleLabel->setText(tr("Buscando actualizaciones…"));
+        m_subtitleLabel->setTextFormat(Qt::PlainText);
         m_subtitleLabel->setText(
             tr("Versión instalada: %1 · Consultando GitHub Releases…").arg(Updater::currentVersion()));
         m_progressBar->setRange(0, 0);
@@ -303,14 +319,15 @@ void UpdateDialog::setMode(Mode mode)
     case Mode::UpdateAvailable: {
         m_titleLabel->setText(tr("Nueva versión disponible: Mklipper %1").arg(m_release.version));
         QString sub = tr("Versión instalada: <b>%1</b> → Nueva versión: <b>%2</b>")
-                          .arg(Updater::currentVersion(), m_release.version);
+                          .arg(Updater::currentVersion().toHtmlEscaped(), m_release.version.toHtmlEscaped());
         if (m_release.assetSize > 0) {
-            sub += tr(" · Descarga: %1").arg(formatSize(m_release.assetSize));
+            sub += tr(" · Descarga: %1").arg(formatSize(m_release.assetSize).toHtmlEscaped());
         }
         if (!m_release.hasDebAsset()) {
             sub += tr("<br><i>No se encontró un paquete .deb para %1 en este release; podés abrir GitHub para descargarlo manualmente.</i>")
-                       .arg(m_release.architecture);
+                       .arg(m_release.architecture.toHtmlEscaped());
         }
+        m_subtitleLabel->setTextFormat(Qt::RichText);
         m_subtitleLabel->setText(sub);
 
         if (!m_release.releaseNotes.isEmpty()) {

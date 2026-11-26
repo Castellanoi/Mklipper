@@ -136,6 +136,8 @@ QString textFromMimeData(const QMimeData *mimeData)
     return urlText.join(u' ');
 }
 
+constexpr qsizetype kMaxClipboardPayloadBytes = 20 * 1000 * 1000;
+
 QString imageMimeTypesSqlList()
 {
     const auto supported = QImageReader::supportedMimeTypes();
@@ -145,19 +147,43 @@ QString imageMimeTypesSqlList()
     QStringList quoted;
     quoted.reserve(supported.size());
     for (const QByteArray &m : supported) {
-        quoted.append(u'\'' + QString::fromLatin1(m) + u'\'');
+        bool safe = !m.isEmpty();
+        for (const char ch : m) {
+            const bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+                || (ch >= '0' && ch <= '9') || ch == '/' || ch == '+' || ch == '-' || ch == '.';
+            if (!ok) {
+                safe = false;
+                break;
+            }
+        }
+        if (safe) {
+            quoted.append(u'\'' + QString::fromLatin1(m) + u'\'');
+        }
     }
-    return quoted.join(u", "_s);
+    return quoted.isEmpty() ? u"'image/png'"_s : quoted.join(u", "_s);
 }
 
 bool isSecretMimeData(const QMimeData *data)
 {
+    if (!data) {
+        return false;
+    }
     if (data->data(u"x-kde-passwordManagerHint"_s) == QByteArrayView("secret")) {
         return true;
     }
     if (data->hasFormat(u"application/x-keepassxc-secret"_s)
-        || data->hasFormat(u"application/x-bitwarden-secret"_s)) {
+        || data->hasFormat(u"application/x-bitwarden-secret"_s)
+        || data->hasFormat(u"application/x-1password-secret"_s)
+        || data->hasFormat(u"application/x-gnome-password"_s)
+        || data->hasFormat(u"x-gnome-password"_s)
+        || data->hasFormat(u"ExcludeClipboardContentFromMonitorProcessing"_s)) {
         return true;
+    }
+    if (data->hasFormat(u"CanIncludeInClipboardHistory"_s)) {
+        const QByteArray v = data->data(u"CanIncludeInClipboardHistory"_s);
+        if (v == QByteArrayView("0") || (v.size() == 4 && v[0] == '\0' && v[1] == '\0' && v[2] == '\0' && v[3] == '\0')) {
+            return true;
+        }
     }
     return false;
 }
@@ -242,6 +268,8 @@ HistoryModel::~HistoryModel()
         const QString dbName = m_db.databaseName();
         m_db.close();
         QFile::remove(dbName);
+        QFile::remove(dbName + u"-wal"_s);
+        QFile::remove(dbName + u"-shm"_s);
         QDir(m_dbFolder + u"/data"_s).removeRecursively();
     }
 }
@@ -262,7 +290,8 @@ void HistoryModel::clear()
         dataDir.removeRecursively();
         dataDir.mkpath(dataDir.absolutePath());
     }
-    QSqlQuery(u"VACUUM"_s, m_db).exec();
+    reclaimDiskSpace(true);
+    enforcePrivateStoragePermissions();
 
     if (!m_items.isEmpty()) {
         beginResetModel();
@@ -309,7 +338,7 @@ void HistoryModel::clearNonStarredHistory()
     }
 
     for (const QString &uuid : std::as_const(nonStarredUuids)) {
-        QDir(m_dbFolder + u"/data/"_s + uuid).removeRecursively();
+        removeItemDataDir(uuid);
         m_starredCache.remove(uuid);
     }
 
@@ -324,7 +353,7 @@ void HistoryModel::clearNonStarredHistory()
     }
     endResetModel();
 
-    QSqlQuery(u"VACUUM"_s, m_db).exec();
+    reclaimDiskSpace(true);
 }
 
 void HistoryModel::clearHistoryInteractive(QWidget *dialogParent)
@@ -415,14 +444,18 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
     const HistoryItemPtr &item = m_items.at(index.row());
 
     auto queryImagePath = [this, &item]() -> QString {
-        if (!m_db.isOpen()) {
+        if (!m_db.isOpen() || !HistoryItem::isValidUuid(item->uuid())) {
             return {};
         }
         QSqlQuery query(m_db);
         query.prepare(u"SELECT data_uuid FROM aux WHERE uuid = ? AND mimetype IN (%1) ORDER BY rowid ASC LIMIT 1"_s.arg(imageMimeTypesSqlList()));
         query.addBindValue(item->uuid());
         if (query.exec() && query.next()) {
-            return m_dbFolder + u"/data/"_s + item->uuid() + u'/' + query.value(0).toString();
+            const QString dataUuid = query.value(0).toString();
+            if (!HistoryItem::isValidUuid(dataUuid)) {
+                return {};
+            }
+            return m_dbFolder + u"/data/"_s + item->uuid() + u'/' + dataUuid;
         }
         return {};
     };
@@ -540,8 +573,9 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
             }
         }
 
-        QDir(m_dbFolder + u"/data/"_s + oldUuid).removeRecursively();
+        removeItemDataDir(oldUuid);
         saveToFile(m_dbFolder, text.toUtf8(), newUuid, newUuid);
+        reclaimDiskSpace(false);
         m_starredCache.remove(oldUuid);
         if (wasStarred) {
             m_starredCache.insert(newUuid, true);
@@ -617,9 +651,11 @@ bool HistoryModel::removeRows(int row, int count, const QModelIndex &parent)
     }
 
     for (const QString &uuid : std::as_const(uuidsToRemove)) {
-        QDir(m_dbFolder + u"/data/"_s + uuid).removeRecursively();
+        removeItemDataDir(uuid);
         m_starredCache.remove(uuid);
     }
+
+    reclaimDiskSpace(false);
 
     beginRemoveRows(QModelIndex(), row, row + count - 1);
     m_items.remove(row, count);
@@ -722,6 +758,9 @@ bool HistoryModel::persistMimeData(const QString &uuid,
             }
             isUriListSet = true;
             QByteArray bytes = mimeData->data(format);
+            if (bytes.size() > kMaxClipboardPayloadBytes) {
+                continue;
+            }
             hash.reset();
             hash.addData(bytes);
             entries.push_back({format, std::move(bytes), QString::fromLatin1(hash.result().toHex())});
@@ -734,6 +773,9 @@ bool HistoryModel::persistMimeData(const QString &uuid,
             }
             isPlainTextSet = true;
             QByteArray bytes = mimeData->text().toUtf8();
+            if (bytes.size() > kMaxClipboardPayloadBytes) {
+                continue;
+            }
             hash.reset();
             hash.addData(bytes);
             const QString dataUuid = QString::fromLatin1(hash.result().toHex());
@@ -750,7 +792,7 @@ bool HistoryModel::persistMimeData(const QString &uuid,
             const bool isPngOrQt = (i == pngIdx || i == qtImageIdx);
             if (!isPngOrQt) {
                 QByteArray bytes = mimeData->data(format);
-                if (!bytes.isEmpty() && bytes.size() <= 20 * 1000 * 1000) {
+                if (!bytes.isEmpty() && bytes.size() <= kMaxClipboardPayloadBytes) {
                     hash.reset();
                     hash.addData(bytes);
                     entries.push_back({format, std::move(bytes), QString::fromLatin1(hash.result().toHex())});
@@ -761,7 +803,9 @@ bool HistoryModel::persistMimeData(const QString &uuid,
                 QImage image;
                 if (usePng) {
                     bytes = mimeData->data(MimeTypes::png);
-                    image = QImage::fromData(bytes, "PNG");
+                    if (bytes.size() <= kMaxClipboardPayloadBytes) {
+                        image = QImage::fromData(bytes, "PNG");
+                    }
                 } else {
                     image = mimeData->imageData().value<QImage>();
                     if (!image.isNull()) {
@@ -771,7 +815,7 @@ bool HistoryModel::persistMimeData(const QString &uuid,
                         encoder.write(image);
                     }
                 }
-                if (!image.isNull() && !bytes.isEmpty()) {
+                if (!image.isNull() && !bytes.isEmpty() && bytes.size() <= kMaxClipboardPayloadBytes) {
                     hash.reset();
                     hash.addData(QByteArrayView(reinterpret_cast<const char *>(image.constBits()), image.sizeInBytes()));
                     entries.push_back({QString(MimeTypes::png), std::move(bytes), QString::fromLatin1(hash.result().toHex())});
@@ -785,7 +829,7 @@ bool HistoryModel::persistMimeData(const QString &uuid,
         }
 
         QByteArray bytes = mimeData->data(format);
-        if (bytes.size() > 20 * 1000 * 1000) {
+        if (bytes.size() > kMaxClipboardPayloadBytes) {
             continue;
         }
         hash.reset();
@@ -795,11 +839,13 @@ bool HistoryModel::persistMimeData(const QString &uuid,
 
     if (!isPlainTextSet && isUriListSet) {
         QByteArray bytes = mimeData->text().toUtf8();
-        hash.reset();
-        hash.addData(bytes);
-        const QString dataUuid = QString::fromLatin1(hash.result().toHex());
-        entries.push_back({QString(MimeTypes::plainText), std::move(bytes), dataUuid});
-        entries.push_back({QString(MimeTypes::plainUtf8Text), QByteArray(), dataUuid});
+        if (bytes.size() <= kMaxClipboardPayloadBytes) {
+            hash.reset();
+            hash.addData(bytes);
+            const QString dataUuid = QString::fromLatin1(hash.result().toHex());
+            entries.push_back({QString(MimeTypes::plainText), std::move(bytes), dataUuid});
+            entries.push_back({QString(MimeTypes::plainUtf8Text), QByteArray(), dataUuid});
+        }
     }
 
     if (entries.empty()) {
@@ -831,7 +877,6 @@ bool HistoryModel::persistMimeData(const QString &uuid,
             return false;
         }
 
-        QSet<QString> writtenFiles;
         for (const auto &e : entries) {
             QSqlQuery insAux(m_db);
             insAux.prepare(u"INSERT OR REPLACE INTO aux (uuid, mimetype, data_uuid) VALUES (?, ?, ?)"_s);
@@ -841,9 +886,27 @@ bool HistoryModel::persistMimeData(const QString &uuid,
             if (!tx.exec(insAux)) {
                 return false;
             }
-            if (!writtenFiles.contains(e.dataUuid)) {
-                writtenFiles.insert(e.dataUuid);
-                saveToFile(m_dbFolder, e.data, uuid, e.dataUuid);
+        }
+    }
+
+    QSet<QString> writtenFiles;
+    for (const auto &e : entries) {
+        if (!writtenFiles.contains(e.dataUuid)) {
+            writtenFiles.insert(e.dataUuid);
+            if (!saveToFile(m_dbFolder, e.data, uuid, e.dataUuid)) {
+                {
+                    TransactionGuard tx(&m_db);
+                    QSqlQuery delMain(m_db);
+                    delMain.prepare(u"DELETE FROM main WHERE uuid = ?"_s);
+                    delMain.addBindValue(uuid);
+                    QSqlQuery delAux(m_db);
+                    delAux.prepare(u"DELETE FROM aux WHERE uuid = ?"_s);
+                    delAux.addBindValue(uuid);
+                    tx.exec(delMain);
+                    tx.exec(delAux);
+                }
+                removeItemDataDir(uuid);
+                return false;
             }
         }
     }
@@ -857,7 +920,7 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
         return false;
     }
     const QString uuid = computeUuid(mimeData);
-    if (uuid.size() != 40) {
+    if (!HistoryItem::isValidUuid(uuid)) {
         return false;
     }
     if (const int existingIdx = indexOf(uuid); existingIdx >= 0) {
@@ -887,6 +950,9 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     }
 
     const QString text = textFromMimeData(mimeData);
+    if (text.toUtf8().size() > kMaxClipboardPayloadBytes) {
+        return false;
+    }
     if (!persistMimeData(uuid, text, mimeData, timestamp, source)) {
         return false;
     }
@@ -896,7 +962,7 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     m_items.prepend(std::move(item));
     endInsertRows();
 
-    if (m_items.size() > m_maxSize) {
+    while (m_items.size() > m_maxSize) {
         int itemToRemove = -1;
         for (qsizetype i = m_items.size() - 1; i >= 0; --i) {
             if (!isItemStarred(m_items[i]->uuid())) {
@@ -904,9 +970,10 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
                 break;
             }
         }
-        if (itemToRemove >= 0) {
-            removeRow(itemToRemove);
+        if (itemToRemove < 0) {
+            break;
         }
+        removeRow(itemToRemove);
     }
 
     return true;
@@ -946,7 +1013,15 @@ bool HistoryModel::loadHistory()
     }
 
     QSqlQuery query(m_db);
-    query.exec(u"PRAGMA journal_mode=WAL"_s);
+    query.exec(u"PRAGMA secure_delete = ON"_s);
+    query.exec(u"PRAGMA journal_mode = WAL"_s);
+    if (query.exec(u"PRAGMA auto_vacuum"_s) && query.next() && query.value(0).toInt() != 1) {
+        // Switch existing DBs to FULL auto-vacuum once so every deletion immediately reclaims disk space
+        query.exec(u"PRAGMA auto_vacuum = FULL"_s);
+        query.exec(u"VACUUM"_s);
+        query.exec(u"PRAGMA wal_checkpoint(TRUNCATE)"_s);
+    }
+    enforcePrivateStoragePermissions();
     query.exec(u"CREATE TABLE IF NOT EXISTS main ("
                u"uuid char(40) PRIMARY KEY, "
                u"added_time REAL NOT NULL CHECK (added_time > 0), "
@@ -996,13 +1071,16 @@ bool HistoryModel::loadHistory()
     if (!m_bKeepContents) {
         query.exec(u"DELETE FROM main"_s);
         query.exec(u"DELETE FROM aux"_s);
-        query.exec(u"VACUUM"_s);
         if (dataDir.exists()) {
             dataDir.removeRecursively();
             dataDir.mkpath(dataDir.absolutePath());
         }
+        reclaimDiskSpace(true);
+        enforcePrivateStoragePermissions();
         return true;
     }
+
+    cleanupOrphanedStorage();
 
     QList<HistoryItemPtr> loadedItems;
     QHash<QString, bool> starredMap;
@@ -1034,10 +1112,25 @@ bool HistoryModel::loadHistory()
     endResetModel();
     Q_EMIT starredCountChanged(m_starredCount);
 
+    // Trim any excess non-starred rows if maxSize was lowered since last session
+    while (m_items.size() > m_maxSize) {
+        int itemToRemove = -1;
+        for (qsizetype i = m_items.size() - 1; i >= 0; --i) {
+            if (!isItemStarred(m_items[i]->uuid())) {
+                itemToRemove = static_cast<int>(i);
+                break;
+            }
+        }
+        if (itemToRemove < 0) {
+            break;
+        }
+        removeRow(itemToRemove);
+    }
+
     // Restore top clipboard entry on startup only if clipboard is currently empty
     const QClipboard *sysClip = QGuiApplication::clipboard();
     const bool clipEmpty = !sysClip || !sysClip->mimeData(QClipboard::Clipboard) || sysClip->mimeData(QClipboard::Clipboard)->formats().isEmpty();
-    if (clipEmpty) {
+    if (clipEmpty && !m_items.isEmpty()) {
         m_clip->setMimeData(m_items[0], SystemClipboard::SelectionMode(SystemClipboard::Clipboard | SystemClipboard::Selection));
     }
 
@@ -1049,8 +1142,9 @@ bool HistoryModel::saveClipboardHistory()
     if (!m_db.isOpen()) {
         return false;
     }
-    QSqlQuery query(u"PRAGMA wal_checkpoint(TRUNCATE)"_s, m_db);
-    return query.exec();
+    reclaimDiskSpace(false);
+    enforcePrivateStoragePermissions();
+    return true;
 }
 
 void HistoryModel::loadSettings()
@@ -1109,15 +1203,134 @@ void HistoryModel::moveToTop(qsizetype row)
 
 bool HistoryModel::saveToFile(const QString &dbFolder, const QByteArray &data, const QString &itemUuid, const QString &dataUuid)
 {
+    if (!HistoryItem::isValidUuid(itemUuid) || !HistoryItem::isValidUuid(dataUuid)) {
+        return false;
+    }
     const QString folderPath = dbFolder + u"/data/"_s + itemUuid;
     QDir().mkpath(folderPath);
+    QFile::setPermissions(folderPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+
     QSaveFile file(folderPath + u'/' + dataUuid);
     if (!file.open(QIODevice::WriteOnly)) {
         qWarning() << "Mklipper: Cannot write clipboard data file:" << file.errorString() << folderPath;
         return false;
     }
-    file.write(data);
+    file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    if (file.write(data) != data.size()) {
+        file.cancelWriting();
+        return false;
+    }
     return file.commit();
+}
+
+void HistoryModel::removeItemDataDir(const QString &uuid) const
+{
+    if (!HistoryItem::isValidUuid(uuid)) {
+        return;
+    }
+    QDir(m_dbFolder + u"/data/"_s + uuid).removeRecursively();
+}
+
+void HistoryModel::reclaimDiskSpace(bool fullVacuum)
+{
+    if (!m_db.isOpen()) {
+        return;
+    }
+    QSqlQuery q(m_db);
+    if (fullVacuum) {
+        q.exec(u"VACUUM"_s);
+    }
+    q.exec(u"PRAGMA wal_checkpoint(TRUNCATE)"_s);
+}
+
+void HistoryModel::cleanupOrphanedStorage()
+{
+    if (!m_db.isOpen()) {
+        return;
+    }
+
+    QSet<QString> validUuids;
+    QStringList invalidDbUuids;
+    {
+        QSqlQuery q(m_db);
+        if (q.exec(u"SELECT uuid FROM main"_s)) {
+            while (q.next()) {
+                const QString uuid = q.value(0).toString();
+                if (HistoryItem::isValidUuid(uuid)) {
+                    validUuids.insert(uuid);
+                } else {
+                    invalidDbUuids.append(uuid);
+                }
+            }
+        }
+    }
+
+    bool dbCleaned = false;
+    if (!invalidDbUuids.isEmpty()) {
+        TransactionGuard tx(&m_db);
+        for (const QString &badUuid : std::as_const(invalidDbUuids)) {
+            QSqlQuery d1(m_db);
+            d1.prepare(u"DELETE FROM main WHERE uuid = ?"_s);
+            d1.addBindValue(badUuid);
+            QSqlQuery d2(m_db);
+            d2.prepare(u"DELETE FROM aux WHERE uuid = ?"_s);
+            d2.addBindValue(badUuid);
+            tx.exec(d1);
+            tx.exec(d2);
+        }
+        dbCleaned = true;
+    }
+
+    {
+        QSqlQuery delOrphanAux(m_db);
+        if (delOrphanAux.exec(u"DELETE FROM aux WHERE uuid NOT IN (SELECT uuid FROM main)"_s)
+            && delOrphanAux.numRowsAffected() > 0) {
+            dbCleaned = true;
+        }
+    }
+
+    QDir dataDir(m_dbFolder + u"/data"_s);
+    if (dataDir.exists()) {
+        const QFileInfoList entries = dataDir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries | QDir::Hidden | QDir::System);
+        for (const QFileInfo &fi : entries) {
+            if (!validUuids.contains(fi.fileName())) {
+                if (fi.isDir() && !fi.isSymLink()) {
+                    QDir(fi.absoluteFilePath()).removeRecursively();
+                } else {
+                    QFile::remove(fi.absoluteFilePath());
+                }
+            } else if (fi.isDir() && !fi.isSymLink()) {
+                QFile::setPermissions(fi.absoluteFilePath(),
+                                      QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+            }
+        }
+    }
+
+    if (dbCleaned) {
+        reclaimDiskSpace(false);
+    }
+}
+
+void HistoryModel::enforcePrivateStoragePermissions() const
+{
+    constexpr auto dirPerm = QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner;
+    constexpr auto filePerm = QFileDevice::ReadOwner | QFileDevice::WriteOwner;
+
+    if (!m_dbFolder.isEmpty() && QFile::exists(m_dbFolder)) {
+        QFile::setPermissions(m_dbFolder, dirPerm);
+    }
+    const QString dataPath = m_dbFolder + u"/data"_s;
+    if (QFile::exists(dataPath)) {
+        QFile::setPermissions(dataPath, dirPerm);
+    }
+    const QString dbName = m_db.databaseName();
+    if (!dbName.isEmpty()) {
+        for (const QString &f : {dbName, dbName + u"-wal"_s, dbName + u"-shm"_s}) {
+            if (QFile::exists(f)) {
+                QFile::setPermissions(f, filePerm);
+            }
+        }
+    }
 }
 
 void HistoryModel::moveTopToBack()

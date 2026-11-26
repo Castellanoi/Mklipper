@@ -49,10 +49,25 @@ HistoryItemType HistoryItem::type() const
     return HistoryItemType::Text;
 }
 
+bool HistoryItem::isValidUuid(const QString &uuid)
+{
+    if (uuid.size() != 40) {
+        return false;
+    }
+    for (const QChar ch : uuid) {
+        const ushort c = ch.unicode();
+        const bool isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+        if (!isHex) {
+            return false;
+        }
+    }
+    return true;
+}
+
 HistoryItemPtr HistoryItem::create(const QSqlQuery &query)
 {
     QString uuid = query.value(u"uuid"_s).toString();
-    if (uuid.isEmpty()) {
+    if (!isValidUuid(uuid)) {
         return {};
     }
     QStringList mimeTypes = query.value(u"mimetypes"_s).toString().split(u',', Qt::SkipEmptyParts);

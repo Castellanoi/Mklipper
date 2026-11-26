@@ -12,6 +12,39 @@
 #include <QHash>
 #include <QMimeData>
 
+namespace
+{
+constexpr qsizetype kMaxCommandOutputChars = 10 * 1024 * 1024;
+
+QString stripNulBytes(QString value)
+{
+    value.remove(QLatin1Char('\0'));
+    return value;
+}
+
+QString escapeInsideSingleQuotes(const QString &value)
+{
+    QString escaped = stripNulBytes(value);
+    escaped.replace(QLatin1Char('\''), QStringLiteral("'\\''"));
+    return escaped;
+}
+
+QString escapeInsideDoubleQuotes(const QString &value)
+{
+    const QString clean = stripNulBytes(value);
+    QString out;
+    out.reserve(clean.size() + 16);
+    for (const QChar ch : clean) {
+        if (ch == QLatin1Char('\\') || ch == QLatin1Char('"')
+            || ch == QLatin1Char('$') || ch == QLatin1Char('`')) {
+            out.append(QLatin1Char('\\'));
+        }
+        out.append(ch);
+    }
+    return out;
+}
+} // namespace
+
 ClipCommandProcess::ClipCommandProcess(const ClipAction &action,
                                        const ClipCommand &command,
                                        const QString &clip,
@@ -37,6 +70,11 @@ ClipCommandProcess::ClipCommandProcess(const ClipAction &action,
     m_shellCommand = expandMacros(command.command, map).trimmed();
 
     connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &ClipCommandProcess::slotFinished);
+    connect(this, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
+        if (err == QProcess::FailedToStart) {
+            deleteLater();
+        }
+    });
     if (command.output != ClipCommand::IGNORE) {
         connect(this, &QProcess::readyReadStandardOutput, this, &ClipCommandProcess::slotStdOutputAvailable);
     }
@@ -47,17 +85,50 @@ ClipCommandProcess::ClipCommandProcess(const ClipAction &action,
 
 QString ClipCommandProcess::shellQuote(const QString &value)
 {
-    QString quoted = value;
-    quoted.replace(QLatin1Char('\''), QStringLiteral("'\\''"));
-    return QLatin1Char('\'') + quoted + QLatin1Char('\'');
+    return QLatin1Char('\'') + escapeInsideSingleQuotes(value) + QLatin1Char('\'');
 }
 
 QString ClipCommandProcess::expandMacros(const QString &command, const QHash<QChar, QString> &map)
 {
+    enum class QuoteState {
+        None,
+        Single,
+        Double,
+    };
+
+    QuoteState state = QuoteState::None;
+    bool escaped = false;
     QString out;
     out.reserve(command.size() + 32);
+
     for (int i = 0; i < command.size(); ++i) {
-        if (command[i] == QLatin1Char('%') && i + 1 < command.size()) {
+        const QChar ch = command[i];
+
+        if (escaped) {
+            out.append(ch);
+            escaped = false;
+            continue;
+        }
+
+        if (ch == QLatin1Char('\\') && state != QuoteState::Single) {
+            out.append(ch);
+            escaped = true;
+            continue;
+        }
+
+        if (ch == QLatin1Char('\'') && state != QuoteState::Double) {
+            state = (state == QuoteState::Single) ? QuoteState::None : QuoteState::Single;
+            out.append(ch);
+            continue;
+        }
+
+        if (ch == QLatin1Char('"') && state != QuoteState::Single) {
+            state = (state == QuoteState::Double) ? QuoteState::None : QuoteState::Double;
+            out.append(ch);
+            continue;
+        }
+
+        if (ch == QLatin1Char('%') && i + 1 < command.size()) {
             const QChar next = command[i + 1];
             if (next == QLatin1Char('%')) {
                 out.append(QLatin1Char('%'));
@@ -66,12 +137,19 @@ QString ClipCommandProcess::expandMacros(const QString &command, const QHash<QCh
             }
             auto it = map.constFind(next);
             if (it != map.constEnd()) {
-                out.append(shellQuote(it.value()));
+                if (state == QuoteState::Single) {
+                    out.append(escapeInsideSingleQuotes(it.value()));
+                } else if (state == QuoteState::Double) {
+                    out.append(escapeInsideDoubleQuotes(it.value()));
+                } else {
+                    out.append(shellQuote(it.value()));
+                }
                 ++i;
                 continue;
             }
         }
-        out.append(command[i]);
+
+        out.append(ch);
     }
     return out;
 }
@@ -101,5 +179,11 @@ void ClipCommandProcess::slotFinished(int /*exitCode*/, QProcess::ExitStatus /*e
 
 void ClipCommandProcess::slotStdOutputAvailable()
 {
-    m_newHistoryText.append(QString::fromLocal8Bit(readAllStandardOutput()));
+    const QByteArray chunk = readAllStandardOutput();
+    if (m_newHistoryText.size() >= kMaxCommandOutputChars) {
+        return;
+    }
+    const QString decoded = QString::fromLocal8Bit(chunk);
+    const qsizetype remaining = kMaxCommandOutputChars - m_newHistoryText.size();
+    m_newHistoryText.append(decoded.left(remaining));
 }

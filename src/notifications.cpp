@@ -30,7 +30,7 @@ void show(const QString &title, const QString &body, int timeoutMs)
                                     s_lastNotificationId,
                                     QStringLiteral("mklipper"),
                                     title,
-                                    body,
+                                    body.toHtmlEscaped(),
                                     QStringList(),
                                     hints,
                                     timeoutMs);

@@ -204,7 +204,11 @@ void KlipperApp::registerShortcuts()
     const auto *s = MklipperSettings::self();
 
     if (GlobalShortcutManager::isCinnamonDesktop()) {
-        const QString exe = QCoreApplication::applicationFilePath();
+        QString exe = QCoreApplication::applicationFilePath();
+        if (exe.contains(QLatin1Char(' ')) || exe.contains(QLatin1Char('\'')) || exe.contains(QLatin1Char('"'))) {
+            exe.replace(QLatin1Char('\''), QStringLiteral("'\\''"));
+            exe = QLatin1Char('\'') + exe + QLatin1Char('\'');
+        }
         const QList<CinnamonShortcutSpec> specs = {
             {u"mklipper-popup"_s, tr("Mklipper — Mostrar historial"), exe + u" --toggle"_s, QKeySequence::fromString(s->shortcutPopup())},
             {u"mklipper-cycle-next"_s, tr("Mklipper — Rotar historial (siguiente)"), exe + u" --cycle-next"_s, QKeySequence::fromString(s->shortcutCycleNext())},
@@ -498,7 +502,7 @@ void KlipperApp::restartAfterUpdate()
     QProcess::startDetached(
         u"/bin/sh"_s,
         {u"-c"_s,
-         u"while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec \"$2\""_s,
+         u"i=0; while kill -0 \"$1\" 2>/dev/null && [ \"$i\" -lt 100 ]; do sleep 0.1; i=$((i+1)); done; exec \"$2\""_s,
          u"mklipper-restart"_s,
          pidStr,
          targetExe});

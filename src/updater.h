@@ -117,6 +117,8 @@ private:
     std::unique_ptr<QTemporaryDir> m_tempDir;
     std::unique_ptr<QFile> m_downloadFile;
     QString m_downloadedDebPath;
+    qint64 m_downloadedBytes = 0;
+    bool m_downloadSizeExceeded = false;
     QString m_expectedSha256;
     QString m_installOutput;
 };

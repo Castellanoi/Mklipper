@@ -20,6 +20,32 @@ using namespace Qt::StringLiterals;
 
 namespace
 {
+int ignoreX11Error(Display *, XErrorEvent *)
+{
+    return 0;
+}
+
+class ScopedX11ErrorGuard
+{
+public:
+    explicit ScopedX11ErrorGuard(Display *dpy)
+        : m_dpy(dpy)
+        , m_prev(XSetErrorHandler(ignoreX11Error))
+    {
+    }
+    ~ScopedX11ErrorGuard()
+    {
+        if (m_dpy) {
+            XSync(m_dpy, False);
+        }
+        XSetErrorHandler(m_prev);
+    }
+
+private:
+    Display *m_dpy = nullptr;
+    int (*m_prev)(Display *, XErrorEvent *) = nullptr;
+};
+
 Display *x11Display()
 {
     auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
@@ -92,7 +118,7 @@ unsigned long readX11Pid(Display *dpy, Window win)
     if (XGetWindowProperty(dpy, win, pidAtom, 0, 1, False, XA_CARDINAL,
                            &actualType, &actualFormat, &nitems, &bytesAfter, &prop) == Success
         && prop) {
-        if (nitems > 0) {
+        if (actualFormat == 32 && nitems > 0) {
             pid = *reinterpret_cast<unsigned long *>(prop);
         }
         XFree(prop);
@@ -127,7 +153,7 @@ X11WindowMeta inspectX11Window(Display *dpy, Window win)
         return meta;
     }
 
-    XClassHint hint;
+    XClassHint hint{};
     if (XGetClassHint(dpy, win, &hint) != 0) {
         if (hint.res_name) {
             meta.resName = QString::fromLocal8Bit(hint.res_name).trimmed();
@@ -178,7 +204,7 @@ Window queryActiveWindow(Display *dpy)
         if (XGetWindowProperty(dpy, DefaultRootWindow(dpy), netActive, 0, 1, False, XA_WINDOW,
                                &actualType, &actualFormat, &nitems, &bytesAfter, &prop) == Success
             && prop) {
-            if (nitems > 0) {
+            if (actualFormat == 32 && nitems > 0) {
                 active = *reinterpret_cast<Window *>(prop);
             }
             XFree(prop);
@@ -381,6 +407,8 @@ ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeDat
     if (!dpy) {
         return info;
     }
+
+    ScopedX11ErrorGuard x11Guard(dpy);
 
     const Atom selAtom = XInternAtom(dpy, mode == QClipboard::Selection ? "PRIMARY" : "CLIPBOARD", False);
     const Window ownerWin = (selAtom != None) ? XGetSelectionOwner(dpy, selAtom) : None;

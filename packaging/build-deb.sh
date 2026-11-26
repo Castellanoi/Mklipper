@@ -24,7 +24,30 @@ mkdir -p "${STAGE_DIR}/DEBIAN" "${DIST_DIR}"
 DESTDIR="${STAGE_DIR}" cmake --install "${BUILD_DIR}"
 strip --strip-unneeded "${STAGE_DIR}/usr/bin/mklipper"
 
-echo "/etc/xdg/autostart/mklipper.desktop" > "${STAGE_DIR}/DEBIAN/conffiles"
+# Install signed APT repository keyring & DEB822 source so Linux Mint Update Manager (mintupdate)
+# automatically detects and delivers future Mklipper updates alongside system packages.
+KEYRING_SRC="${ROOT_DIR}/packaging/mklipper-archive-keyring.gpg"
+if [ -f "${KEYRING_SRC}" ]; then
+    install -d -m 0755 "${STAGE_DIR}/usr/share/keyrings" "${STAGE_DIR}/etc/apt/sources.list.d"
+    install -m 0644 "${KEYRING_SRC}" "${STAGE_DIR}/usr/share/keyrings/mklipper-archive-keyring.gpg"
+    cat > "${STAGE_DIR}/etc/apt/sources.list.d/mklipper.sources" <<EOF
+X-Repolib-Name: Mklipper
+Types: deb
+URIs: https://raw.githubusercontent.com/Castellanoi/Mklipper/apt-repo
+Suites: stable
+Components: main
+Architectures: ${PKG_ARCH}
+Signed-By: /usr/share/keyrings/mklipper-archive-keyring.gpg
+EOF
+    chmod 0644 "${STAGE_DIR}/etc/apt/sources.list.d/mklipper.sources"
+fi
+
+cat > "${STAGE_DIR}/DEBIAN/conffiles" <<EOF
+/etc/xdg/autostart/mklipper.desktop
+EOF
+if [ -f "${STAGE_DIR}/etc/apt/sources.list.d/mklipper.sources" ]; then
+    echo "/etc/apt/sources.list.d/mklipper.sources" >> "${STAGE_DIR}/DEBIAN/conffiles"
+fi
 
 INSTALLED_SIZE="$(du -sk "${STAGE_DIR}/usr" "${STAGE_DIR}/etc" | awk '{s+=$1} END {print s}')"
 

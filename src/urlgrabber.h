@@ -12,6 +12,7 @@
 #include <QList>
 #include <QMimeType>
 #include <QObject>
+#include <QRegularExpression>
 #include <QRegularExpressionMatch>
 #include <QSettings>
 #include <QString>
@@ -61,7 +62,11 @@ public:
     ~ClipAction() = default;
 
     QString actionRegexPattern() const { return m_regexPattern; }
-    void setActionRegexPattern(const QString &pattern) { m_regexPattern = pattern; }
+    void setActionRegexPattern(const QString &pattern)
+    {
+        m_regexPattern = pattern;
+        m_compiledRegex = QRegularExpression(m_regexPattern);
+    }
 
     QRegularExpressionMatch match(const QString &text) const;
 
@@ -85,6 +90,7 @@ public:
 
 private:
     QString m_regexPattern;
+    QRegularExpression m_compiledRegex;
     QStringList m_regexCapturedTexts;
     QString m_description;
     QList<ClipCommand> m_commands;

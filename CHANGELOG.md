@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.6.0
+
+### 🇪🇸 Español
+- **Integración con el Gestor de actualizaciones de Linux Mint (`mintupdate` / repositorio APT firmado):**
+  - El paquete `.deb` ahora instala automáticamente la clave pública GPG (`/usr/share/keyrings/mklipper-archive-keyring.gpg`) y la fuente APT DEB822 (`/etc/apt/sources.list.d/mklipper.sources`) apuntando al repositorio firmado de Mklipper.
+  - A partir de esta versión, las futuras actualizaciones aparecerán directamente en el **Gestor de actualizaciones de Linux Mint** (y mediante `sudo apt update && sudo apt upgrade`), sin necesidad de abrir el actualizador manual.
+  - Nuevo script `packaging/build-apt-repo.sh` y publicación automática de la rama `apt-repo` firmada con GPG desde GitHub Actions en cada release.
+- **Corrección visual en estado vacío:**
+  - Los elementos de la ventana flotante (barra de búsqueda, botones, switch *«Pegar sin formato»*, recuadro central del historial y pie de estado) ahora mantienen exactamente la misma posición y tamaño haya o no elementos en el historial o resultados de búsqueda.
+- **Limpieza real de disco y borrado seguro sin residuos:**
+  - Activados `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON` y truncado de WAL (`PRAGMA wal_checkpoint(TRUNCATE)`) en cada eliminación individual o expulsión por límite, recuperando espacio en disco al instante y sobrescribiendo con ceros los datos borrados.
+  - Limpieza automática al inicio de carpetas o registros huérfanos en `data/` y `aux`, y escritura atómica de adjuntos.
+- **Auditoría y endurecimiento integral de seguridad:**
+  - Permisos privados estrictos (`0700` en directorios y `0600` en `history3.sqlite`, `data/` y `mklipper.ini`).
+  - Corrección de inyección de shell en macros de acciones personalizadas (`ClipCommandProcess`) con soporte seguro para `%s`, `'%s'` y `"%s"`.
+  - Actualizador integrado endurecido: verificación **SHA-256 obligatoria**, lista blanca de dominios de GitHub (incluso tras redirecciones), validación estricta de versión/nombre, límites de descarga, verificación de metadatos `.deb` (`Package=mklipper` y arquitectura) antes de invocar `pkexec`, y escape HTML en el diálogo.
+  - Validación estricta de UUIDs SHA-1 (prevención de path traversal), límites de tamaño de 20 MB en payloads del portapapeles, detección ampliada de gestores de contraseñas (`ExcludeClipboardContentFromMonitorProcessing`, 1Password, GNOME), protección contra `BadWindow` y lecturas X11 fuera de límites, escape de notificaciones/etiquetas, y flags de endurecimiento del binario (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
+
+### 🇬🇧 English
+- **Linux Mint Update Manager (`mintupdate`) integration via signed APT repository:**
+  - The `.deb` package now automatically installs the GPG public keyring (`/usr/share/keyrings/mklipper-archive-keyring.gpg`) and DEB822 APT source (`/etc/apt/sources.list.d/mklipper.sources`) pointing to Mklipper's signed APT repository.
+  - Future updates will appear automatically in **Linux Mint Update Manager** (and via `sudo apt update && sudo apt upgrade`), with no manual update steps required.
+  - Added `packaging/build-apt-repo.sh` and automated GPG-signed `apt-repo` branch publishing in GitHub Actions on every tagged release.
+- **Fixed empty-state popup alignment:**
+  - All popup controls (search bar, toolbar buttons, "Paste without formatting" switch, central history area, and status footer) now stay locked in their exact positions whether the history/filter is populated or empty.
+- **True disk space reclamation & secure deletion:**
+  - Enabled `PRAGMA auto_vacuum = FULL`, `PRAGMA secure_delete = ON`, and WAL truncation (`PRAGMA wal_checkpoint(TRUNCATE)`) on individual deletions and max-size evictions so deleted clipboard data is zeroed out and disk space is reclaimed immediately.
+  - Added startup orphan cleanup for `data/` and `aux` plus atomic attachment persistence.
+- **Comprehensive security hardening:**
+  - Enforced strict owner-only permissions (`0700` dirs / `0600` files) on `history3.sqlite`, `data/`, and `mklipper.ini`.
+  - Fixed shell command injection in custom action macros (`ClipCommandProcess`) with quote-context-aware escaping for `%s`, `'%s'`, and `"%s"`.
+  - Hardened the in-app updater: mandatory **SHA-256** verification, strict GitHub domain allowlist (including redirects), strict semver/filename checks, download size caps, `dpkg-deb` package/architecture verification before `pkexec`, and safe HTML/link handling in the update dialog.
+  - Strict SHA-1 hex UUID validation (preventing path traversal), uniform 20 MB clipboard payload cap, expanded password manager secret hints (`ExcludeClipboardContentFromMonitorProcessing`, 1Password, GNOME), X11 `actualFormat == 32` bounds check and `BadWindow` guard, plain-text/HTML escaping in UI & notifications, and compiler hardening flags (`PIE`, `Full RELRO`, `stack-protector-strong`, `_FORTIFY_SOURCE=2`).
+
 ## v1.5.0
 
 ### 🇪🇸 Español

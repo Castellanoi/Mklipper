@@ -6,8 +6,28 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QStandardPaths>
 #include <QTextStream>
+
+namespace
+{
+void enforcePrivateConfigPermissions(const QString &iniPath)
+{
+    if (iniPath.isEmpty()) {
+        return;
+    }
+    const QFileInfo fi(iniPath);
+    const QString dirPath = fi.absolutePath();
+    if (!dirPath.isEmpty() && QFile::exists(dirPath)) {
+        QFile::setPermissions(dirPath,
+                              QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    }
+    if (QFile::exists(iniPath)) {
+        QFile::setPermissions(iniPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    }
+}
+} // namespace
 
 MklipperSettings *MklipperSettings::self()
 {
@@ -25,6 +45,7 @@ MklipperSettings::MklipperSettings(QObject *parent)
 void MklipperSettings::load()
 {
     m_settings.sync();
+    enforcePrivateConfigPermissions(m_settings.fileName());
 
     m_settings.beginGroup(QStringLiteral("General"));
     m_keepClipboardContents = m_settings.value(QStringLiteral("KeepClipboardContents"), true).toBool();
@@ -111,6 +132,7 @@ void MklipperSettings::save()
     m_settings.endGroup();
 
     m_settings.sync();
+    enforcePrivateConfigPermissions(m_settings.fileName());
     Q_EMIT settingsChanged();
 }
 

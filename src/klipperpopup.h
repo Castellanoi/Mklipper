@@ -104,6 +104,7 @@ private:
     QAbstractButton *m_plainTextSwitch = nullptr;
     QLabel *m_plainTextHintLabel = nullptr;
     QWidget *m_passwordBanner = nullptr;
+    QStackedWidget *m_listStack = nullptr;
     QListView *m_listView = nullptr;
     QLabel *m_emptyLabel = nullptr;
     QLabel *m_statusLabel = nullptr;

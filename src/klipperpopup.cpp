@@ -62,6 +62,15 @@ enum class RowAction {
     Edit,
     Delete,
 };
+
+bool isSafeExternalHttpUrl(const QUrl &url)
+{
+    if (!url.isValid() || url.host().isEmpty()) {
+        return false;
+    }
+    const QString scheme = url.scheme().toLower();
+    return scheme == u"http"_s || scheme == u"https"_s;
+}
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -214,7 +223,7 @@ public:
         if (hasAction) {
             pushBtn(RowAction::Action, tr("Ejecutar acción"), u"system-run"_s, u"⚡"_s);
         }
-        if (!sourceUrl.isEmpty()) {
+        if (isSafeExternalHttpUrl(QUrl(sourceUrl))) {
             pushBtn(RowAction::OpenSource, tr("Abrir enlace de origen"), u"internet-web-browser"_s, u"↗"_s);
         }
         pushBtn(RowAction::Star, starred ? tr("Desfijar") : tr("Fijar elemento"),
@@ -663,6 +672,8 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     QFont hintFont = m_plainTextHintLabel->font();
     hintFont.setPointSizeF(qMax(8.0, hintFont.pointSizeF() - 1.5));
     m_plainTextHintLabel->setFont(hintFont);
+    m_plainTextHintLabel->setTextFormat(Qt::PlainText);
+    m_plainTextHintLabel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
 
     modeBar->addWidget(m_plainTextSwitch);
     modeBar->addStretch();
@@ -672,6 +683,7 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     // Password warning banner
     auto *pwBanner = new QFrame(listPage);
     pwBanner->setFrameShape(QFrame::StyledPanel);
+    pwBanner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     m_passwordBanner = pwBanner;
     auto *pwLayout = new QHBoxLayout(m_passwordBanner);
     pwLayout->setContentsMargins(8, 4, 8, 4);
@@ -687,13 +699,16 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_passwordBanner->setVisible(false);
     listLayout->addWidget(m_passwordBanner);
 
-    // Proxy & ListView
+    // Proxy & ListView / Empty placeholder inside a dedicated QStackedWidget so header/footer never shift
     m_proxy = new HistoryFilterProxyModel(this);
     m_proxy->setSourceModel(m_model.get());
 
     m_delegate = new ClipboardItemDelegate(this);
 
-    m_listView = new QListView(listPage);
+    m_listStack = new QStackedWidget(listPage);
+    m_listStack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    m_listView = new QListView(m_listStack);
     m_listView->setModel(m_proxy);
     m_listView->setItemDelegate(m_delegate);
     m_listView->setMouseTracking(true);
@@ -706,18 +721,31 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_listView->viewport()->installEventFilter(this);
     m_listView->installEventFilter(this);
 
-    listLayout->addWidget(m_listView, 1);
-
-    m_emptyLabel = new QLabel(tr("El historial está vacío."), listPage);
+    m_emptyLabel = new QLabel(tr("El historial está vacío."), m_listStack);
     m_emptyLabel->setAlignment(Qt::AlignCenter);
-    m_emptyLabel->setVisible(false);
-    listLayout->addWidget(m_emptyLabel);
+    m_emptyLabel->setWordWrap(true);
+    m_emptyLabel->setTextFormat(Qt::PlainText);
+    m_emptyLabel->setContentsMargins(16, 16, 16, 16);
+    m_emptyLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_emptyLabel->setAutoFillBackground(true);
+    QPalette ep = m_emptyLabel->palette();
+    ep.setColor(QPalette::Window, ep.color(QPalette::Base));
+    QColor emptyColor = ep.color(QPalette::Text);
+    emptyColor.setAlpha(155);
+    ep.setColor(QPalette::WindowText, emptyColor);
+    m_emptyLabel->setPalette(ep);
+
+    m_listStack->addWidget(m_listView);
+    m_listStack->addWidget(m_emptyLabel);
+    listLayout->addWidget(m_listStack, 1);
 
     // Footer status
     m_statusLabel = new QLabel(listPage);
     QFont statusFont = m_statusLabel->font();
     statusFont.setPointSizeF(qMax(8.0, statusFont.pointSizeF() - 1.5));
     m_statusLabel->setFont(statusFont);
+    m_statusLabel->setTextFormat(Qt::PlainText);
+    m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     QPalette sp = m_statusLabel->palette();
     QColor muted = sp.color(QPalette::WindowText);
     muted.setAlpha(155);
@@ -1038,7 +1066,7 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                     switch (act) {
                     case RowAction::OpenSource: {
                         const QUrl srcUrl(idx.data(HistoryModel::SourceUrlRole).toString());
-                        if (srcUrl.isValid()) {
+                        if (isSafeExternalHttpUrl(srcUrl)) {
                             if (!MklipperSettings::self()->keepPopupOpen()) {
                                 hide();
                             }
@@ -1327,8 +1355,7 @@ void KlipperPopup::updateStatusLabel()
     const int total = m_model->rowCount();
     const int starred = m_model->starredCount();
 
-    m_emptyLabel->setVisible(visible == 0);
-    m_listView->setVisible(visible > 0);
+    m_listStack->setCurrentIndex(visible > 0 ? 0 : 1);
     if (visible == 0) {
         if (!m_searchEdit->text().isEmpty() || m_starFilterBtn->isChecked()) {
             m_emptyLabel->setText(tr("No hay coincidencias."));

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mklipper VERSION 1.5.0 LANGUAGES CXX)
+project(mklipper VERSION 1.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +71,21 @@ add_executable(mklipper ${MKLIPPER_SOURCES})
 target_compile_definitions(mklipper PRIVATE
     MKLIPPER_VERSION="${PROJECT_VERSION}"
 )
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(mklipper PRIVATE
+        -fstack-protector-strong
+        -Wformat
+        -Wformat-security
+        -fPIE
+        $<$<CONFIG:Release>:-D_FORTIFY_SOURCE=2>
+    )
+    target_link_options(mklipper PRIVATE
+        -pie
+        -Wl,-z,relro
+        -Wl,-z,now
+    )
+endif()
 
 target_link_libraries(mklipper PRIVATE
     Qt6::Core

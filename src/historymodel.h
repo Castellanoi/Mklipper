@@ -105,6 +105,10 @@ private:
                          qreal timestamp,
                          const ClipboardSourceInfo &source = {});
     static bool saveToFile(const QString &dbFolder, const QByteArray &data, const QString &itemUuid, const QString &dataUuid);
+    void removeItemDataDir(const QString &uuid) const;
+    void reclaimDiskSpace(bool fullVacuum = false);
+    void cleanupOrphanedStorage();
+    void enforcePrivateStoragePermissions() const;
     void setHasPassword(QClipboard::Mode mode, bool hasPassword);
 
     enum class Holding {

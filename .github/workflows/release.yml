@@ -24,6 +24,10 @@ jobs:
             cmake \
             ninja-build \
             pkg-config \
+            dpkg-dev \
+            apt-utils \
+            gnupg \
+            gpgv \
             qt6-base-dev \
             libqt6sql6-sqlite \
             qt6-svg-dev \
@@ -71,3 +75,43 @@ jobs:
           files: |
             dist/mklipper_*_amd64.deb
             dist/SHA256SUMS
+
+      - name: Publish signed APT repository (apt-repo branch)
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: |
+          if [ -z "${APT_GPG_PRIVATE_KEY}" ]; then
+            echo "::warning::APT_GPG_PRIVATE_KEY secret is not configured; skipping apt-repo branch update."
+            exit 0
+          fi
+
+          GNUPGHOME="$(mktemp -d)"
+          chmod 700 "${GNUPGHOME}"
+          export GNUPGHOME
+          trap 'rm -rf "${GNUPGHOME}"' EXIT
+
+          printf '%s\n' "${APT_GPG_PRIVATE_KEY}" | gpg --batch --import
+
+          APT_WORK="$(mktemp -d)"
+          trap 'rm -rf "${GNUPGHOME}" "${APT_WORK}"' EXIT
+
+          git fetch origin apt-repo:refs/remotes/origin/apt-repo 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/apt-repo; then
+            git worktree add "${APT_WORK}" origin/apt-repo
+            (cd "${APT_WORK}" && git checkout -B apt-repo)
+          else
+            git worktree add --orphan -b apt-repo "${APT_WORK}"
+          fi
+
+          chmod +x packaging/build-apt-repo.sh
+          ./packaging/build-apt-repo.sh "${APT_WORK}" dist/mklipper_*_amd64.deb
+
+          cd "${APT_WORK}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Update APT repository for Mklipper ${{ steps.notes.outputs.tag }}"
+            git push origin apt-repo
+          fi

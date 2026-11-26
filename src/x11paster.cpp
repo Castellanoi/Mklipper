@@ -16,6 +16,32 @@
 
 namespace
 {
+int ignoreX11Error(Display *, XErrorEvent *)
+{
+    return 0;
+}
+
+class ScopedX11ErrorGuard
+{
+public:
+    explicit ScopedX11ErrorGuard(Display *dpy)
+        : m_dpy(dpy)
+        , m_prev(XSetErrorHandler(ignoreX11Error))
+    {
+    }
+    ~ScopedX11ErrorGuard()
+    {
+        if (m_dpy) {
+            XSync(m_dpy, False);
+        }
+        XSetErrorHandler(m_prev);
+    }
+
+private:
+    Display *m_dpy = nullptr;
+    int (*m_prev)(Display *, XErrorEvent *) = nullptr;
+};
+
 Display *x11Display()
 {
     auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
@@ -65,7 +91,7 @@ bool queryWindowIsMklipper(Display *dpy, Window win)
     if (!dpy || win == 0 || win == None) {
         return false;
     }
-    XClassHint hint;
+    XClassHint hint{};
     if (XGetClassHint(dpy, win, &hint) != 0) {
         bool isOwn = false;
         if (hint.res_name) {
@@ -86,7 +112,7 @@ bool queryWindowIsTerminal(Display *dpy, Window win)
     if (!dpy || win == 0 || win == None) {
         return false;
     }
-    XClassHint hint;
+    XClassHint hint{};
     if (XGetClassHint(dpy, win, &hint) != 0) {
         bool terminal = false;
         if (hint.res_name) {
@@ -161,6 +187,7 @@ void X11Paster::captureTargetWindow(WId ownWindowId)
         return;
     }
 
+    ScopedX11ErrorGuard x11Guard(dpy);
     Window active = 0;
     const Atom netActive = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", True);
     if (netActive != None) {
@@ -172,7 +199,7 @@ void X11Paster::captureTargetWindow(WId ownWindowId)
         if (XGetWindowProperty(dpy, DefaultRootWindow(dpy), netActive, 0, 1, False, XA_WINDOW,
                                &actualType, &actualFormat, &nitems, &bytesAfter, &prop) == Success
             && prop) {
-            if (nitems > 0) {
+            if (actualFormat == 32 && nitems > 0) {
                 active = *reinterpret_cast<Window *>(prop);
             }
             XFree(prop);

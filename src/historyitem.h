@@ -58,6 +58,7 @@ public:
     bool operator==(const HistoryItem &rhs) const { return m_uuid == rhs.m_uuid; }
 
     static HistoryItemPtr create(const QSqlQuery &query);
+    static bool isValidUuid(const QString &uuid);
 
 private:
     QString m_uuid;

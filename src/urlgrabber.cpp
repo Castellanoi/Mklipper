@@ -23,6 +23,7 @@ using namespace Qt::StringLiterals;
 
 ClipAction::ClipAction(QString regExp, QString description, bool automagic)
     : m_regexPattern(std::move(regExp))
+    , m_compiledRegex(m_regexPattern)
     , m_description(std::move(description))
     , m_automatic(automagic)
 {
@@ -32,6 +33,7 @@ ClipAction::ClipAction(QSettings &settings, const QString &groupName)
 {
     settings.beginGroup(groupName);
     m_regexPattern = settings.value(u"Regexp"_s).toString();
+    m_compiledRegex = QRegularExpression(m_regexPattern);
     m_description = settings.value(u"Description"_s).toString();
     m_automatic = settings.value(u"Automatic"_s, true).toBool();
     const int numCommands = settings.value(u"Number of commands"_s, 0).toInt();
@@ -53,14 +55,11 @@ ClipAction::ClipAction(QSettings &settings, const QString &groupName)
 
 QRegularExpressionMatch ClipAction::match(const QString &text) const
 {
-    if (m_regexPattern.isEmpty()) {
+    constexpr qsizetype kMaxRegexInputChars = 65536;
+    if (m_regexPattern.isEmpty() || text.size() > kMaxRegexInputChars || !m_compiledRegex.isValid()) {
         return {};
     }
-    QRegularExpression re(m_regexPattern);
-    if (!re.isValid()) {
-        return {};
-    }
-    return re.match(text);
+    return m_compiledRegex.match(text);
 }
 
 void ClipAction::replaceCommand(int idx, const ClipCommand &cmd)
@@ -140,7 +139,11 @@ QString URLGrabber::actionText(const HistoryItemConstPtr &item) const
 
 QMimeType URLGrabber::urlMimeType(const QString &clipData) const
 {
-    if (!MklipperSettings::self()->enableMagicMimeActions() || clipData.isEmpty() || clipData.contains(QLatin1Char('\n'))) {
+    constexpr qsizetype kMaxUrlMimeCheckChars = 4096;
+    if (!MklipperSettings::self()->enableMagicMimeActions()
+        || clipData.isEmpty()
+        || clipData.size() > kMaxUrlMimeCheckChars
+        || clipData.contains(QLatin1Char('\n'))) {
         return {};
     }
 
@@ -303,7 +306,12 @@ void URLGrabber::execute(const ClipAction *action, int commandIdx) const
         if (url.isRelative() && text.startsWith(u'/')) {
             url = QUrl::fromLocalFile(text);
         }
-        QDesktopServices::openUrl(url);
+        const QString scheme = url.scheme().toLower();
+        const bool allowedScheme = (scheme == u"http"_s || scheme == u"https"_s
+                                    || scheme == u"mailto"_s || scheme == u"ftp"_s || scheme == u"file"_s);
+        if (url.isValid() && allowedScheme) {
+            QDesktopServices::openUrl(url);
+        }
         return;
     }
 

@@ -31,7 +31,71 @@ constexpr auto kDefaultManifestUrl = "https://raw.githubusercontent.com/Castella
 constexpr auto kDefaultReleasesApiUrl = "https://api.github.com/repos/Castellanoi/Mklipper/releases/latest";
 constexpr int kApiTimeoutMs = 25000;
 constexpr int kDownloadTimeoutMs = 180000;
+constexpr qint64 kMaxApiBytes = 2 * 1024 * 1024;
 constexpr qint64 kMaxChecksumBytes = 64 * 1024;
+constexpr qint64 kMaxDebBytes = 50 * 1024 * 1024;
+
+bool isLoopbackHost(const QString &host)
+{
+    const QString h = host.toLower();
+    return h == u"127.0.0.1"_s || h == u"localhost"_s || h == u"::1"_s;
+}
+
+bool isTrustedGitHubHost(const QString &host)
+{
+    const QString h = host.toLower();
+    return h == u"github.com"_s
+        || h == u"api.github.com"_s
+        || h == u"raw.githubusercontent.com"_s
+        || h == u"objects.githubusercontent.com"_s
+        || h == u"release-assets.githubusercontent.com"_s
+        || h == u"codeload.github.com"_s;
+}
+
+bool isValidStrictVersion(const QString &ver)
+{
+    static const QRegularExpression re(QStringLiteral("^[0-9]+(\\.[0-9]+){0,3}$"));
+    return re.match(ver).hasMatch();
+}
+
+bool isSafeDebAssetName(const QString &name)
+{
+    static const QRegularExpression re(QStringLiteral("^mklipper_[A-Za-z0-9.+~-]+_[A-Za-z0-9-]+\\.deb$"));
+    return re.match(name).hasMatch();
+}
+
+bool verifyDebMetadata(const QString &debPath, const QString &expectedArch, QString &errorDetails)
+{
+    auto queryField = [&](const QString &field, QString &valueOut) -> bool {
+        QProcess proc;
+        proc.start(u"dpkg-deb"_s, {u"--field"_s, debPath, field});
+        if (!proc.waitForFinished(5000) || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+            errorDetails = QString::fromUtf8(proc.readAllStandardError()).trimmed();
+            return false;
+        }
+        valueOut = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+        return true;
+    };
+
+    QString pkgName;
+    if (!queryField(u"Package"_s, pkgName)) {
+        return false;
+    }
+    if (pkgName != u"mklipper"_s) {
+        errorDetails = QStringLiteral("Package=%1").arg(pkgName);
+        return false;
+    }
+
+    QString pkgArch;
+    if (!queryField(u"Architecture"_s, pkgArch)) {
+        return false;
+    }
+    if (pkgArch != expectedArch && pkgArch != u"all"_s) {
+        errorDetails = QStringLiteral("Architecture=%1 (expected %2)").arg(pkgArch, expectedArch);
+        return false;
+    }
+    return true;
+}
 
 QString userAgentString()
 {
@@ -115,6 +179,9 @@ bool Updater::isNewerVersion(const QString &candidate, const QString &current)
 {
     const QString cleanCand = normalizeVersionString(candidate);
     const QString cleanCur = normalizeVersionString(current);
+    if (!isValidStrictVersion(cleanCand) || !isValidStrictVersion(cleanCur)) {
+        return false;
+    }
     const QVersionNumber vCand = QVersionNumber::fromString(cleanCand);
     const QVersionNumber vCur = QVersionNumber::fromString(cleanCur);
     if (vCand.isNull() || vCur.isNull()) {
@@ -181,16 +248,18 @@ QUrl Updater::releasesApiUrl() const
 
 bool Updater::isAllowedUrl(const QUrl &url) const
 {
-    if (!url.isValid()) {
+    if (!url.isValid() || url.host().isEmpty()) {
         return false;
     }
-    if (url.scheme() == u"https"_s) {
+    const QString scheme = url.scheme().toLower();
+    if (scheme == u"https"_s && isTrustedGitHubHost(url.host())) {
         return true;
     }
-    // Allow plain HTTP only to loopback when MKLIPPER_UPDATE_URL is explicitly set for local testing
-    if (url.scheme() == u"http"_s && qEnvironmentVariableIsSet("MKLIPPER_UPDATE_URL")) {
-        const QString host = url.host().toLower();
-        return host == u"127.0.0.1"_s || host == u"localhost"_s || host == u"::1"_s;
+    // Allow loopback only when MKLIPPER_UPDATE_URL is explicitly set for local testing
+    if ((scheme == u"http"_s || scheme == u"https"_s)
+        && qEnvironmentVariableIsSet("MKLIPPER_UPDATE_URL")
+        && isLoopbackHost(url.host())) {
+        return true;
     }
     return false;
 }
@@ -253,7 +322,7 @@ bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) con
             tagName = u"v"_s + version;
         }
     }
-    if (version.isEmpty()) {
+    if (version.isEmpty() || !isValidStrictVersion(version)) {
         return false;
     }
 
@@ -268,7 +337,10 @@ bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) con
     if (info.releaseNotes.isEmpty()) {
         info.releaseNotes = obj.value(u"notes"_s).toString().trimmed();
     }
-    info.htmlUrl = QUrl(obj.value(u"html_url"_s).toString().trimmed());
+    const QUrl parsedHtmlUrl(obj.value(u"html_url"_s).toString().trimmed());
+    if (isAllowedUrl(parsedHtmlUrl)) {
+        info.htmlUrl = parsedHtmlUrl;
+    }
     info.architecture = systemArchitecture();
 
     const QString preferredSuffix = QStringLiteral("_%1.deb").arg(info.architecture);
@@ -284,7 +356,7 @@ bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) con
             urlStr = asset.value(u"url"_s).toString().trimmed();
         }
         const QUrl downloadUrl(urlStr);
-        if (!isAllowedUrl(downloadUrl)) {
+        if (!isAllowedUrl(downloadUrl) || !isSafeDebAssetName(name)) {
             continue;
         }
 
@@ -402,7 +474,16 @@ void Updater::onCheckReplyFinished()
         return;
     }
 
-    const QByteArray payload = reply->readAll();
+    if (!isAllowedUrl(reply->url())) {
+        fallbackOrFinish(false, tr("La URL de actualización redirigió a un dominio no permitido."));
+        return;
+    }
+
+    const QByteArray payload = reply->read(kMaxApiBytes + 1);
+    if (payload.size() > kMaxApiBytes) {
+        fallbackOrFinish(false, tr("Respuesta inválida del servidor de actualizaciones."));
+        return;
+    }
     QJsonParseError parseErr;
     const QJsonDocument doc = QJsonDocument::fromJson(payload, &parseErr);
     if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
@@ -433,7 +514,7 @@ void Updater::downloadAndInstall(const ReleaseInfo &release)
         return;
     }
 
-    if (!release.hasDebAsset() || !isAllowedUrl(release.assetUrl)) {
+    if (!release.hasDebAsset() || !isAllowedUrl(release.assetUrl) || !isSafeDebAssetName(release.assetName)) {
         Q_EMIT installFailed(
             tr("No se encontró un paquete .deb compatible con tu arquitectura (%1) en este release.")
                 .arg(systemArchitecture()),
@@ -441,14 +522,25 @@ void Updater::downloadAndInstall(const ReleaseInfo &release)
         return;
     }
 
+    static const QRegularExpression reSha256(QStringLiteral("^[0-9a-fA-F]{64}$"));
+    const QString inlineSha = release.expectedSha256.trimmed().toLower();
+    const bool hasInlineSha = reSha256.match(inlineSha).hasMatch();
+    const bool hasChecksumUrl = release.checksumUrl.isValid() && isAllowedUrl(release.checksumUrl);
+    if (!hasInlineSha && !hasChecksumUrl) {
+        Q_EMIT installFailed(
+            tr("No se encontró una suma de verificación SHA-256 para este release; la instalación fue cancelada por seguridad."),
+            {});
+        return;
+    }
+
     cleanupDownload();
     m_pendingInstall = release;
-    m_expectedSha256 = release.expectedSha256.toLower();
+    m_expectedSha256 = hasInlineSha ? inlineSha : QString();
     m_installOutput.clear();
 
     setState(State::Downloading);
 
-    if (m_expectedSha256.isEmpty() && release.checksumUrl.isValid() && isAllowedUrl(release.checksumUrl)) {
+    if (m_expectedSha256.isEmpty()) {
         Q_EMIT statusMessage(tr("Descargando suma de verificación SHA-256…"));
         QNetworkRequest req(release.checksumUrl);
         req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
@@ -493,9 +585,16 @@ void Updater::onChecksumReplyFinished()
         return;
     }
 
+    if (!isAllowedUrl(reply->url())) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("La descarga de verificación SHA-256 redirigió a un dominio no permitido."), {});
+        return;
+    }
+
     const QByteArray data = reply->read(kMaxChecksumBytes);
     m_expectedSha256 = parseSha256ForFile(data, m_pendingInstall.assetName);
-    if (m_expectedSha256.isEmpty()) {
+    if (m_expectedSha256.size() != 64) {
         cleanupDownload();
         setState(State::Idle);
         Q_EMIT installFailed(
@@ -510,6 +609,14 @@ void Updater::onChecksumReplyFinished()
 
 void Updater::startDebDownload()
 {
+    const QString safeName = QFileInfo(m_pendingInstall.assetName).fileName();
+    if (!isSafeDebAssetName(safeName)) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("El nombre del archivo de actualización no es válido."), safeName);
+        return;
+    }
+
     m_tempDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/mklipper-update-XXXXXX"_s);
     if (!m_tempDir->isValid()) {
         cleanupDownload();
@@ -525,8 +632,9 @@ void Updater::startDebDownload()
                               | QFileDevice::ReadGroup | QFileDevice::ExeGroup
                               | QFileDevice::ReadOther | QFileDevice::ExeOther);
 
-    const QString safeName = QFileInfo(m_pendingInstall.assetName).fileName();
     m_downloadedDebPath = m_tempDir->filePath(safeName);
+    m_downloadedBytes = 0;
+    m_downloadSizeExceeded = false;
 
     m_downloadFile = std::make_unique<QFile>(m_downloadedDebPath);
     if (!m_downloadFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -561,7 +669,16 @@ void Updater::onDebReadyRead()
         return;
     }
     const QByteArray chunk = reply->readAll();
-    if (!chunk.isEmpty() && m_downloadFile->write(chunk) != chunk.size()) {
+    if (chunk.isEmpty()) {
+        return;
+    }
+    m_downloadedBytes += chunk.size();
+    if (m_downloadedBytes > kMaxDebBytes) {
+        m_downloadSizeExceeded = true;
+        reply->abort();
+        return;
+    }
+    if (m_downloadFile->write(chunk) != chunk.size()) {
         reply->abort();
     }
 }
@@ -585,10 +702,22 @@ void Updater::onDebReplyFinished()
     if (m_downloadFile && m_downloadFile->isOpen()) {
         const QByteArray tail = reply->readAll();
         if (!tail.isEmpty()) {
-            m_downloadFile->write(tail);
+            m_downloadedBytes += tail.size();
+            if (m_downloadedBytes > kMaxDebBytes) {
+                m_downloadSizeExceeded = true;
+            } else {
+                m_downloadFile->write(tail);
+            }
         }
         m_downloadFile->flush();
         m_downloadFile->close();
+    }
+
+    if (m_downloadSizeExceeded) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("El paquete descargado excede el tamaño máximo permitido."), {});
+        return;
     }
 
     if (reply->error() == QNetworkReply::OperationCanceledError) {
@@ -606,12 +735,19 @@ void Updater::onDebReplyFinished()
         return;
     }
 
+    if (!isAllowedUrl(reply->url())) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("La descarga del paquete redirigió a un dominio no permitido."), {});
+        return;
+    }
+
     // Make .deb world-readable for _apt
     QFile::setPermissions(m_downloadedDebPath,
                           QFileDevice::ReadOwner | QFileDevice::WriteOwner
                               | QFileDevice::ReadGroup | QFileDevice::ReadOther);
 
-    // Verify Debian ar archive magic header and optional SHA-256
+    // Verify Debian ar archive magic header, mandatory SHA-256, and package metadata
     QFile verifyFile(m_downloadedDebPath);
     if (!verifyFile.open(QIODevice::ReadOnly)) {
         const QString err = verifyFile.errorString();
@@ -629,27 +765,44 @@ void Updater::onDebReplyFinished()
         return;
     }
 
-    if (!m_expectedSha256.isEmpty()) {
-        Q_EMIT statusMessage(tr("Verificando integridad (SHA-256)…"));
-        verifyFile.seek(0);
-        QCryptographicHash hasher(QCryptographicHash::Sha256);
-        if (!hasher.addData(&verifyFile)) {
-            cleanupDownload();
-            setState(State::Idle);
-            Q_EMIT installFailed(tr("No se pudo calcular la suma SHA-256 del paquete descargado."), {});
-            return;
-        }
-        const QString actualSha = QString::fromLatin1(hasher.result().toHex()).toLower();
-        if (actualSha != m_expectedSha256) {
-            cleanupDownload();
-            setState(State::Idle);
-            Q_EMIT installFailed(
-                tr("Error de verificación de integridad: la suma SHA-256 no coincide."),
-                tr("Esperada: %1\nObtenida: %2").arg(m_expectedSha256, actualSha));
-            return;
-        }
+    if (m_expectedSha256.size() != 64) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(
+            tr("No se encontró una suma de verificación SHA-256 para este release; la instalación fue cancelada por seguridad."),
+            {});
+        return;
+    }
+
+    Q_EMIT statusMessage(tr("Verificando integridad (SHA-256)…"));
+    verifyFile.seek(0);
+    QCryptographicHash hasher(QCryptographicHash::Sha256);
+    if (!hasher.addData(&verifyFile)) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("No se pudo calcular la suma SHA-256 del paquete descargado."), {});
+        return;
+    }
+    const QString actualSha = QString::fromLatin1(hasher.result().toHex()).toLower();
+    if (actualSha != m_expectedSha256) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(
+            tr("Error de verificación de integridad: la suma SHA-256 no coincide."),
+            tr("Esperada: %1\nObtenida: %2").arg(m_expectedSha256, actualSha));
+        return;
     }
     verifyFile.close();
+
+    QString metaErr;
+    if (!verifyDebMetadata(m_downloadedDebPath, systemArchitecture(), metaErr)) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(
+            tr("El paquete descargado no corresponde a Mklipper para tu arquitectura."),
+            metaErr);
+        return;
+    }
 
     launchPackageInstall(m_downloadedDebPath);
 }
@@ -726,6 +879,7 @@ void Updater::launchPackageInstall(const QString &debPath)
                  u"Dpkg::Options::=--force-confdef"_s,
                  u"-o"_s,
                  u"Dpkg::Options::=--force-confold"_s,
+                 u"--"_s,
                  debPath});
 }
 
@@ -752,5 +906,7 @@ void Updater::cleanupDownload()
         m_downloadFile.reset();
     }
     m_downloadedDebPath.clear();
+    m_downloadedBytes = 0;
+    m_downloadSizeExceeded = false;
     m_tempDir.reset();
 }
