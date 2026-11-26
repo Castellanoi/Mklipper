@@ -7,6 +7,7 @@
 #include "klipperapp.h"
 
 #include "configdialog.h"
+#include "flaticons.h"
 #include "globalshortcut.h"
 #include "historycycler.h"
 #include "historymodel.h"
@@ -14,6 +15,7 @@
 #include "notifications.h"
 #include "settings.h"
 #include "systemclipboard.h"
+#include "themestyle.h"
 #include "translations.h"
 #include "updatedialog.h"
 #include "updater.h"
@@ -24,6 +26,7 @@
 #include <QCoreApplication>
 #include <QCursor>
 #include <QDBusConnection>
+#include <QEvent>
 #include <QFileInfo>
 #include <QIcon>
 #include <QKeySequence>
@@ -76,6 +79,23 @@ KlipperApp::KlipperApp(QObject *parent)
     reloadConfig();
     updateTrayTooltip();
 
+    m_themeSyncTimer = new QTimer(this);
+    m_themeSyncTimer->setSingleShot(true);
+    connect(m_themeSyncTimer, &QTimer::timeout, this, &KlipperApp::syncThemeLive);
+
+    // Intercept Qt's QGtk3Theme XSettings palette resets so Cinnamon's exact theme & accent always win
+    if (qApp) {
+        qApp->installEventFilter(this);
+    }
+
+    // Live-sync when user switches Cinnamon theme / accent color in System Settings
+    bus.connect(QString(),
+                u"/ca/desrt/dconf/Writer/user"_s,
+                u"ca.desrt.dconf.Writer"_s,
+                u"Notify"_s,
+                this,
+                SLOT(onDconfNotify(QString,QStringList,QString)));
+
     if (MklipperSettings::self()->autoCheckUpdates()) {
         QTimer::singleShot(8000, this, [this]() {
             if (MklipperSettings::self()->autoCheckUpdates() && !m_updater->isBusy()) {
@@ -88,94 +108,160 @@ KlipperApp::KlipperApp(QObject *parent)
 KlipperApp::~KlipperApp()
 {
     saveClipboardHistory();
+    delete m_trayMenu;
+    m_trayMenu = nullptr;
 }
 
 void KlipperApp::setupTrayIcon()
 {
-    QIcon icon(u":/icons/mklipper.svg"_s);
+    const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
+    QIcon icon = FlatIcons::appLogoIcon(t.accent);
     if (icon.isNull()) {
-        icon = QIcon::fromTheme(u"edit-paste"_s);
+        icon = QIcon(u":/icons/mklipper.svg"_s);
     }
 
     m_trayIcon = new QSystemTrayIcon(icon, this);
+    m_trayMenu = new QMenu;
     rebuildTrayMenu();
+    m_trayIcon->setContextMenu(m_trayMenu);
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &KlipperApp::onTrayActivated);
     m_trayIcon->show();
 }
 
+bool KlipperApp::eventFilter(QObject *watched, QEvent *ev)
+{
+    if (watched == qApp && ev->type() == QEvent::ApplicationPaletteChange && !m_syncingTheme) {
+        if (m_themeSyncTimer) {
+            m_themeSyncTimer->start(45);
+        }
+    }
+    return QObject::eventFilter(watched, ev);
+}
+
+void KlipperApp::syncThemeLive()
+{
+    if (m_syncingTheme) {
+        return;
+    }
+    m_syncingTheme = true;
+
+    ThemeStyle::syncApplicationPalette();
+    const QPalette appPal = QApplication::palette();
+    const ThemeTokens t = ThemeTokens::fromPalette(appPal);
+    const QIcon themedIcon = FlatIcons::appLogoIcon(t.accent);
+
+    if (qApp) {
+        qApp->setWindowIcon(themedIcon);
+    }
+    if (m_trayIcon) {
+        m_trayIcon->setIcon(themedIcon);
+    }
+    rebuildTrayMenu();
+
+    if (m_popup) {
+        m_popup->refreshTheme();
+    }
+    if (m_configDialog) {
+        m_configDialog->setPalette(appPal);
+        m_configDialog->setWindowIcon(themedIcon);
+        m_configDialog->setStyleSheet(ThemeStyle::dialogStyleSheet(t));
+        m_configDialog->update();
+    }
+    if (m_updateDialog) {
+        m_updateDialog->setPalette(appPal);
+        m_updateDialog->setWindowIcon(themedIcon);
+        m_updateDialog->setStyleSheet(ThemeStyle::dialogStyleSheet(t));
+        m_updateDialog->update();
+    }
+
+    m_syncingTheme = false;
+}
+
+void KlipperApp::onDconfNotify(const QString &prefix, const QStringList &changes, const QString &/*tag*/)
+{
+    bool relevant = prefix.contains(u"gtk-theme"_s)
+        || prefix.contains(u"color-scheme"_s)
+        || prefix.contains(u"/org/cinnamon/theme/"_s);
+    if (!relevant && (prefix.contains(u"/desktop/interface"_s) || prefix.contains(u"/apps/portal"_s) || prefix == u"/"_s)) {
+        for (const QString &ch : changes) {
+            if (ch.contains(u"gtk-theme"_s) || ch.contains(u"color-scheme"_s)) {
+                relevant = true;
+                break;
+            }
+        }
+    }
+    if (!relevant) {
+        return;
+    }
+
+    syncThemeLive();
+    // Follow-up pass after csd-xsettings finishes broadcasting Net/ThemeName to Qt's QGtk3Theme
+    if (m_themeSyncTimer) {
+        m_themeSyncTimer->start(200);
+    }
+}
+
 void KlipperApp::rebuildTrayMenu()
 {
-    auto *oldMenu = m_trayMenu;
-    m_trayMenu = new QMenu;
+    if (!m_trayMenu) {
+        m_trayMenu = new QMenu;
+    }
+    m_trayMenu->clear();
 
-    m_pendingUpdateAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-software-update"_s),
-                                               tr("Actualizar Mklipper…"));
+    const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
+    auto menuIcon = [&t](FlatIcon id) {
+        return FlatIcons::icon(id, t.textPrimary, t.accentFg, t.textMuted, 16);
+    };
+
     const bool hasPending = m_updater && m_updater->hasPendingUpdate();
     if (hasPending) {
-        m_pendingUpdateAct->setText(tr("Actualizar a Mklipper %1…").arg(m_updater->latestRelease().version));
+        auto *pendingAct = m_trayMenu->addAction(
+            FlatIcons::icon(FlatIcon::Update, t.accent, t.accentFg, t.textMuted, 16),
+            tr("Actualizar a Mklipper %1…").arg(m_updater->latestRelease().version));
+        connect(pendingAct, &QAction::triggered, this, [this]() {
+            if (m_updater->hasPendingUpdate()) {
+                auto *dlg = ensureUpdateDialog();
+                dlg->showRelease(m_updater->latestRelease());
+                dlg->show();
+                dlg->raise();
+                dlg->activateWindow();
+            } else {
+                checkForUpdates();
+            }
+        });
+        m_trayMenu->addSeparator();
     }
-    m_pendingUpdateAct->setVisible(hasPending);
-    connect(m_pendingUpdateAct, &QAction::triggered, this, [this]() {
-        if (m_updater->hasPendingUpdate()) {
-            auto *dlg = ensureUpdateDialog();
-            dlg->showRelease(m_updater->latestRelease());
-            dlg->show();
-            dlg->raise();
-            dlg->activateWindow();
-        } else {
-            checkForUpdates();
-        }
-    });
-    m_pendingUpdateSep = m_trayMenu->addSeparator();
-    m_pendingUpdateSep->setVisible(hasPending);
 
-    auto *openAct = m_trayMenu->addAction(QIcon::fromTheme(u"view-list-text"_s), tr("Abrir historial del portapapeles"));
+    auto *openAct = m_trayMenu->addAction(menuIcon(FlatIcon::Clipboard), tr("Abrir historial del portapapeles"));
     connect(openAct, &QAction::triggered, this, [this]() {
         m_popup->showNearTray(m_trayIcon ? m_trayIcon->geometry() : QRect());
     });
 
     m_trayMenu->addSeparator();
 
-    auto *actionAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-run"_s), tr("Ejecutar acciones en elemento actual"));
-    connect(actionAct, &QAction::triggered, this, [this]() { slotRepeatAction(false); });
-
-    auto *editAct = m_trayMenu->addAction(QIcon::fromTheme(u"document-edit"_s), tr("Editar contenido actual…"));
+    auto *editAct = m_trayMenu->addAction(menuIcon(FlatIcon::Edit), tr("Editar contenido actual…"));
     connect(editAct, &QAction::triggered, this, [this]() { m_popup->editCurrentClipboard(); });
 
-    auto *qrAct = m_trayMenu->addAction(QIcon::fromTheme(u"view-barcode-qr"_s), tr("Mostrar código QR actual…"));
+    auto *qrAct = m_trayMenu->addAction(menuIcon(FlatIcon::QrCode), tr("Mostrar código QR actual…"));
     connect(qrAct, &QAction::triggered, this, [this]() { m_popup->showCurrentBarcode(); });
-
-    m_toggleActionsAct = m_trayMenu->addAction(tr("Menú automático de acciones"));
-    m_toggleActionsAct->setCheckable(true);
-    m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
-    connect(m_toggleActionsAct, &QAction::toggled, this, &KlipperApp::setURLGrabberEnabled);
 
     m_trayMenu->addSeparator();
 
-    auto *clearAct = m_trayMenu->addAction(QIcon::fromTheme(u"edit-clear-history"_s, QIcon::fromTheme(u"edit-clear"_s)),
-                                           tr("Vaciar historial…"));
+    auto *clearAct = m_trayMenu->addAction(menuIcon(FlatIcon::Trash), tr("Vaciar historial…"));
     connect(clearAct, &QAction::triggered, this, [this]() {
         m_historyModel->clearHistoryInteractive(nullptr);
     });
 
-    auto *configAct = m_trayMenu->addAction(QIcon::fromTheme(u"preferences-system"_s), tr("Configurar Mklipper…"));
+    auto *configAct = m_trayMenu->addAction(menuIcon(FlatIcon::Settings), tr("Configurar Mklipper…"));
     connect(configAct, &QAction::triggered, this, &KlipperApp::configure);
 
-    auto *updateAct = m_trayMenu->addAction(QIcon::fromTheme(u"system-software-update"_s, QIcon::fromTheme(u"view-refresh"_s)),
-                                            tr("Buscar actualizaciones…"));
+    auto *updateAct = m_trayMenu->addAction(menuIcon(FlatIcon::Refresh), tr("Buscar actualizaciones…"));
     connect(updateAct, &QAction::triggered, this, &KlipperApp::checkForUpdates);
 
     m_trayMenu->addSeparator();
 
-    auto *quitAct = m_trayMenu->addAction(QIcon::fromTheme(u"application-exit"_s), tr("Salir"));
+    auto *quitAct = m_trayMenu->addAction(menuIcon(FlatIcon::Exit), tr("Salir"));
     connect(quitAct, &QAction::triggered, this, &KlipperApp::quit);
-
-    if (m_trayIcon) {
-        m_trayIcon->setContextMenu(m_trayMenu);
-    }
-    if (oldMenu) {
-        oldMenu->deleteLater();
-    }
 }
 
 void KlipperApp::recreatePopup()
@@ -193,8 +279,12 @@ void KlipperApp::onTrayActivated(QSystemTrayIcon::ActivationReason reason)
 {
     if (reason == QSystemTrayIcon::Trigger) {
         m_popup->toggleNearTray(m_trayIcon->geometry());
+    } else if (reason == QSystemTrayIcon::Context) {
+        if (m_trayMenu) {
+            m_trayMenu->popup(QCursor::pos());
+        }
     } else if (reason == QSystemTrayIcon::MiddleClick) {
-        slotRepeatAction(false);
+        m_popup->toggleAtCursor();
     }
 }
 
@@ -264,9 +354,6 @@ void KlipperApp::reloadConfig()
             m_updateDialog->close();
         }
         updateTrayTooltip();
-    } else if (m_toggleActionsAct) {
-        QSignalBlocker blocker(m_toggleActionsAct);
-        m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
     }
     m_urlGrabber->loadSettings();
     m_historyModel->loadSettings();
@@ -453,11 +540,7 @@ void KlipperApp::checkForUpdates()
 
 void KlipperApp::onUpdateAvailable(const ReleaseInfo &release, bool userInitiated)
 {
-    if (m_pendingUpdateAct && m_pendingUpdateSep) {
-        m_pendingUpdateAct->setText(tr("Actualizar a Mklipper %1…").arg(release.version));
-        m_pendingUpdateAct->setVisible(true);
-        m_pendingUpdateSep->setVisible(true);
-    }
+    rebuildTrayMenu();
 
     if (!userInitiated) {
         if (release.version == MklipperSettings::self()->skippedUpdateVersion()) {
@@ -473,10 +556,7 @@ void KlipperApp::onUpdateAvailable(const ReleaseInfo &release, bool userInitiate
 
 void KlipperApp::onUpdateInstallSucceeded(const ReleaseInfo &release)
 {
-    if (m_pendingUpdateAct && m_pendingUpdateSep) {
-        m_pendingUpdateAct->setVisible(false);
-        m_pendingUpdateSep->setVisible(false);
-    }
+    rebuildTrayMenu();
     Notifications::show(
         tr("Mklipper actualizado"),
         tr("Se instaló Mklipper %1 correctamente. Reiniciando…").arg(release.version),

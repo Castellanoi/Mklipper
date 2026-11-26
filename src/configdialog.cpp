@@ -5,7 +5,9 @@
 #include "configdialog.h"
 
 #include "editactiondialog.h"
+#include "flaticons.h"
 #include "settings.h"
+#include "themestyle.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -13,7 +15,6 @@
 #include <QFontMetrics>
 #include <QFormLayout>
 #include <QFrame>
-#include <QGroupBox>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QKeySequenceEdit>
@@ -53,6 +54,26 @@ QScrollArea *makeScrollTab(QWidget *content, QWidget *parent)
     scroll->setWidget(content);
     return scroll;
 }
+
+// Modern Cinnamon 6.6 / GTK4-style grouped preference section (section label + flat rounded card)
+QFrame *addSectionCard(QVBoxLayout *parentLayout, const QString &title, const ThemeTokens &t, QWidget *parent)
+{
+    auto *titleLbl = new QLabel(title, parent);
+    QFont tf = titleLbl->font();
+    tf.setBold(true);
+    tf.setPointSizeF(qMax(9.0, tf.pointSizeF() - 0.3));
+    titleLbl->setFont(tf);
+    QPalette tp = titleLbl->palette();
+    tp.setColor(QPalette::WindowText, t.textSecondary);
+    titleLbl->setPalette(tp);
+    titleLbl->setContentsMargins(4, 4, 0, 0);
+    parentLayout->addWidget(titleLbl);
+
+    auto *card = new QFrame(parent);
+    card->setObjectName(QStringLiteral("mklipperCard"));
+    parentLayout->addWidget(card);
+    return card;
+}
 } // namespace
 
 ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
@@ -60,59 +81,11 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     , m_urlGrabber(urlGrabber)
 {
     setWindowTitle(tr("Configurar Mklipper"));
-    setWindowIcon(QIcon(QStringLiteral(":/icons/mklipper.svg")));
-    setMinimumSize(500, 400);
-    setStyleSheet(QStringLiteral(R"(
-        QGroupBox {
-            font-weight: 600;
-            border: 1px solid palette(mid);
-            border-radius: 9px;
-            margin-top: 12px;
-            padding: 14px 12px 10px 12px;
-            background-color: palette(base);
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            left: 12px;
-            padding: 0px 6px;
-            background-color: palette(window);
-            border-radius: 4px;
-        }
-        QTabWidget::pane {
-            border: 1px solid palette(mid);
-            border-radius: 8px;
-            background-color: palette(window);
-            top: -1px;
-        }
-        QTabBar::tab {
-            padding: 7px 16px;
-            margin-right: 3px;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-            border: 1px solid transparent;
-            border-bottom: none;
-        }
-        QTabBar::tab:selected {
-            background-color: palette(window);
-            border-color: palette(mid);
-            font-weight: 600;
-        }
-        QTabBar::tab:!selected:hover {
-            background-color: palette(alternate-base);
-        }
-        QListWidget {
-            border: 1px solid palette(mid);
-            border-radius: 7px;
-            padding: 4px;
-            background-color: palette(base);
-        }
-        QFrame#mklipperTipCard {
-            background-color: palette(base);
-            border: 1px solid palette(mid);
-            border-radius: 8px;
-        }
-    )"));
+    setMinimumSize(520, 420);
+
+    const ThemeTokens t = ThemeTokens::fromPalette(palette());
+    setWindowIcon(FlatIcons::appLogoIcon(t.accent));
+    setStyleSheet(ThemeStyle::dialogStyleSheet(t));
 
     // Clone existing actions for safe editing
     if (m_urlGrabber) {
@@ -127,15 +100,15 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     auto *s = MklipperSettings::self();
     auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(14, 14, 14, 12);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(16, 16, 16, 14);
+    mainLayout->setSpacing(12);
 
-    // Clean Cinnamon-style header banner
+    // Clean minimalist header banner
     auto *headerLayout = new QHBoxLayout;
-    headerLayout->setSpacing(10);
+    headerLayout->setSpacing(12);
     auto *logoLabel = new QLabel(this);
-    logoLabel->setPixmap(QIcon(QStringLiteral(":/icons/mklipper.svg")).pixmap(36, 36));
-    logoLabel->setFixedSize(36, 36);
+    logoLabel->setPixmap(FlatIcons::appLogoPixmap(t.accent, 38, devicePixelRatioF()));
+    logoLabel->setFixedSize(38, 38);
     headerLayout->addWidget(logoLabel);
 
     auto *headerTextLayout = new QVBoxLayout;
@@ -148,7 +121,6 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     atFont.setPointSizeF(atFont.pointSizeF() + 2.5);
     appTitle->setFont(atFont);
 
-    const QColor hl = palette().color(QPalette::Highlight);
     auto *verPill = new QLabel(QStringLiteral("v%1").arg(QStringLiteral(MKLIPPER_VERSION)), this);
     verPill->setTextFormat(Qt::PlainText);
     QFont vpFont = verPill->font();
@@ -156,12 +128,9 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     vpFont.setBold(true);
     verPill->setFont(vpFont);
     verPill->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; background-color: rgba(%2, %3, %4, 34); "
-                       "border: 1px solid rgba(%2, %3, %4, 110); border-radius: 9px; padding: 1px 8px; }")
-            .arg(hl.name())
-            .arg(hl.red())
-            .arg(hl.green())
-            .arg(hl.blue()));
+        QStringLiteral("QLabel { color: %1; background-color: %2; "
+                       "border: none; border-radius: 9px; padding: 2px 9px; }")
+            .arg(ThemeStyle::rgbaCss(t.accent), ThemeStyle::rgbaCss(t.accentSoft)));
 
     titleRow->addWidget(appTitle);
     titleRow->addWidget(verPill);
@@ -172,9 +141,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     subFont.setPointSizeF(qMax(8.5, subFont.pointSizeF() - 1.0));
     appSubtitle->setFont(subFont);
     QPalette subPal = appSubtitle->palette();
-    QColor subCol = subPal.color(QPalette::WindowText);
-    subCol.setAlpha(155);
-    subPal.setColor(QPalette::WindowText, subCol);
+    subPal.setColor(QPalette::WindowText, t.textMuted);
     appSubtitle->setPalette(subPal);
 
     headerTextLayout->addLayout(titleRow);
@@ -183,46 +150,49 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     mainLayout->addLayout(headerLayout);
 
     auto *tabs = new QTabWidget(this);
+    tabs->setIconSize(QSize(15, 15));
     mainLayout->addWidget(tabs, 1);
 
     // ==================== Tab 1: General ====================
     auto *generalPage = new QWidget(this);
     auto *genLayout = new QVBoxLayout(generalPage);
-    genLayout->setContentsMargins(12, 10, 12, 12);
-    genLayout->setSpacing(10);
+    genLayout->setContentsMargins(2, 6, 6, 8);
+    genLayout->setSpacing(8);
 
-    auto *histGroup = new QGroupBox(tr("Historial y comportamiento"), generalPage);
-    auto *histForm = new QFormLayout(histGroup);
+    auto *histCard = addSectionCard(genLayout, tr("Historial y comportamiento"), t, generalPage);
+    auto *histForm = new QFormLayout(histCard);
+    histForm->setContentsMargins(14, 12, 14, 12);
+    histForm->setSpacing(8);
     histForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
     histForm->setRowWrapPolicy(QFormLayout::DontWrapRows);
 
-    m_keepContents = new QCheckBox(tr("Guardar historial entre sesiones"), histGroup);
+    m_keepContents = new QCheckBox(tr("Guardar historial entre sesiones"), histCard);
     m_keepContents->setChecked(s->keepClipboardContents());
 
-    m_preventEmpty = new QCheckBox(tr("Evitar que el portapapeles quede vacío al cerrar aplicaciones"), histGroup);
+    m_preventEmpty = new QCheckBox(tr("Evitar que el portapapeles quede vacío al cerrar aplicaciones"), histCard);
     m_preventEmpty->setChecked(s->preventEmptyClipboard());
 
-    m_saveImages = new QCheckBox(tr("Guardar imágenes (capturas de pantalla) en el historial"), histGroup);
+    m_saveImages = new QCheckBox(tr("Guardar imágenes (capturas de pantalla) en el historial"), histCard);
     m_saveImages->setChecked(s->saveImages());
 
-    m_maxItems = new QSpinBox(histGroup);
+    m_maxItems = new QSpinBox(histCard);
     m_maxItems->setRange(1, 2048);
     m_maxItems->setValue(s->maxClipItems());
     m_maxItems->setSuffix(tr(" elementos"));
 
-    m_confirmClear = new QCheckBox(tr("Pedir confirmación antes de vaciar el historial"), histGroup);
+    m_confirmClear = new QCheckBox(tr("Pedir confirmación antes de vaciar el historial"), histCard);
     m_confirmClear->setChecked(s->confirmClearHistory());
 
-    m_autoPaste = new QCheckBox(tr("Pegar automáticamente al elegir un elemento (además de copiarlo)"), histGroup);
+    m_autoPaste = new QCheckBox(tr("Pegar automáticamente al elegir un elemento (además de copiarlo)"), histCard);
     m_autoPaste->setChecked(s->autoPaste());
 
-    m_pastePlainText = new QCheckBox(tr("Pegar sin formato (solo texto plano, sin colores ni estilos HTML)"), histGroup);
+    m_pastePlainText = new QCheckBox(tr("Pegar sin formato (solo texto plano, sin colores ni estilos HTML)"), histCard);
     m_pastePlainText->setChecked(s->pastePlainText());
 
-    m_keepPopupOpen = new QCheckBox(tr("Mantener la ventana flotante abierta al hacer clic en elementos"), histGroup);
+    m_keepPopupOpen = new QCheckBox(tr("Mantener la ventana flotante abierta al hacer clic en elementos"), histCard);
     m_keepPopupOpen->setChecked(s->keepPopupOpen());
 
-    auto *closeOutsideRow = new QWidget(histGroup);
+    auto *closeOutsideRow = new QWidget(histCard);
     auto *closeOutsideLayout = new QHBoxLayout(closeOutsideRow);
     closeOutsideLayout->setContentsMargins(24, 0, 0, 0);
     m_closePopupOnFocusOut = new QCheckBox(tr("Cerrar la ventana al hacer clic fuera de ella"), closeOutsideRow);
@@ -231,10 +201,10 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     connect(m_keepPopupOpen, &QCheckBox::toggled, m_closePopupOnFocusOut, &QCheckBox::setEnabled);
     closeOutsideLayout->addWidget(m_closePopupOnFocusOut);
 
-    m_saveSourceInfo = new QCheckBox(tr("Guardar origen de los elementos copiados (aplicación y enlace/ventana)"), histGroup);
+    m_saveSourceInfo = new QCheckBox(tr("Guardar origen de los elementos copiados (aplicación y enlace/ventana)"), histCard);
     m_saveSourceInfo->setChecked(s->saveSourceInfo());
 
-    auto *showSourceRow = new QWidget(histGroup);
+    auto *showSourceRow = new QWidget(histCard);
     auto *showSourceLayout = new QHBoxLayout(showSourceRow);
     showSourceLayout->setContentsMargins(24, 0, 0, 0);
     m_showSourceInfo = new QCheckBox(tr("Mostrar etiqueta de origen en la lista del portapapeles"), showSourceRow);
@@ -252,36 +222,39 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     histForm->addRow(closeOutsideRow);
     histForm->addRow(m_saveSourceInfo);
     histForm->addRow(showSourceRow);
-    histForm->addRow(tr("Tamaño máximo del historial:"), wrapSpinBoxRow(m_maxItems, QStringLiteral("2048"), histGroup));
+    histForm->addRow(tr("Tamaño máximo del historial:"), wrapSpinBoxRow(m_maxItems, QStringLiteral("2048"), histCard));
     histForm->addRow(m_confirmClear);
-    genLayout->addWidget(histGroup);
 
-    auto *selGroup = new QGroupBox(tr("Selección de texto (X11)"), generalPage);
-    auto *selLayout = new QVBoxLayout(selGroup);
+    auto *selCard = addSectionCard(genLayout, tr("Selección de texto (X11)"), t, generalPage);
+    auto *selLayout = new QVBoxLayout(selCard);
+    selLayout->setContentsMargins(14, 12, 14, 12);
+    selLayout->setSpacing(8);
 
-    m_saveSelection = new QCheckBox(tr("Guardar texto seleccionado con el mouse en el historial"), selGroup);
+    m_saveSelection = new QCheckBox(tr("Guardar texto seleccionado con el mouse en el historial"), selCard);
     m_saveSelection->setChecked(s->saveSelection());
 
-    m_syncClipboards = new QCheckBox(tr("Sincronizar selección del mouse y portapapeles (Ctrl+C)"), selGroup);
+    m_syncClipboards = new QCheckBox(tr("Sincronizar selección del mouse y portapapeles (Ctrl+C)"), selCard);
     m_syncClipboards->setChecked(s->syncClipboards());
 
     selLayout->addWidget(m_saveSelection);
     selLayout->addWidget(m_syncClipboards);
-    genLayout->addWidget(selGroup);
 
-    auto *sysGroup = new QGroupBox(tr("Sistema y actualizaciones"), generalPage);
-    auto *sysLayout = new QVBoxLayout(sysGroup);
-    m_autostart = new QCheckBox(tr("Iniciar Mklipper automáticamente al iniciar sesión"), sysGroup);
+    auto *sysCard = addSectionCard(genLayout, tr("Sistema y actualizaciones"), t, generalPage);
+    auto *sysLayout = new QVBoxLayout(sysCard);
+    sysLayout->setContentsMargins(14, 12, 14, 12);
+    sysLayout->setSpacing(8);
+
+    m_autostart = new QCheckBox(tr("Iniciar Mklipper automáticamente al iniciar sesión"), sysCard);
     m_autostart->setChecked(MklipperSettings::autostartEnabled());
     sysLayout->addWidget(m_autostart);
 
-    m_autoCheckUpdates = new QCheckBox(tr("Buscar actualizaciones automáticamente al iniciar"), sysGroup);
+    m_autoCheckUpdates = new QCheckBox(tr("Buscar actualizaciones automáticamente al iniciar"), sysCard);
     m_autoCheckUpdates->setChecked(s->autoCheckUpdates());
     sysLayout->addWidget(m_autoCheckUpdates);
 
     auto *langRow = new QHBoxLayout;
-    auto *langLabel = new QLabel(tr("Idioma:"), sysGroup);
-    m_languageCombo = new QComboBox(sysGroup);
+    auto *langLabel = new QLabel(tr("Idioma:"), sysCard);
+    m_languageCombo = new QComboBox(sysCard);
     m_languageCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_languageCombo->addItem(tr("Automático (idioma del sistema)"), QStringLiteral("system"));
     m_languageCombo->addItem(QStringLiteral("Español"), QStringLiteral("es"));
@@ -296,45 +269,53 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     sysLayout->addLayout(langRow);
 
     auto *verRow = new QHBoxLayout;
-    auto *verLabel = new QLabel(tr("Versión instalada: <b>%1</b>").arg(QStringLiteral(MKLIPPER_VERSION)), sysGroup);
-    auto *checkUpdatesBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("system-software-update")),
-                                            tr("Buscar actualizaciones ahora…"),
-                                            sysGroup);
+    auto *verLabel = new QLabel(tr("Versión instalada: <b>%1</b>").arg(QStringLiteral(MKLIPPER_VERSION)), sysCard);
+    auto *checkUpdatesBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Update, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Buscar actualizaciones ahora…"),
+        sysCard);
+    checkUpdatesBtn->setIconSize(QSize(15, 15));
+    checkUpdatesBtn->setCursor(Qt::PointingHandCursor);
     connect(checkUpdatesBtn, &QPushButton::clicked, this, &ConfigDialog::checkForUpdatesRequested);
     verRow->addWidget(verLabel);
     verRow->addStretch();
     verRow->addWidget(checkUpdatesBtn);
     sysLayout->addLayout(verRow);
 
-    genLayout->addWidget(sysGroup);
     genLayout->addStretch();
 
-    tabs->addTab(makeScrollTab(generalPage, this), tr("General"));
+    tabs->addTab(makeScrollTab(generalPage, this),
+                 FlatIcons::icon(FlatIcon::Sliders, t.textSecondary, t.textPrimary, t.textMuted, 15),
+                 tr("General"));
 
     // ==================== Tab 2: Actions ====================
     auto *actionsPage = new QWidget(this);
     auto *actLayout = new QVBoxLayout(actionsPage);
+    actLayout->setContentsMargins(2, 6, 6, 8);
+    actLayout->setSpacing(8);
 
-    auto *actOptGroup = new QGroupBox(tr("Opciones de acciones"), actionsPage);
-    auto *actOptForm = new QFormLayout(actOptGroup);
+    auto *actOptCard = addSectionCard(actLayout, tr("Opciones de acciones"), t, actionsPage);
+    auto *actOptForm = new QFormLayout(actOptCard);
+    actOptForm->setContentsMargins(14, 12, 14, 12);
+    actOptForm->setSpacing(8);
     actOptForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
-    m_urlGrabberEnabled = new QCheckBox(tr("Mostrar menú de acciones automáticamente al copiar"), actOptGroup);
+    m_urlGrabberEnabled = new QCheckBox(tr("Mostrar menú de acciones automáticamente al copiar"), actOptCard);
     m_urlGrabberEnabled->setChecked(s->urlGrabberEnabled());
 
-    m_actionOnSelection = new QCheckBox(tr("Mostrar menú de acciones al seleccionar texto"), actOptGroup);
+    m_actionOnSelection = new QCheckBox(tr("Mostrar menú de acciones al seleccionar texto"), actOptCard);
     m_actionOnSelection->setChecked(s->actionOnSelection());
 
-    m_replayInHistory = new QCheckBox(tr("Ejecutar acciones al elegir un elemento del historial"), actOptGroup);
+    m_replayInHistory = new QCheckBox(tr("Ejecutar acciones al elegir un elemento del historial"), actOptCard);
     m_replayInHistory->setChecked(s->replayActionInHistory());
 
-    m_stripWhiteSpace = new QCheckBox(tr("Recortar espacios en blanco al evaluar acciones"), actOptGroup);
+    m_stripWhiteSpace = new QCheckBox(tr("Recortar espacios en blanco al evaluar acciones"), actOptCard);
     m_stripWhiteSpace->setChecked(s->stripWhiteSpace());
 
-    m_magicMime = new QCheckBox(tr("Ofrecer abrir enlaces (http/https) y archivos existentes"), actOptGroup);
+    m_magicMime = new QCheckBox(tr("Ofrecer abrir enlaces (http/https) y archivos existentes"), actOptCard);
     m_magicMime->setChecked(s->enableMagicMimeActions());
 
-    m_actionTimeout = new QSpinBox(actOptGroup);
+    m_actionTimeout = new QSpinBox(actOptCard);
     m_actionTimeout->setRange(0, 200);
     m_actionTimeout->setValue(s->timeoutForActionPopups());
     m_actionTimeout->setSuffix(tr(" s (0 = sin límite)"));
@@ -344,20 +325,42 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     actOptForm->addRow(m_replayInHistory);
     actOptForm->addRow(m_stripWhiteSpace);
     actOptForm->addRow(m_magicMime);
-    actOptForm->addRow(tr("Duración del menú automático:"), wrapSpinBoxRow(m_actionTimeout, QStringLiteral("200"), actOptGroup));
-    actLayout->addWidget(actOptGroup);
+    actOptForm->addRow(tr("Duración del menú automático:"), wrapSpinBoxRow(m_actionTimeout, QStringLiteral("200"), actOptCard));
 
-    auto *customGroup = new QGroupBox(tr("Acciones personalizadas por expresión regular"), actionsPage);
-    auto *customLayout = new QVBoxLayout(customGroup);
-    m_actionsList = new QListWidget(customGroup);
+    auto *customCard = addSectionCard(actLayout, tr("Acciones personalizadas por expresión regular"), t, actionsPage);
+    auto *customLayout = new QVBoxLayout(customCard);
+    customLayout->setContentsMargins(14, 12, 14, 12);
+    customLayout->setSpacing(10);
+
+    m_actionsList = new QListWidget(customCard);
     m_actionsList->setMinimumHeight(110);
     connect(m_actionsList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *) { editAction(); });
     customLayout->addWidget(m_actionsList, 1);
 
     auto *actBtns = new QHBoxLayout;
-    auto *addBtn = new QPushButton(tr("Agregar…"), customGroup);
-    auto *editBtn = new QPushButton(tr("Editar…"), customGroup);
-    auto *delBtn = new QPushButton(tr("Eliminar"), customGroup);
+    actBtns->setSpacing(8);
+    auto *addBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Plus, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Agregar…"),
+        customCard);
+    addBtn->setIconSize(QSize(15, 15));
+    addBtn->setCursor(Qt::PointingHandCursor);
+
+    auto *editBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Edit, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Editar…"),
+        customCard);
+    editBtn->setIconSize(QSize(15, 15));
+    editBtn->setCursor(Qt::PointingHandCursor);
+
+    auto *delBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Trash, t.textSecondary, t.danger, t.textMuted, 15),
+        tr("Eliminar"),
+        customCard);
+    delBtn->setProperty("destructive", true);
+    delBtn->setIconSize(QSize(15, 15));
+    delBtn->setCursor(Qt::PointingHandCursor);
+
     connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addAction);
     connect(editBtn, &QPushButton::clicked, this, &ConfigDialog::editAction);
     connect(delBtn, &QPushButton::clicked, this, &ConfigDialog::deleteAction);
@@ -366,27 +369,40 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     actBtns->addWidget(delBtn);
     actBtns->addStretch();
     customLayout->addLayout(actBtns);
-    actLayout->addWidget(customGroup, 1);
 
-    tabs->addTab(makeScrollTab(actionsPage, this), tr("Acciones"));
+    tabs->addTab(makeScrollTab(actionsPage, this),
+                 FlatIcons::icon(FlatIcon::Bolt, t.textSecondary, t.textPrimary, t.textMuted, 15),
+                 tr("Acciones"));
 
     // ==================== Tab 3: Shortcuts ====================
     auto *keysPage = new QWidget(this);
     auto *keysLayout = new QVBoxLayout(keysPage);
-    auto *keysForm = new QFormLayout;
+    keysLayout->setContentsMargins(2, 6, 6, 8);
+    keysLayout->setSpacing(10);
+
+    auto *keysCard = addSectionCard(keysLayout, tr("Atajos"), t, keysPage);
+    auto *keysForm = new QFormLayout(keysCard);
+    keysForm->setContentsMargins(14, 12, 14, 12);
+    keysForm->setSpacing(10);
     keysForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
-    auto makeKeyRow = [keysPage](const QString &seq) {
-        auto *w = new QWidget(keysPage);
+    auto makeKeyRow = [keysCard, &t](const QString &seq) {
+        auto *w = new QWidget(keysCard);
         auto *hl = new QHBoxLayout(w);
         hl->setContentsMargins(0, 0, 0, 0);
+        hl->setSpacing(6);
         auto *edit = new QKeySequenceEdit(QKeySequence::fromString(seq), w);
         QObject::connect(edit, &QKeySequenceEdit::keySequenceChanged, edit, [edit](const QKeySequence &ks) {
             if (ks.count() > 1) {
                 edit->setKeySequence(QKeySequence(ks[0]));
             }
         });
-        auto *clearBtn = new QPushButton(QObject::tr("Limpiar"), w);
+        auto *clearBtn = new QPushButton(
+            FlatIcons::icon(FlatIcon::ClearKey, t.textSecondary, t.textPrimary, t.textMuted, 14),
+            QObject::tr("Limpiar"),
+            w);
+        clearBtn->setIconSize(QSize(14, 14));
+        clearBtn->setCursor(Qt::PointingHandCursor);
         clearBtn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
         QObject::connect(clearBtn, &QPushButton::clicked, edit, &QKeySequenceEdit::clear);
         hl->addWidget(edit, 1);
@@ -412,43 +428,68 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     keysForm->addRow(tr("Invocar acciones del elemento actual:"), wRepeat);
     keysForm->addRow(tr("Vaciar historial:"), wClear);
 
-    keysLayout->addLayout(keysForm);
-
     auto *tipCard = new QFrame(keysPage);
     tipCard->setObjectName(QStringLiteral("mklipperTipCard"));
     auto *tipLayout = new QHBoxLayout(tipCard);
-    tipLayout->setContentsMargins(12, 10, 12, 10);
+    tipLayout->setContentsMargins(14, 12, 14, 12);
+    tipLayout->setSpacing(10);
+
+    auto *tipIcon = new QLabel(tipCard);
+    tipIcon->setPixmap(FlatIcons::pixmap(FlatIcon::Info, t.accent, 18, devicePixelRatioF()));
+    tipIcon->setFixedSize(18, 18);
+    tipLayout->addWidget(tipIcon, 0, Qt::AlignTop);
+
     auto *tip = new QLabel(
         tr("Consejo: También podés asignar un atajo nativo en Cinnamon (Configuración del sistema → Teclado → Atajos personalizados) "
            "apuntando al comando <b>mklipper --toggle</b>."),
         tipCard);
     tip->setWordWrap(true);
-    tipLayout->addWidget(tip);
-    keysLayout->addSpacing(10);
+    tipLayout->addWidget(tip, 1);
     keysLayout->addWidget(tipCard);
     keysLayout->addStretch();
 
-    tabs->addTab(makeScrollTab(keysPage, this), tr("Atajos"));
+    tabs->addTab(makeScrollTab(keysPage, this),
+                 FlatIcons::icon(FlatIcon::Keyboard, t.textSecondary, t.textPrimary, t.textMuted, 15),
+                 tr("Atajos"));
 
-    // Dialog buttons
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->button(QDialogButtonBox::Ok)->setText(tr("Guardar"));
-    buttons->button(QDialogButtonBox::Cancel)->setText(tr("Cancelar"));
-    connect(buttons, &QDialogButtonBox::accepted, this, &ConfigDialog::saveAndAccept);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    mainLayout->addWidget(buttons);
+    // Dialog action footer
+    auto *footerDivider = new QFrame(this);
+    footerDivider->setObjectName(QStringLiteral("mklipperDivider"));
+    mainLayout->addWidget(footerDivider);
+
+    auto *btnRow = new QHBoxLayout;
+    btnRow->setSpacing(8);
+    btnRow->addStretch();
+
+    auto *cancelBtn = new QPushButton(tr("Cancelar"), this);
+    cancelBtn->setCursor(Qt::PointingHandCursor);
+    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+
+    auto *saveBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Check, t.accentFg, t.accentFg, t.textMuted, 15),
+        tr("Guardar"),
+        this);
+    saveBtn->setProperty("primary", true);
+    saveBtn->setIconSize(QSize(15, 15));
+    saveBtn->setCursor(Qt::PointingHandCursor);
+    saveBtn->setDefault(true);
+    connect(saveBtn, &QPushButton::clicked, this, &ConfigDialog::saveAndAccept);
+
+    btnRow->addWidget(cancelBtn);
+    btnRow->addWidget(saveBtn);
+    mainLayout->addLayout(btnRow);
 
     refreshActionList();
 
     // Pick a comfortable initial size that fits scaled displays without squishing widgets
-    const QSize preferred = generalPage->sizeHint() + QSize(64, 120);
+    const QSize preferred = generalPage->sizeHint() + QSize(68, 130);
     if (QScreen *scr = QGuiApplication::primaryScreen()) {
         const QRect avail = scr->availableGeometry();
-        const int targetW = qBound(480, preferred.width(), static_cast<int>(avail.width() * 0.85));
-        const int targetH = qBound(400, preferred.height(), static_cast<int>(avail.height() * 0.85));
+        const int targetW = qBound(520, preferred.width(), static_cast<int>(avail.width() * 0.85));
+        const int targetH = qBound(440, preferred.height(), static_cast<int>(avail.height() * 0.85));
         resize(targetW, targetH);
     } else {
-        resize(qMax(600, preferred.width()), qMax(540, preferred.height()));
+        resize(qMax(620, preferred.width()), qMax(560, preferred.height()));
     }
 }
 

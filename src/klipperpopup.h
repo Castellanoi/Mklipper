@@ -14,6 +14,7 @@
 
 class HistoryModel;
 class QAbstractButton;
+class QAction;
 class QLabel;
 class QLineEdit;
 class QListView;
@@ -57,6 +58,7 @@ public:
 
     void editCurrentClipboard();
     void showCurrentBarcode();
+    void refreshTheme();
 
 Q_SIGNALS:
     void configureRequested();
@@ -64,6 +66,7 @@ Q_SIGNALS:
 
 protected:
     bool event(QEvent *ev) override;
+    void changeEvent(QEvent *ev) override;
     bool eventFilter(QObject *watched, QEvent *ev) override;
     void keyPressEvent(QKeyEvent *ev) override;
     void mousePressEvent(QMouseEvent *ev) override;
@@ -84,6 +87,7 @@ private Q_SLOTS:
     void onPasteFinished();
 
 private:
+    void applyTheme();
     void showPositioned(const QPoint &anchorPos, bool anchorAbove);
     void returnToListPage();
     bool tryQuickSelectDigit(QKeyEvent *ke, bool allowBareDigit);
@@ -97,6 +101,7 @@ private:
     QStackedWidget *m_stack = nullptr;
     // Page 0: list
     QLineEdit *m_searchEdit = nullptr;
+    QAction *m_searchIconAction = nullptr;
     QToolButton *m_starFilterBtn = nullptr;
     QToolButton *m_clearBtn = nullptr;
     QToolButton *m_configBtn = nullptr;
@@ -104,19 +109,27 @@ private:
     QAbstractButton *m_plainTextSwitch = nullptr;
     QLabel *m_plainTextHintLabel = nullptr;
     QWidget *m_passwordBanner = nullptr;
+    QLabel *m_pwIconLabel = nullptr;
+    QLabel *m_pwLabel = nullptr;
     QStackedWidget *m_listStack = nullptr;
     QListView *m_listView = nullptr;
+    QFrame *m_emptyBadge = nullptr;
+    QLabel *m_emptyIconLabel = nullptr;
     QLabel *m_emptyLabel = nullptr;
     QLabel *m_emptySubLabel = nullptr;
     QLabel *m_statusLabel = nullptr;
 
     // Page 1: edit
+    QPushButton *m_editBackBtn = nullptr;
+    QLabel *m_editTitleLabel = nullptr;
+    QPushButton *m_saveEditBtn = nullptr;
     QPlainTextEdit *m_editArea = nullptr;
     QString m_editingUuid;
 
     // Page 2: QR
     QRCodeWidget *m_qrWidget = nullptr;
 
+    bool m_applyingTheme = false;
     bool m_suppressAutoHide = false;
     bool m_pastingInProgress = false;
     quint64 m_pasteGeneration = 0;

@@ -6,9 +6,12 @@
 #include "urlgrabber.h"
 
 #include "clipcommandprocess.h"
+#include "flaticons.h"
 #include "settings.h"
+#include "themestyle.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QDesktopServices>
 #include <QFile>
 #include <QIcon>
@@ -245,8 +248,11 @@ void URLGrabber::actionMenu(HistoryItemConstPtr item, bool automaticallyInvoked)
     m_menu->setObjectName(u"mklipperActionPopup"_s);
     connect(m_menu.get(), &QMenu::triggered, this, &URLGrabber::slotItemSelected);
 
+    const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
+
     for (ClipAction *clipAct : matches) {
-        m_menu->addSection(QIcon::fromTheme(u"edit-paste"_s), clipAct->description());
+        m_menu->addSection(FlatIcons::icon(FlatIcon::Clipboard, t.textSecondary, t.accentFg, t.textMuted, 15),
+                           clipAct->description());
         const auto cmds = clipAct->commands();
         for (int i = 0; i < cmds.size(); ++i) {
             const ClipCommand &cmd = cmds.at(i);
@@ -256,16 +262,20 @@ void URLGrabber::actionMenu(HistoryItemConstPtr item, bool automaticallyInvoked)
             const QString id = QUuid::createUuid().toString();
             auto *act = new QAction(cmd.description.isEmpty() ? cmd.command : cmd.description, m_menu.get());
             act->setData(id);
-            if (!cmd.icon.isEmpty()) {
-                act->setIcon(QIcon::fromTheme(cmd.icon));
-            }
+            const FlatIcon cmdIcon = (cmd.icon.contains(u"browser"_s) || cmd.icon.contains(u"open"_s))
+                ? FlatIcon::ExternalLink
+                : FlatIcon::Bolt;
+            act->setIcon(FlatIcons::icon(cmdIcon, t.textPrimary, t.accentFg, t.textMuted, 15));
             m_commandMapper.insert(id, {clipAct, i});
             m_menu->addAction(act);
         }
     }
 
     m_menu->addSeparator();
-    auto *cancelAct = new QAction(QIcon::fromTheme(u"dialog-cancel"_s), tr("Cancelar"), m_menu.get());
+    auto *cancelAct = new QAction(
+        FlatIcons::icon(FlatIcon::Close, t.textSecondary, t.accentFg, t.textMuted, 15),
+        tr("Cancelar"),
+        m_menu.get());
     m_menu->addAction(cancelAct);
     m_clipItem = std::move(item);
 

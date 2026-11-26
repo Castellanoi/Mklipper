@@ -4,10 +4,13 @@
 */
 #include "updatedialog.h"
 
+#include "flaticons.h"
 #include "settings.h"
+#include "themestyle.h"
 
 #include <QCloseEvent>
 #include <QDesktopServices>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
@@ -24,44 +27,22 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
     , m_updater(updater)
 {
     setWindowTitle(tr("Actualizar Mklipper"));
-    setWindowIcon(QIcon(u":/icons/mklipper.svg"_s));
-    setMinimumWidth(520);
-    setStyleSheet(uR"(
-        QTextBrowser {
-            background-color: palette(base);
-            border: 1px solid palette(mid);
-            border-radius: 8px;
-            padding: 8px;
-        }
-        QPlainTextEdit {
-            background-color: palette(base);
-            border: 1px solid palette(mid);
-            border-radius: 7px;
-            padding: 6px;
-        }
-        QProgressBar {
-            border: 1px solid palette(mid);
-            border-radius: 5px;
-            background-color: palette(base);
-            max-height: 10px;
-            text-align: center;
-        }
-        QProgressBar::chunk {
-            background-color: palette(highlight);
-            border-radius: 4px;
-        }
-    )"_s);
+    setMinimumWidth(580);
+
+    const ThemeTokens t = ThemeTokens::fromPalette(palette());
+    setWindowIcon(FlatIcons::appLogoIcon(t.accent));
+    setStyleSheet(ThemeStyle::dialogStyleSheet(t));
 
     auto *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(16, 16, 16, 14);
-    mainLayout->setSpacing(12);
+    mainLayout->setContentsMargins(18, 18, 18, 16);
+    mainLayout->setSpacing(14);
 
     // Header
     auto *headerLayout = new QHBoxLayout;
     headerLayout->setSpacing(12);
 
     auto *iconLabel = new QLabel(this);
-    iconLabel->setPixmap(QIcon(u":/icons/mklipper.svg"_s).pixmap(48, 48));
+    iconLabel->setPixmap(FlatIcons::appLogoPixmap(t.accent, 48, devicePixelRatioF()));
     iconLabel->setFixedSize(48, 48);
     headerLayout->addWidget(iconLabel, 0, Qt::AlignTop);
 
@@ -117,13 +98,40 @@ UpdateDialog::UpdateDialog(Updater *updater, QWidget *parent)
     mainLayout->addWidget(m_detailsEdit);
 
     // Buttons
+    auto *btnDivider = new QFrame(this);
+    btnDivider->setObjectName(u"mklipperDivider"_s);
+    mainLayout->addWidget(btnDivider);
+
     auto *btnLayout = new QHBoxLayout;
-    m_openGithubBtn = new QPushButton(tr("Ver en GitHub"), this);
+    btnLayout->setSpacing(8);
+    m_openGithubBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::ExternalLink, t.textPrimary, t.textPrimary, t.textMuted, 14),
+        tr("Ver en GitHub"),
+        this);
+    m_openGithubBtn->setIconSize(QSize(14, 14));
+    m_openGithubBtn->setCursor(Qt::PointingHandCursor);
+
     m_skipBtn = new QPushButton(tr("Omitir esta versión"), this);
-    m_retryBtn = new QPushButton(QIcon::fromTheme(u"view-refresh"_s), tr("Reintentar"), this);
-    m_updateBtn = new QPushButton(QIcon::fromTheme(u"system-software-update"_s), tr("Actualizar ahora"), this);
+    m_skipBtn->setCursor(Qt::PointingHandCursor);
+
+    m_retryBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Refresh, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Reintentar"),
+        this);
+    m_retryBtn->setIconSize(QSize(15, 15));
+    m_retryBtn->setCursor(Qt::PointingHandCursor);
+
+    m_updateBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Update, t.accentFg, t.accentFg, t.textMuted, 15),
+        tr("Actualizar ahora"),
+        this);
+    m_updateBtn->setProperty("primary", true);
+    m_updateBtn->setIconSize(QSize(15, 15));
+    m_updateBtn->setCursor(Qt::PointingHandCursor);
     m_updateBtn->setDefault(true);
+
     m_closeBtn = new QPushButton(tr("Cerrar"), this);
+    m_closeBtn->setCursor(Qt::PointingHandCursor);
 
     btnLayout->addWidget(m_openGithubBtn);
     btnLayout->addWidget(m_skipBtn);

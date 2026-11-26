@@ -22,7 +22,9 @@ class HistoryCycler;
 class HistoryModel;
 class KlipperPopup;
 class QAction;
+class QEvent;
 class QMenu;
+class QTimer;
 class SystemClipboard;
 class URLGrabber;
 class UpdateDialog;
@@ -37,6 +39,9 @@ class KlipperApp : public QObject, public QDBusContext
 public:
     explicit KlipperApp(QObject *parent = nullptr);
     ~KlipperApp() override;
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *ev) override;
 
 public Q_SLOTS:
     Q_SCRIPTABLE QString getClipboardContents();
@@ -69,10 +74,12 @@ private Q_SLOTS:
     void updateTrayTooltip();
     void onUpdateAvailable(const ReleaseInfo &release, bool userInitiated);
     void onUpdateInstallSucceeded(const ReleaseInfo &release);
+    void onDconfNotify(const QString &prefix, const QStringList &changes, const QString &tag);
 
 private:
     void setupTrayIcon();
     void rebuildTrayMenu();
+    void syncThemeLive();
     void recreatePopup();
     void registerShortcuts();
     void offerActions(const HistoryItemConstPtr &item, bool fromSelection);
@@ -92,9 +99,8 @@ private:
 
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
-    QAction *m_pendingUpdateAct = nullptr;
-    QAction *m_pendingUpdateSep = nullptr;
-    QAction *m_toggleActionsAct = nullptr;
+    QTimer *m_themeSyncTimer = nullptr;
+    bool m_syncingTheme = false;
 
     bool m_urlGrabberEnabled = false;
     QString m_lastUrlGrabberText;

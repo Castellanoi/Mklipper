@@ -4,10 +4,13 @@
 */
 #include "editactiondialog.h"
 
+#include "flaticons.h"
+#include "themestyle.h"
+
 #include <QCheckBox>
 #include <QComboBox>
-#include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -27,39 +30,64 @@ public:
         : QDialog(parent)
     {
         setWindowTitle(QObject::tr("Editar comando"));
-        setMinimumWidth(440);
+        setMinimumWidth(460);
+
+        const ThemeTokens t = ThemeTokens::fromPalette(palette());
+        setStyleSheet(ThemeStyle::dialogStyleSheet(t));
 
         auto *layout = new QVBoxLayout(this);
-        auto *form = new QFormLayout;
+        layout->setContentsMargins(16, 16, 16, 14);
+        layout->setSpacing(12);
 
-        m_cmdEdit = new QLineEdit(cmd.command, this);
+        auto *card = new QFrame(this);
+        card->setObjectName(QStringLiteral("mklipperCard"));
+        auto *form = new QFormLayout(card);
+        form->setContentsMargins(14, 12, 14, 12);
+        form->setSpacing(10);
+
+        m_cmdEdit = new QLineEdit(cmd.command, card);
         m_cmdEdit->setPlaceholderText(QObject::tr("Ej: xdg-open %s"));
-        m_descEdit = new QLineEdit(cmd.description, this);
+        m_descEdit = new QLineEdit(cmd.description, card);
         m_descEdit->setPlaceholderText(QObject::tr("Descripción del comando"));
-        m_outputCombo = new QComboBox(this);
+        m_outputCombo = new QComboBox(card);
         m_outputCombo->addItem(QObject::tr("Ignorar salida"), ClipCommand::IGNORE);
         m_outputCombo->addItem(QObject::tr("Reemplazar elemento en el portapapeles"), ClipCommand::REPLACE);
         m_outputCombo->addItem(QObject::tr("Agregar salida como nuevo elemento"), ClipCommand::ADD);
         m_outputCombo->setCurrentIndex(static_cast<int>(cmd.output));
-        m_enabledCheck = new QCheckBox(QObject::tr("Habilitado"), this);
+        m_enabledCheck = new QCheckBox(QObject::tr("Habilitado"), card);
         m_enabledCheck->setChecked(cmd.isEnabled);
-
-        auto *hint = new QLabel(QObject::tr("Variables disponibles: %s (texto), %0..%9 (grupos capturados por la regex)."), this);
-        hint->setWordWrap(true);
 
         form->addRow(QObject::tr("Comando:"), m_cmdEdit);
         form->addRow(QObject::tr("Descripción:"), m_descEdit);
         form->addRow(QObject::tr("Salida:"), m_outputCombo);
         form->addRow(QString(), m_enabledCheck);
-        layout->addLayout(form);
+        layout->addWidget(card);
+
+        auto *hint = new QLabel(QObject::tr("Variables disponibles: %s (texto), %0..%9 (grupos capturados por la regex)."), this);
+        hint->setWordWrap(true);
+        QPalette hp = hint->palette();
+        hp.setColor(QPalette::WindowText, t.textMuted);
+        hint->setPalette(hp);
         layout->addWidget(hint);
 
-        auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-        buttons->button(QDialogButtonBox::Ok)->setText(QObject::tr("Aceptar"));
-        buttons->button(QDialogButtonBox::Cancel)->setText(QObject::tr("Cancelar"));
-        connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        layout->addWidget(buttons);
+        auto *btnRow = new QHBoxLayout;
+        btnRow->setSpacing(8);
+        btnRow->addStretch();
+        auto *cancelBtn = new QPushButton(QObject::tr("Cancelar"), this);
+        cancelBtn->setCursor(Qt::PointingHandCursor);
+        auto *okBtn = new QPushButton(
+            FlatIcons::icon(FlatIcon::Check, t.accentFg, t.accentFg, t.textMuted, 15),
+            QObject::tr("Aceptar"),
+            this);
+        okBtn->setProperty("primary", true);
+        okBtn->setIconSize(QSize(15, 15));
+        okBtn->setCursor(Qt::PointingHandCursor);
+        okBtn->setDefault(true);
+        connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+        connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+        btnRow->addWidget(cancelBtn);
+        btnRow->addWidget(okBtn);
+        layout->addLayout(btnRow);
     }
 
     ClipCommand command() const
@@ -83,18 +111,26 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(action ? tr("Editar acción") : tr("Nueva acción"));
-    setMinimumSize(540, 400);
+    setMinimumSize(560, 420);
+
+    const ThemeTokens t = ThemeTokens::fromPalette(palette());
+    setStyleSheet(ThemeStyle::dialogStyleSheet(t));
 
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(14, 14, 14, 12);
-    layout->setSpacing(10);
-    auto *form = new QFormLayout;
+    layout->setContentsMargins(16, 16, 16, 14);
+    layout->setSpacing(12);
 
-    m_regexEdit = new QLineEdit(this);
+    auto *topCard = new QFrame(this);
+    topCard->setObjectName(QStringLiteral("mklipperCard"));
+    auto *form = new QFormLayout(topCard);
+    form->setContentsMargins(14, 12, 14, 12);
+    form->setSpacing(10);
+
+    m_regexEdit = new QLineEdit(topCard);
     m_regexEdit->setPlaceholderText(tr("Ej: ^https?://.*"));
-    m_descEdit = new QLineEdit(this);
+    m_descEdit = new QLineEdit(topCard);
     m_descEdit->setPlaceholderText(tr("Descripción de la acción"));
-    m_autoCheck = new QCheckBox(tr("Incluir en el menú automático de acciones"), this);
+    m_autoCheck = new QCheckBox(tr("Incluir en el menú automático de acciones"), topCard);
     m_autoCheck->setChecked(true);
 
     if (action) {
@@ -107,11 +143,13 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     form->addRow(tr("Expresión regular:"), m_regexEdit);
     form->addRow(tr("Descripción:"), m_descEdit);
     form->addRow(QString(), m_autoCheck);
-    layout->addLayout(form);
+    layout->addWidget(topCard);
 
     m_cmdTable = new QTableWidget(0, 3, this);
     m_cmdTable->setHorizontalHeaderLabels({tr("Comando"), tr("Descripción"), tr("Salida")});
     m_cmdTable->horizontalHeader()->setStretchLastSection(true);
+    m_cmdTable->verticalHeader()->setVisible(false);
+    m_cmdTable->setShowGrid(false);
     m_cmdTable->setAlternatingRowColors(true);
     m_cmdTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_cmdTable->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -120,9 +158,29 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     layout->addWidget(m_cmdTable, 1);
 
     auto *cmdBtns = new QHBoxLayout;
-    auto *addBtn = new QPushButton(tr("Agregar comando"), this);
-    auto *editBtn = new QPushButton(tr("Editar"), this);
-    auto *delBtn = new QPushButton(tr("Eliminar"), this);
+    cmdBtns->setSpacing(8);
+    auto *addBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Plus, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Agregar comando"),
+        this);
+    addBtn->setIconSize(QSize(15, 15));
+    addBtn->setCursor(Qt::PointingHandCursor);
+
+    auto *editBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Edit, t.textPrimary, t.textPrimary, t.textMuted, 15),
+        tr("Editar"),
+        this);
+    editBtn->setIconSize(QSize(15, 15));
+    editBtn->setCursor(Qt::PointingHandCursor);
+
+    auto *delBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Trash, t.textSecondary, t.danger, t.textMuted, 15),
+        tr("Eliminar"),
+        this);
+    delBtn->setProperty("destructive", true);
+    delBtn->setIconSize(QSize(15, 15));
+    delBtn->setCursor(Qt::PointingHandCursor);
+
     connect(addBtn, &QPushButton::clicked, this, &EditActionDialog::addCommand);
     connect(editBtn, &QPushButton::clicked, this, &EditActionDialog::editSelectedCommand);
     connect(delBtn, &QPushButton::clicked, this, &EditActionDialog::removeSelectedCommand);
@@ -132,8 +190,24 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
     cmdBtns->addStretch();
     layout->addLayout(cmdBtns);
 
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    connect(buttons, &QDialogButtonBox::accepted, this, [this]() {
+    auto *divider = new QFrame(this);
+    divider->setObjectName(QStringLiteral("mklipperDivider"));
+    layout->addWidget(divider);
+
+    auto *btnRow = new QHBoxLayout;
+    btnRow->setSpacing(8);
+    btnRow->addStretch();
+    auto *cancelBtn = new QPushButton(tr("Cancelar"), this);
+    cancelBtn->setCursor(Qt::PointingHandCursor);
+    auto *okBtn = new QPushButton(
+        FlatIcons::icon(FlatIcon::Check, t.accentFg, t.accentFg, t.textMuted, 15),
+        tr("Aceptar"),
+        this);
+    okBtn->setProperty("primary", true);
+    okBtn->setIconSize(QSize(15, 15));
+    okBtn->setCursor(Qt::PointingHandCursor);
+    okBtn->setDefault(true);
+    connect(okBtn, &QPushButton::clicked, this, [this]() {
         const QString pattern = m_regexEdit->text().trimmed();
         if (pattern.isEmpty() || !QRegularExpression(pattern).isValid()) {
             QMessageBox::warning(this, tr("Expresión regular inválida"), tr("Ingresá una expresión regular válida."));
@@ -141,8 +215,10 @@ EditActionDialog::EditActionDialog(const ClipAction *action, QWidget *parent)
         }
         accept();
     });
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
+    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+    btnRow->addWidget(cancelBtn);
+    btnRow->addWidget(okBtn);
+    layout->addLayout(btnRow);
 
     refreshTable();
 }

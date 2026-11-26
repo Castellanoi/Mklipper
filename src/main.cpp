@@ -2,8 +2,10 @@
     SPDX-FileCopyrightText: 2026 Mklipper contributors
     SPDX-License-Identifier: GPL-2.0-or-later
 */
+#include "flaticons.h"
 #include "klipperapp.h"
 #include "settings.h"
+#include "themestyle.h"
 #include "translations.h"
 
 #include <QApplication>
@@ -94,6 +96,9 @@ int main(int argc, char *argv[])
         qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
     }
 
+    // Inherit Cinnamon's configured cursor size & theme before Qt XCB initializes libXcursor
+    ThemeStyle::syncCursorEnvironment();
+
     // Crisp fractional display scaling (125%, 150%, 175%, etc.) on HiDPI Linux Mint setups
     QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
@@ -105,6 +110,10 @@ int main(int argc, char *argv[])
     app.setDesktopFileName(u"mklipper"_s);
     app.setWindowIcon(QIcon(u":/icons/mklipper.svg"_s));
     app.setQuitOnLastWindowClosed(false);
+
+    // Sync exact Linux Mint Cinnamon GTK3 theme & accent color into Qt's palette
+    ThemeStyle::syncApplicationPalette();
+    app.setWindowIcon(FlatIcons::appLogoIcon(ThemeTokens::fromPalette(app.palette()).accent));
 
     MklipperTranslations::applyLanguage(MklipperSettings::self()->language());
 

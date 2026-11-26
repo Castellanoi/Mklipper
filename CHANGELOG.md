@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.6.2
+
+### 🇪🇸 Español
+- **Rediseño minimalista y flat inspirado en Cinnamon 6.6:**
+  - Nuevo motor propio de íconos vectoriales flat monocromáticos (estilo simbólico de Cinnamon 6.6 / Adwaita) en toda la aplicación: búsqueda, fijar, papelera, ajustes, cerrar, editar, código QR, enlaces, diálogo de configuración, actualizador y menú de bandeja.
+  - Botones minimalistas sin bordes pesados, barra superior limpia, eliminación del recuadro anidado alrededor del historial, jerarquía visual por capas tonales, pestañas tipo *pill*, checkboxes/spinboxes planos y botones primarios con el color de acento del sistema.
+  - Ícono de aplicación modernizado y completamente flat cuyo clip adopta dinámicamente el color de acento activo del usuario.
+- **Integración nativa con el tema, color de acento y puntero de Cinnamon:**
+  - Lectura directa del tema GTK3/Cinnamon activo (`org.cinnamon.desktop.interface gtk-theme`) y sus `@define-color` reales (fondo, superficies, texto y color de acento), resolviendo el fallo de `qt6-gtk-platformtheme` que caía en el azul genérico de Qt Fusion.
+  - **Actualización en vivo sin reiniciar:** al cambiar el tema o el color de acento en **Configuración → Temas** de Cinnamon, Mklipper actualiza al instante el popup, los diálogos abiertos, el menú y el ícono de la bandeja.
+  - Herencia automática del **tamaño y tema del puntero** configurado en Cinnamon (`cursor-size` y `cursor-theme`) para que el cursor no vuelva al tamaño por defecto al pasar sobre las ventanas de Mklipper.
+- **Menú de la bandeja más limpio y confiable:**
+  - Corregida la sincronización del menú contextual D-Bus con `xapp-sn-watcher` reutilizando un único `QMenu` persistente sin ítems ocultos fantasma.
+  - Retiradas las entradas heredadas de Klipper sin uso práctico en el menú contextual (*«Ejecutar acciones en elemento actual»* y *«Menú automático de acciones»*).
+
+### 🇬🇧 English
+- **Minimalist, flat Cinnamon 6.6-inspired UI redesign:**
+  - New custom monochrome flat SVG vector icon engine (Cinnamon 6.6 / Adwaita symbolic style) across the entire app: search, pin/star, trash, settings, close, edit, QR code, links, Settings dialog, Updater, and tray menu.
+  - Borderless minimalist toolbar buttons, cleaner header without nested list frames, tonal surface layering, pill-style settings tabs, flat accented checkboxes/spinboxes, and accent-filled primary action buttons.
+  - Modernized flat app icon whose clip dynamically adapts to the user's active desktop accent color.
+- **Native Cinnamon theme, accent color, and cursor integration:**
+  - Reads the active Cinnamon/GTK3 theme (`org.cinnamon.desktop.interface gtk-theme`) and its actual `@define-color` tokens (background, surfaces, text, and accent color), fixing `qt6-gtk-platformtheme`'s fallback to generic Qt Fusion blue.
+  - **Live theme switching without restart:** changing theme or accent color in Cinnamon's **Themes** settings immediately updates the popup, open dialogs, tray menu, and tray icon.
+  - Automatically inherits Cinnamon's configured **cursor size and theme** (`cursor-size` and `cursor-theme`) so the pointer keeps its custom size when hovering over Mklipper windows.
+- **Cleaner, more reliable system tray menu:**
+  - Fixed D-Bus context menu synchronization with `xapp-sn-watcher` by keeping a single persistent `QMenu` with no hidden placeholder items.
+  - Removed unused legacy Klipper entries from the tray context menu ("Run actions on current item" and "Automatic actions menu").
+
 ## v1.6.1
 
 ### 🇪🇸 Español

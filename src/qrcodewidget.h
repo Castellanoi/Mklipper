@@ -8,6 +8,7 @@
 #include <QString>
 #include <QWidget>
 
+class QFrame;
 class QLabel;
 class QPushButton;
 
@@ -19,6 +20,7 @@ public:
     explicit QRCodeWidget(QWidget *parent = nullptr);
 
     void setText(const QString &text);
+    void refreshTheme();
 
 Q_SIGNALS:
     void backRequested();
@@ -28,6 +30,9 @@ private Q_SLOTS:
     void saveQrImage();
 
 private:
+    QPushButton *m_backBtn = nullptr;
+    QLabel *m_titleLabel = nullptr;
+    QFrame *m_qrCard = nullptr;
     QLabel *m_qrLabel = nullptr;
     QLabel *m_previewLabel = nullptr;
     QPushButton *m_copyBtn = nullptr;

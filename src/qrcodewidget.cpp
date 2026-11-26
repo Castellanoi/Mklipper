@@ -4,6 +4,10 @@
 */
 #include "qrcodewidget.h"
 
+#include "flaticons.h"
+#include "themestyle.h"
+
+#include <QApplication>
 #include <QClipboard>
 #include <QFileDialog>
 #include <QFrame>
@@ -24,62 +28,96 @@ QRCodeWidget::QRCodeWidget(QWidget *parent)
     mainLayout->setSpacing(10);
 
     auto *headerLayout = new QHBoxLayout;
-    auto *backBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("go-previous")), tr("Volver"), this);
-    backBtn->setFlat(true);
-    backBtn->setCursor(Qt::PointingHandCursor);
-    connect(backBtn, &QPushButton::clicked, this, &QRCodeWidget::backRequested);
+    headerLayout->setSpacing(6);
+    m_backBtn = new QPushButton(tr("Volver"), this);
+    m_backBtn->setProperty("ghost", true);
+    m_backBtn->setIconSize(QSize(15, 15));
+    m_backBtn->setCursor(Qt::PointingHandCursor);
+    connect(m_backBtn, &QPushButton::clicked, this, &QRCodeWidget::backRequested);
 
-    auto *titleLabel = new QLabel(tr("Código QR"), this);
-    QFont titleFont = titleLabel->font();
+    m_titleLabel = new QLabel(tr("Código QR"), this);
+    QFont titleFont = m_titleLabel->font();
     titleFont.setBold(true);
     titleFont.setPointSizeF(titleFont.pointSizeF() + 0.5);
-    titleLabel->setFont(titleFont);
+    m_titleLabel->setFont(titleFont);
 
-    headerLayout->addWidget(backBtn);
+    auto *rightSpacer = new QWidget(this);
+    rightSpacer->setFixedWidth(m_backBtn->sizeHint().width());
+    headerLayout->addWidget(m_backBtn);
     headerLayout->addStretch();
-    headerLayout->addWidget(titleLabel);
+    headerLayout->addWidget(m_titleLabel);
     headerLayout->addStretch();
+    headerLayout->addWidget(rightSpacer);
     mainLayout->addLayout(headerLayout);
 
-    auto *qrCard = new QFrame(this);
-    qrCard->setObjectName(QStringLiteral("mklipperQrCard"));
-    qrCard->setStyleSheet(QStringLiteral(
-        "QFrame#mklipperQrCard { background-color: #ffffff; border: 1px solid palette(mid); border-radius: 12px; }"));
-    auto *qrCardLayout = new QVBoxLayout(qrCard);
+    auto *divider = new QFrame(this);
+    divider->setObjectName(QStringLiteral("mklipperDivider"));
+    mainLayout->addWidget(divider);
+
+    m_qrCard = new QFrame(this);
+    m_qrCard->setObjectName(QStringLiteral("mklipperQrCard"));
+    auto *qrCardLayout = new QVBoxLayout(m_qrCard);
     qrCardLayout->setContentsMargins(14, 14, 14, 14);
 
-    m_qrLabel = new QLabel(qrCard);
+    m_qrLabel = new QLabel(m_qrCard);
     m_qrLabel->setAlignment(Qt::AlignCenter);
     m_qrLabel->setMinimumSize(220, 220);
     m_qrLabel->setStyleSheet(QStringLiteral("QLabel { color: #333333; background: transparent; }"));
     qrCardLayout->addWidget(m_qrLabel, 1);
-    mainLayout->addWidget(qrCard, 1, Qt::AlignCenter);
+    mainLayout->addWidget(m_qrCard, 1, Qt::AlignCenter);
 
     m_previewLabel = new QLabel(this);
     m_previewLabel->setAlignment(Qt::AlignCenter);
     m_previewLabel->setTextFormat(Qt::PlainText);
     m_previewLabel->setWordWrap(true);
     m_previewLabel->setMaximumHeight(44);
-    QPalette pp = m_previewLabel->palette();
-    QColor pCol = pp.color(QPalette::WindowText);
-    pCol.setAlpha(170);
-    pp.setColor(QPalette::WindowText, pCol);
-    m_previewLabel->setPalette(pp);
     mainLayout->addWidget(m_previewLabel);
 
     auto *btnLayout = new QHBoxLayout;
     btnLayout->setSpacing(8);
-    m_copyBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-copy")), tr("Copiar QR"), this);
-    m_copyBtn->setCursor(Qt::PointingHandCursor);
-    m_saveBtn = new QPushButton(QIcon::fromTheme(QStringLiteral("document-save")), tr("Guardar PNG"), this);
+    m_saveBtn = new QPushButton(tr("Guardar PNG"), this);
+    m_saveBtn->setProperty("flatAction", true);
+    m_saveBtn->setIconSize(QSize(15, 15));
     m_saveBtn->setCursor(Qt::PointingHandCursor);
+
+    m_copyBtn = new QPushButton(tr("Copiar QR"), this);
+    m_copyBtn->setProperty("primary", true);
+    m_copyBtn->setIconSize(QSize(15, 15));
+    m_copyBtn->setCursor(Qt::PointingHandCursor);
+
     connect(m_copyBtn, &QPushButton::clicked, this, &QRCodeWidget::copyQrImage);
     connect(m_saveBtn, &QPushButton::clicked, this, &QRCodeWidget::saveQrImage);
     btnLayout->addStretch();
-    btnLayout->addWidget(m_copyBtn);
     btnLayout->addWidget(m_saveBtn);
+    btnLayout->addWidget(m_copyBtn);
     btnLayout->addStretch();
     mainLayout->addLayout(btnLayout);
+
+    refreshTheme();
+}
+
+void QRCodeWidget::refreshTheme()
+{
+    const QPalette appPal = QApplication::palette();
+    const ThemeTokens t = ThemeTokens::fromPalette(appPal);
+
+    m_backBtn->setIcon(FlatIcons::icon(FlatIcon::Back, t.textSecondary, t.textPrimary, t.textMuted, 15));
+    m_saveBtn->setIcon(FlatIcons::icon(FlatIcon::Save, t.textPrimary, t.textPrimary, t.textMuted, 15));
+    m_copyBtn->setIcon(FlatIcons::icon(FlatIcon::Copy, t.accentFg, t.accentFg, t.textMuted, 15));
+
+    m_qrCard->setStyleSheet(
+        QStringLiteral("QFrame#mklipperQrCard { background-color: #ffffff; border: 1px solid %1; border-radius: 12px; }")
+            .arg(ThemeStyle::rgbaCss(t.borderSubtle)));
+
+    if (m_titleLabel) {
+        QPalette tp = appPal;
+        tp.setColor(QPalette::WindowText, t.textPrimary);
+        m_titleLabel->setPalette(tp);
+    }
+    QPalette pp = appPal;
+    pp.setColor(QPalette::WindowText, t.textMuted);
+    m_previewLabel->setPalette(pp);
+    update();
 }
 
 void QRCodeWidget::setText(const QString &text)
