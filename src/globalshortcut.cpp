@@ -10,7 +10,6 @@
 #include <QRegularExpression>
 
 #include <X11/Xlib.h>
-#include <X11/keysym.h>
 #include <xcb/xcb.h>
 
 namespace
@@ -23,126 +22,6 @@ int x11ErrorHandler(Display *, XErrorEvent *ev)
         s_x11GrabError = true;
     }
     return 0;
-}
-
-Display *x11Display()
-{
-    auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
-    return x11App ? x11App->display() : nullptr;
-}
-
-unsigned int qtModsToX11(Qt::KeyboardModifiers mods)
-{
-    unsigned int mask = 0;
-    if (mods & Qt::ShiftModifier) {
-        mask |= ShiftMask;
-    }
-    if (mods & Qt::ControlModifier) {
-        mask |= ControlMask;
-    }
-    if (mods & Qt::AltModifier) {
-        mask |= Mod1Mask;
-    }
-    if (mods & Qt::MetaModifier) {
-        mask |= Mod4Mask;
-    }
-    return mask;
-}
-
-KeySym qtKeyToX11KeySym(Qt::Key key)
-{
-    if (key >= Qt::Key_A && key <= Qt::Key_Z) {
-        return static_cast<KeySym>(XK_a + (key - Qt::Key_A));
-    }
-    if (key >= Qt::Key_0 && key <= Qt::Key_9) {
-        return static_cast<KeySym>(XK_0 + (key - Qt::Key_0));
-    }
-    if (key >= Qt::Key_F1 && key <= Qt::Key_F12) {
-        return static_cast<KeySym>(XK_F1 + (key - Qt::Key_F1));
-    }
-    switch (key) {
-    case Qt::Key_Space: return XK_space;
-    case Qt::Key_Tab: return XK_Tab;
-    case Qt::Key_Return: return XK_Return;
-    case Qt::Key_Escape: return XK_Escape;
-    case Qt::Key_Backspace: return XK_BackSpace;
-    case Qt::Key_Delete: return XK_Delete;
-    case Qt::Key_Insert: return XK_Insert;
-    case Qt::Key_Home: return XK_Home;
-    case Qt::Key_End: return XK_End;
-    case Qt::Key_PageUp: return XK_Page_Up;
-    case Qt::Key_PageDown: return XK_Page_Down;
-    case Qt::Key_Left: return XK_Left;
-    case Qt::Key_Right: return XK_Right;
-    case Qt::Key_Up: return XK_Up;
-    case Qt::Key_Down: return XK_Down;
-    case Qt::Key_Minus: return XK_minus;
-    case Qt::Key_Equal: return XK_equal;
-    case Qt::Key_BracketLeft: return XK_bracketleft;
-    case Qt::Key_BracketRight: return XK_bracketright;
-    case Qt::Key_Semicolon: return XK_semicolon;
-    case Qt::Key_Apostrophe: return XK_apostrophe;
-    case Qt::Key_Comma: return XK_comma;
-    case Qt::Key_Period: return XK_period;
-    case Qt::Key_Slash: return XK_slash;
-    case Qt::Key_Backslash: return XK_backslash;
-    case Qt::Key_QuoteLeft: return XK_grave;
-    default: break;
-    }
-
-    const QString name = QKeySequence(key).toString();
-    if (!name.isEmpty()) {
-        return XStringToKeysym(name.toLatin1().constData());
-    }
-    return NoSymbol;
-}
-
-QString qtKeyToCinnamonAccel(const QKeySequence &sequence)
-{
-    if (sequence.isEmpty()) {
-        return {};
-    }
-    const QKeyCombination combo = sequence[0];
-    const Qt::KeyboardModifiers mods = combo.keyboardModifiers();
-    const Qt::Key key = combo.key();
-
-    QString out;
-    if (mods & Qt::ControlModifier) {
-        out += QStringLiteral("<Primary>");
-    }
-    if (mods & Qt::AltModifier) {
-        out += QStringLiteral("<Alt>");
-    }
-    if (mods & Qt::ShiftModifier) {
-        out += QStringLiteral("<Shift>");
-    }
-    if (mods & Qt::MetaModifier) {
-        out += QStringLiteral("<Super>");
-    }
-
-    if (key >= Qt::Key_A && key <= Qt::Key_Z) {
-        out += QChar('a' + (key - Qt::Key_A));
-        return out;
-    }
-    if (key >= Qt::Key_0 && key <= Qt::Key_9) {
-        out += QChar('0' + (key - Qt::Key_0));
-        return out;
-    }
-    if (key >= Qt::Key_F1 && key <= Qt::Key_F12) {
-        out += QStringLiteral("F%1").arg(1 + (key - Qt::Key_F1));
-        return out;
-    }
-
-    const KeySym sym = qtKeyToX11KeySym(key);
-    if (sym == NoSymbol) {
-        return {};
-    }
-    const char *symName = XKeysymToString(sym);
-    if (!symName || !*symName) {
-        return {};
-    }
-    out += QString::fromLatin1(symName);
-    return out;
 }
 
 QString runGSettings(const QStringList &args, bool *ok = nullptr)
@@ -182,18 +61,14 @@ QString formatGSettingsStringList(const QStringList &items)
     }
     return QLatin1Char('[') + quoted.join(QStringLiteral(", ")) + QLatin1Char(']');
 }
-
-constexpr unsigned int kIgnoredMasks[] = {
-    0,
-    LockMask,
-    Mod2Mask,
-    LockMask | Mod2Mask,
-};
 } // namespace
 
 GlobalShortcutManager::GlobalShortcutManager(QObject *parent)
     : QObject(parent)
 {
+    if (Display *dpy = X11Keyboard::display()) {
+        m_modMap = X11Keyboard::queryModifierMap(dpy);
+    }
     if (qGuiApp) {
         qGuiApp->installNativeEventFilter(this);
     }
@@ -240,7 +115,7 @@ bool GlobalShortcutManager::syncCinnamonShortcuts(const QList<CinnamonShortcutSp
     QStringList activeMklipperIds;
     for (const auto &spec : specs) {
         const QString schemaPath = QStringLiteral("org.cinnamon.desktop.keybindings.custom-keybinding:/org/cinnamon/desktop/keybindings/custom-keybindings/%1/").arg(spec.id);
-        const QString accel = qtKeyToCinnamonAccel(spec.key);
+        const QString accel = spec.key.isEmpty() ? QString() : X11Keyboard::qtCombinationToCinnamonAccel(spec.key[0]);
         if (accel.isEmpty()) {
             runGSettings({QStringLiteral("reset-recursively"), schemaPath});
             continue;
@@ -252,7 +127,7 @@ bool GlobalShortcutManager::syncCinnamonShortcuts(const QList<CinnamonShortcutSp
         runGSettings({QStringLiteral("set"), schemaPath, QStringLiteral("binding"), formatGSettingsStringList({accel})});
     }
 
-    // Reset any obsolete mklipper-* keybindings (e.g. removed legacy actions)
+    // Reset any obsolete mklipper-* keybindings
     for (const QString &oldId : std::as_const(previousMklipperIds)) {
         if (!activeMklipperIds.contains(oldId)) {
             const QString schemaPath = QStringLiteral("org.cinnamon.desktop.keybindings.custom-keybinding:/org/cinnamon/desktop/keybindings/custom-keybindings/%1/").arg(oldId);
@@ -276,69 +151,93 @@ bool GlobalShortcutManager::registerShortcut(const QString &id, const QKeySequen
         return false;
     }
 
-    Display *dpy = x11Display();
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
         return false;
     }
 
+    // Re-query the live X11 modifier map dynamically (no hardcoded Mod1/Mod2/Mod4/ScrollLock masks)
+    m_modMap = X11Keyboard::queryModifierMap(dpy);
+
     const QKeyCombination combo = sequence[0];
     const Qt::Key key = combo.key();
     const Qt::KeyboardModifiers mods = combo.keyboardModifiers();
-    const KeySym sym = qtKeyToX11KeySym(key);
+    const KeySym sym = X11Keyboard::qtKeyToKeysym(key);
     if (sym == NoSymbol) {
         qWarning() << "Mklipper: Unsupported shortcut key:" << sequence.toString();
         return false;
     }
 
-    const KeyCode code = XKeysymToKeycode(dpy, sym);
-    if (code == 0) {
+    const QList<KeyCode> codes = X11Keyboard::keycodesForKeysym(dpy, sym);
+    if (codes.isEmpty()) {
         qWarning() << "Mklipper: Cannot map keysym for shortcut:" << sequence.toString();
         return false;
     }
 
-    const unsigned int xMods = qtModsToX11(mods);
+    const unsigned int xMods = m_modMap.qtModsToX11(mods);
+    const QList<unsigned int> ignoredMasks = m_modMap.ignoredLockCombinations();
     const Window root = DefaultRootWindow(dpy);
 
     s_x11GrabError = false;
     auto prevHandler = XSetErrorHandler(x11ErrorHandler);
 
-    for (unsigned int ignored : kIgnoredMasks) {
-        XGrabKey(dpy, code, xMods | ignored, root, True, GrabModeAsync, GrabModeAsync);
+    QList<unsigned int> grabbedCodes;
+    for (KeyCode code : codes) {
+        for (unsigned int ignored : ignoredMasks) {
+            XGrabKey(dpy, code, xMods | ignored, root, True, GrabModeAsync, GrabModeAsync);
+        }
+        grabbedCodes.append(static_cast<unsigned int>(code));
     }
     XSync(dpy, False);
     XSetErrorHandler(prevHandler);
 
     if (s_x11GrabError) {
         qWarning() << "Mklipper: Could not grab global shortcut (already in use?):" << sequence.toString();
-        for (unsigned int ignored : kIgnoredMasks) {
-            XUngrabKey(dpy, code, xMods | ignored, root);
+        for (unsigned int code : grabbedCodes) {
+            for (unsigned int ignored : ignoredMasks) {
+                XUngrabKey(dpy, static_cast<int>(code), xMods | ignored, root);
+            }
         }
         XSync(dpy, False);
         return false;
     }
 
-    m_shortcuts.append({id, static_cast<unsigned int>(code), xMods, std::move(callback)});
+    m_shortcuts.append({id, sequence, grabbedCodes, xMods, ignoredMasks, std::move(callback)});
     return true;
 }
 
 void GlobalShortcutManager::ungrab(const GrabbedKey &entry)
 {
-    Display *dpy = x11Display();
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
         return;
     }
     const Window root = DefaultRootWindow(dpy);
-    for (unsigned int ignored : kIgnoredMasks) {
-        XUngrabKey(dpy, static_cast<int>(entry.keycode), entry.modifiers | ignored, root);
+    for (unsigned int code : entry.keycodes) {
+        for (unsigned int ignored : entry.ignoredMasks) {
+            XUngrabKey(dpy, static_cast<int>(code), entry.modifiers | ignored, root);
+        }
     }
     XFlush(dpy);
+}
+
+void GlobalShortcutManager::refreshAllGrabs()
+{
+    if (m_shortcuts.isEmpty()) {
+        return;
+    }
+    QList<GrabbedKey> existing = m_shortcuts;
+    unregisterAll();
+    for (auto &entry : existing) {
+        registerShortcut(entry.id, entry.sequence, std::move(entry.callback));
+    }
 }
 
 void GlobalShortcutManager::unregisterShortcut(const QString &id)
 {
     for (int i = m_shortcuts.size() - 1; i >= 0; --i) {
-        if (m_shortcuts[i].id == id) {
-            ungrab(m_shortcuts[i]);
+        if (m_shortcuts.at(i).id == id) {
+            ungrab(m_shortcuts.at(i));
             m_shortcuts.removeAt(i);
         }
     }
@@ -359,17 +258,29 @@ bool GlobalShortcutManager::nativeEventFilter(const QByteArray &eventType, void 
     }
 
     auto *ev = static_cast<xcb_generic_event_t *>(message);
-    if ((ev->response_type & ~0x80) != XCB_KEY_PRESS) {
+    const uint8_t type = ev->response_type & ~0x80;
+
+    if (type == XCB_MAPPING_NOTIFY) {
+        // Keyboard plugged in / layout changed / ckb-next updated keymap: refresh dynamic grabs
+        if (Display *dpy = X11Keyboard::display()) {
+            m_modMap = X11Keyboard::queryModifierMap(dpy);
+        }
+        refreshAllGrabs();
+        return false;
+    }
+
+    if (type != XCB_KEY_PRESS) {
         return false;
     }
 
     auto *keyEv = reinterpret_cast<xcb_key_press_event_t *>(ev);
-    const unsigned int cleanMods = keyEv->state & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask);
+    const unsigned int cleanMods = keyEv->state & m_modMap.relevantMask();
 
     for (const auto &entry : std::as_const(m_shortcuts)) {
-        if (entry.keycode == keyEv->detail && entry.modifiers == cleanMods) {
-            auto cb = entry.callback;
-            QMetaObject::invokeMethod(this, [cb = std::move(cb)]() { cb(); }, Qt::QueuedConnection);
+        if (entry.modifiers == cleanMods && entry.keycodes.contains(keyEv->detail)) {
+            if (entry.callback) {
+                entry.callback();
+            }
             return true;
         }
     }

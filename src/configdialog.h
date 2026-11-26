@@ -11,9 +11,9 @@
 
 class QCheckBox;
 class QComboBox;
-class QKeySequenceEdit;
 class QListWidget;
 class QSpinBox;
+class ShortcutRecorder;
 
 class ConfigDialog : public QDialog
 {
@@ -68,12 +68,12 @@ private:
 
     // Shortcuts tab
     QCheckBox *m_quickSelectDigits = nullptr;
-    QKeySequenceEdit *m_keyPopup = nullptr;
-    QKeySequenceEdit *m_keyTogglePlainText = nullptr;
-    QKeySequenceEdit *m_keyEditCurrent = nullptr;
-    QKeySequenceEdit *m_keyShowQr = nullptr;
-    QKeySequenceEdit *m_keyRepeatAction = nullptr;
-    QKeySequenceEdit *m_keyCycleNext = nullptr;
-    QKeySequenceEdit *m_keyCyclePrev = nullptr;
-    QKeySequenceEdit *m_keyClearHistory = nullptr;
+    ShortcutRecorder *m_keyPopup = nullptr;
+    ShortcutRecorder *m_keyTogglePlainText = nullptr;
+    ShortcutRecorder *m_keyEditCurrent = nullptr;
+    ShortcutRecorder *m_keyShowQr = nullptr;
+    ShortcutRecorder *m_keyRepeatAction = nullptr;
+    ShortcutRecorder *m_keyCycleNext = nullptr;
+    ShortcutRecorder *m_keyCyclePrev = nullptr;
+    ShortcutRecorder *m_keyClearHistory = nullptr;
 };

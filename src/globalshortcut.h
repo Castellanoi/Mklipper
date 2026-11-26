@@ -12,6 +12,8 @@
 #include <QObject>
 #include <QString>
 
+#include "x11keyboard.h"
+
 struct CinnamonShortcutSpec {
     QString id;        // e.g. "mklipper-popup"
     QString label;     // Human-readable label shown in Cinnamon Keyboard settings
@@ -32,7 +34,7 @@ public:
     // Native Cinnamon shortcut registration via GSettings (avoids Muffin Super_L sync-grab conflict)
     bool syncCinnamonShortcuts(const QList<CinnamonShortcutSpec> &specs);
 
-    // Generic X11 XGrabKey fallback for non-Cinnamon X11 desktops
+    // Generic X11 XGrabKey fallback for non-Cinnamon X11 desktops (dynamic modifier & multi-keycode discovery)
     bool registerShortcut(const QString &id, const QKeySequence &sequence, std::function<void()> callback);
     void unregisterShortcut(const QString &id);
     void unregisterAll();
@@ -42,12 +44,16 @@ public:
 private:
     struct GrabbedKey {
         QString id;
-        unsigned int keycode = 0;
+        QKeySequence sequence;
+        QList<unsigned int> keycodes;
         unsigned int modifiers = 0;
+        QList<unsigned int> ignoredMasks;
         std::function<void()> callback;
     };
 
     void ungrab(const GrabbedKey &entry);
+    void refreshAllGrabs();
 
+    X11ModifierMap m_modMap;
     QList<GrabbedKey> m_shortcuts;
 };

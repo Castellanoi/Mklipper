@@ -7,7 +7,9 @@
 #include "editactiondialog.h"
 #include "flaticons.h"
 #include "settings.h"
+#include "shortcutrecorder.h"
 #include "themestyle.h"
+#include "translations.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -16,7 +18,6 @@
 #include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
-#include <QKeySequenceEdit>
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
@@ -303,8 +304,9 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_languageCombo->setToolTip(langTip);
     m_languageCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_languageCombo->addItem(tr("Automático (idioma del sistema)"), QStringLiteral("system"));
-    m_languageCombo->addItem(QStringLiteral("Español"), QStringLiteral("es"));
-    m_languageCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+    for (const LanguageInfo &lang : MklipperTranslations::availableLanguages()) {
+        m_languageCombo->addItem(lang.nativeName, lang.code);
+    }
     const int langIdx = m_languageCombo->findData(s->language().trimmed().toLower());
     m_languageCombo->setCurrentIndex(langIdx >= 0 ? langIdx : 0);
     const QFontMetrics langFm(m_languageCombo->font());
@@ -466,31 +468,10 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     keysForm->setSpacing(10);
     keysForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
-    auto makeKeyRow = [keysCard, &t](const QString &seq, const QString &tip) {
-        auto *w = new QWidget(keysCard);
-        w->setToolTip(tip);
-        auto *hl = new QHBoxLayout(w);
-        hl->setContentsMargins(0, 0, 0, 0);
-        hl->setSpacing(6);
-        auto *edit = new QKeySequenceEdit(QKeySequence::fromString(seq), w);
-        edit->setToolTip(tip);
-        QObject::connect(edit, &QKeySequenceEdit::keySequenceChanged, edit, [edit](const QKeySequence &ks) {
-            if (ks.count() > 1) {
-                edit->setKeySequence(QKeySequence(ks[0]));
-            }
-        });
-        auto *clearBtn = new QPushButton(
-            FlatIcons::icon(FlatIcon::ClearKey, t.textSecondary, t.textPrimary, t.textMuted, 14),
-            QObject::tr("Limpiar"),
-            w);
-        clearBtn->setIconSize(QSize(14, 14));
-        clearBtn->setCursor(Qt::PointingHandCursor);
-        clearBtn->setToolTip(QObject::tr("Quita el atajo asignado a esta acción."));
-        clearBtn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-        QObject::connect(clearBtn, &QPushButton::clicked, edit, &QKeySequenceEdit::clear);
-        hl->addWidget(edit, 1);
-        hl->addWidget(clearBtn);
-        return std::pair{w, edit};
+    auto makeKeyRow = [keysCard](const QString &seq, const QString &tip) {
+        auto *rec = new ShortcutRecorder(QKeySequence::fromString(seq), keysCard);
+        rec->setRowToolTip(tip);
+        return rec;
     };
 
     const QString tipPopup = tr("Abre u oculta la ventana flotante del historial del portapapeles justo debajo del cursor.");
@@ -502,32 +483,23 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     const QString tipCyclePrev = tr("Vuelve al elemento anterior del historial durante la rotación rápida.");
     const QString tipClear = tr("Vacía todo el historial del portapapeles (respetando la confirmación y los elementos fijados).");
 
-    auto [wPopup, ePopup] = makeKeyRow(s->shortcutPopup(), tipPopup);
-    auto [wPlain, ePlain] = makeKeyRow(s->shortcutTogglePlainText(), tipPlainText);
-    auto [wEdit, eEdit] = makeKeyRow(s->shortcutEditCurrent(), tipEdit);
-    auto [wQr, eQr] = makeKeyRow(s->shortcutShowQr(), tipQr);
-    auto [wAction, eAction] = makeKeyRow(s->shortcutRepeatAction(), tipAction);
-    auto [wNext, eNext] = makeKeyRow(s->shortcutCycleNext(), tipCycleNext);
-    auto [wPrev, ePrev] = makeKeyRow(s->shortcutCyclePrev(), tipCyclePrev);
-    auto [wClear, eClear] = makeKeyRow(s->shortcutClearHistory(), tipClear);
+    m_keyPopup = makeKeyRow(s->shortcutPopup(), tipPopup);
+    m_keyTogglePlainText = makeKeyRow(s->shortcutTogglePlainText(), tipPlainText);
+    m_keyEditCurrent = makeKeyRow(s->shortcutEditCurrent(), tipEdit);
+    m_keyShowQr = makeKeyRow(s->shortcutShowQr(), tipQr);
+    m_keyRepeatAction = makeKeyRow(s->shortcutRepeatAction(), tipAction);
+    m_keyCycleNext = makeKeyRow(s->shortcutCycleNext(), tipCycleNext);
+    m_keyCyclePrev = makeKeyRow(s->shortcutCyclePrev(), tipCyclePrev);
+    m_keyClearHistory = makeKeyRow(s->shortcutClearHistory(), tipClear);
 
-    m_keyPopup = ePopup;
-    m_keyTogglePlainText = ePlain;
-    m_keyEditCurrent = eEdit;
-    m_keyShowQr = eQr;
-    m_keyRepeatAction = eAction;
-    m_keyCycleNext = eNext;
-    m_keyCyclePrev = ePrev;
-    m_keyClearHistory = eClear;
-
-    addTooltipFormRow(keysForm, tr("Mostrar historial bajo el cursor:"), wPopup, tipPopup, keysCard);
-    addTooltipFormRow(keysForm, tr("Alternar «Pegar sin formato»:"), wPlain, tipPlainText, keysCard);
-    addTooltipFormRow(keysForm, tr("Editar contenido actual:"), wEdit, tipEdit, keysCard);
-    addTooltipFormRow(keysForm, tr("Mostrar código QR actual:"), wQr, tipQr, keysCard);
-    addTooltipFormRow(keysForm, tr("Invocar acciones del elemento actual:"), wAction, tipAction, keysCard);
-    addTooltipFormRow(keysForm, tr("Rotar historial (siguiente):"), wNext, tipCycleNext, keysCard);
-    addTooltipFormRow(keysForm, tr("Rotar historial (anterior):"), wPrev, tipCyclePrev, keysCard);
-    addTooltipFormRow(keysForm, tr("Vaciar historial:"), wClear, tipClear, keysCard);
+    addTooltipFormRow(keysForm, tr("Mostrar historial bajo el cursor:"), m_keyPopup, tipPopup, keysCard);
+    addTooltipFormRow(keysForm, tr("Alternar «Pegar sin formato»:"), m_keyTogglePlainText, tipPlainText, keysCard);
+    addTooltipFormRow(keysForm, tr("Editar contenido actual:"), m_keyEditCurrent, tipEdit, keysCard);
+    addTooltipFormRow(keysForm, tr("Mostrar código QR actual:"), m_keyShowQr, tipQr, keysCard);
+    addTooltipFormRow(keysForm, tr("Invocar acciones del elemento actual:"), m_keyRepeatAction, tipAction, keysCard);
+    addTooltipFormRow(keysForm, tr("Rotar historial (siguiente):"), m_keyCycleNext, tipCycleNext, keysCard);
+    addTooltipFormRow(keysForm, tr("Rotar historial (anterior):"), m_keyCyclePrev, tipCyclePrev, keysCard);
+    addTooltipFormRow(keysForm, tr("Vaciar historial:"), m_keyClearHistory, tipClear, keysCard);
 
     auto *tipCard = new QFrame(keysPage);
     tipCard->setObjectName(QStringLiteral("mklipperTipCard"));
@@ -593,15 +565,18 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
 
     refreshActionList();
 
-    // Pick a comfortable initial size that fits scaled displays without squishing widgets
-    const QSize preferred = generalPage->sizeHint() + QSize(68, 130);
+    // Pick a comfortable initial size across all tabs so no horizontal scrollbar appears on any language
+    const int maxTabW = qMax(generalPage->sizeHint().width(),
+                             qMax(actionsPage->sizeHint().width(), keysPage->sizeHint().width()));
+    const int maxTabH = qMax(generalPage->sizeHint().height(), keysPage->sizeHint().height());
+    const QSize preferred(maxTabW + 76, maxTabH + 136);
     if (QScreen *scr = QGuiApplication::primaryScreen()) {
         const QRect avail = scr->availableGeometry();
-        const int targetW = qBound(540, preferred.width(), static_cast<int>(avail.width() * 0.85));
-        const int targetH = qBound(460, preferred.height(), static_cast<int>(avail.height() * 0.85));
+        const int targetW = qBound(580, preferred.width(), static_cast<int>(avail.width() * 0.85));
+        const int targetH = qBound(500, preferred.height(), static_cast<int>(avail.height() * 0.85));
         resize(targetW, targetH);
     } else {
-        resize(qMax(620, preferred.width()), qMax(560, preferred.height()));
+        resize(qMax(640, preferred.width()), qMax(580, preferred.height()));
     }
 }
 

@@ -4,6 +4,8 @@
 */
 #include "x11paster.h"
 
+#include "x11keyboard.h"
+
 #include <QGuiApplication>
 #include <QStringList>
 #include <QTimer>
@@ -128,27 +130,9 @@ bool queryWindowIsTerminal(Display *dpy, Window win)
     return false;
 }
 
-bool isKeyHeld(Display *dpy, const char keys[32], KeySym sym)
-{
-    const KeyCode code = XKeysymToKeycode(dpy, sym);
-    if (code == 0) {
-        return false;
-    }
-    return (keys[code >> 3] & (1 << (code & 7))) != 0;
-}
-
 bool anyBlockingModifierHeld(Display *dpy)
 {
-    char keys[32] = {};
-    XQueryKeymap(dpy, keys);
-    return isKeyHeld(dpy, keys, XK_Super_L)
-        || isKeyHeld(dpy, keys, XK_Super_R)
-        || isKeyHeld(dpy, keys, XK_Alt_L)
-        || isKeyHeld(dpy, keys, XK_Alt_R)
-        || isKeyHeld(dpy, keys, XK_Control_L)
-        || isKeyHeld(dpy, keys, XK_Control_R)
-        || isKeyHeld(dpy, keys, XK_Shift_L)
-        || isKeyHeld(dpy, keys, XK_Shift_R);
+    return X11Keyboard::anyBlockingModifierHeld(dpy);
 }
 
 void activateWindow(Display *dpy, Window win)
@@ -266,15 +250,26 @@ void X11Paster::attemptPaste(int retriesLeft, quint64 serial)
 
 void X11Paster::sendPasteKeystroke() const
 {
-    Display *dpy = x11Display();
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
         return;
     }
 
-    const KeyCode ctrl = XKeysymToKeycode(dpy, XK_Control_L);
-    const KeyCode shift = XKeysymToKeycode(dpy, XK_Shift_L);
-    const KeyCode vKey = XKeysymToKeycode(dpy, XK_v);
+    const X11ModifierMap modMap = X11Keyboard::queryModifierMap(dpy);
+    const KeyCode ctrl = !modMap.controlKeycodes.isEmpty() ? modMap.controlKeycodes.first() : XKeysymToKeycode(dpy, XK_Control_L);
+    const KeyCode shift = !modMap.shiftKeycodes.isEmpty() ? modMap.shiftKeycodes.first() : XKeysymToKeycode(dpy, XK_Shift_L);
+    const QList<KeyCode> vCodes = X11Keyboard::keycodesForKeysym(dpy, XK_v);
+    const KeyCode vKey = !vCodes.isEmpty() ? vCodes.first() : XKeysymToKeycode(dpy, XK_v);
     if (ctrl == 0 || vKey == 0) {
+        // Fallback to Shift+Insert on exotic layouts where Latin 'v' is unmapped
+        const KeyCode insKey = XKeysymToKeycode(dpy, XK_Insert);
+        if (shift != 0 && insKey != 0) {
+            XTestFakeKeyEvent(dpy, shift, True, CurrentTime);
+            XTestFakeKeyEvent(dpy, insKey, True, CurrentTime);
+            XTestFakeKeyEvent(dpy, insKey, False, CurrentTime);
+            XTestFakeKeyEvent(dpy, shift, False, CurrentTime);
+            XFlush(dpy);
+        }
         return;
     }
 

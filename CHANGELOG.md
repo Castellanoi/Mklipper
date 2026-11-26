@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.6.4
+
+### 🇪🇸 Español
+- **Compatibilidad universal con todo tipo de teclados (estándar y gamer, sin valores hardcodeados):**
+  - Nueva capa dinámica X11 ([`x11keyboard.cpp`](src/x11keyboard.cpp)) que consulta en vivo `XGetModifierMapping` del servidor X11 para descubrir dinámicamente las máscaras y keycodes reales de `Shift`, `Ctrl`, `Alt`, `Super`/`Meta`/`Hyper`, `CapsLock`, `NumLock` y `ScrollLock`, eliminando cualquier máscara fija.
+  - Soporte completo para teclas extendidas **F1–F35** (incluidas **F13–F24** usadas por teclas macro en teclados como Corsair K95), teclado numérico (`KP_*`), layouts no latinos y re-sincronización automática ante eventos `XCB_MAPPING_NOTIFY` (al conectar teclados, iniciar `ckb-next` o cambiar de distribución).
+  - Nuevo capturador propio de atajos (`ShortcutRecorder`) con IME desactivado (evita que `ibus`/`fcitx` traguen modificadores), detección combinada de 3 capas (Qt + `nativeModifiers` X11 + `XQueryKeymap` en vivo), resolución de tecla base por `nativeScanCode()`, vista previa en tiempo real al mantener modificadores y **selector manual visual** (`Ctrl`/`Alt`/`Super`/`Shift` + tecla) para casos donde el sistema o el teclado interceptan la tecla durante la grabación.
+- **Manual de usuario rediseñado en pestañas visuales y amigables:**
+  - Reemplazada la vista plana de texto por **5 pestañas organizadas** (*Inicio*, *Tarjetas*, *Acciones*, *Atajos* y *Privacidad*) con tarjetas visuales, íconos flat con el color de acento y textos breves y claros.
+- **Arquitectura de traducciones migrada a JSON dinámico:**
+  - Todas las traducciones y las secciones del Manual de usuario se cargan ahora dinámicamente desde archivos JSON autocontenidos ([`data/i18n/es.json`](data/i18n/es.json) y [`data/i18n/en.json`](data/i18n/en.json)), dejando la base lista para incorporar nuevos idiomas sin modificar código C++.
+
+### 🇬🇧 English
+- **Universal keyboard & shortcut compatibility (standard and gaming keyboards, zero hardcoding):**
+  - New dynamic X11 keyboard layer ([`x11keyboard.cpp`](src/x11keyboard.cpp)) querying live `XGetModifierMapping` to dynamically discover active masks and keycodes for `Shift`, `Ctrl`, `Alt`, `Super`/`Meta`/`Hyper`, `CapsLock`, `NumLock`, and `ScrollLock` with no hardcoded modifier masks.
+  - Full support for extended **F1–F35** keys (including **F13–F24** macro keys on gaming keyboards such as Corsair K95), keypad keys (`KP_*`), non-Latin layouts, and automatic re-grabbing on `XCB_MAPPING_NOTIFY` (plugging in keyboards, starting `ckb-next`, or switching layouts).
+  - New custom `ShortcutRecorder` widget with IME disabled (preventing `ibus`/`fcitx` from swallowing modifiers), 3-layer modifier detection (Qt + X11 `nativeModifiers` + live `XQueryKeymap`), physical level-0 key resolution via `nativeScanCode()`, live held-modifier preview, and a **manual visual key picker** (`Ctrl`/`Alt`/`Super`/`Shift` + key) whenever the OS or hardware intercepts a modifier during capture.
+- **Redesigned friendly tabbed User Manual:**
+  - Replaced the single wall-of-text view with **5 clean, bite-sized tabs** (*Start*, *Cards*, *Actions*, *Shortcuts*, and *Privacy*) featuring flat accent icon badges and concise visual cards.
+- **Dynamic JSON internationalization architecture:**
+  - All UI strings and User Manual sections are now dynamically discovered and loaded from self-contained JSON packs ([`data/i18n/es.json`](data/i18n/es.json) and [`data/i18n/en.json`](data/i18n/en.json)), making future community languages plug-and-play with zero C++ changes.
+
 ## v1.6.3
 
 ### 🇪🇸 Español

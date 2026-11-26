@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" /></a>
-  <img src="https://img.shields.io/badge/Version-1.6.3-blue.svg" alt="Version: 1.6.3" />
+  <img src="https://img.shields.io/badge/Version-1.6.4-blue.svg" alt="Version: 1.6.4" />
   <img src="https://img.shields.io/badge/Qt-6.4%2B-41cd52.svg" alt="Qt 6.4+" />
   <img src="https://img.shields.io/badge/Tested%20on-Linux%20Mint%20Cinnamon%20(X11)-87cf3e.svg" alt="Tested on Linux Mint Cinnamon (X11)" />
 </p>
@@ -51,11 +51,11 @@ Está pensado para integrarse de forma limpia y liviana en el escritorio **Cinna
 
 #### Opción 1: Instalar el paquete `.deb` (recomendado para Linux Mint 22.x / Ubuntu 24.04)
 
-1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.6.3_amd64.deb`](dist/mklipper_1.6.3_amd64.deb).
+1. Descargá el último paquete `.deb` desde [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) o directamente [`dist/mklipper_1.6.4_amd64.deb`](dist/mklipper_1.6.4_amd64.deb).
 2. Instalalo con `apt` (o doble clic en Linux Mint) para resolver automáticamente las dependencias de Qt 6:
 
 ```bash
-sudo apt install ./mklipper_1.6.3_amd64.deb
+sudo apt install ./mklipper_1.6.4_amd64.deb
 ```
 
 3. Iniciá **Mklipper** desde el menú de aplicaciones o ejecutando `mklipper`. A partir del próximo inicio de sesión arrancará automáticamente (`/etc/xdg/autostart/mklipper.desktop`), y **las futuras actualizaciones te aparecerán automáticamente en el Gestor de actualizaciones de Linux Mint** (también podés buscar actualizaciones manualmente desde el ícono de la bandeja → *Buscar actualizaciones…*).
@@ -93,7 +93,7 @@ chmod +x packaging/build-deb.sh
 3. Instalá el paquete generado:
 
 ```bash
-sudo apt install ./dist/mklipper_1.6.3_amd64.deb
+sudo apt install ./dist/mklipper_1.6.4_amd64.deb
 ```
 
 ### Desinstalación
@@ -141,11 +141,11 @@ It is designed to blend naturally into **Cinnamon (X11)**: it inherits your syst
 
 #### Option 1: Install the `.deb` package (recommended for Linux Mint 22.x / Ubuntu 24.04)
 
-1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.6.3_amd64.deb`](dist/mklipper_1.6.3_amd64.deb).
+1. Download the latest `.deb` from [GitHub Releases](https://github.com/Castellanoi/Mklipper/releases/latest) or directly [`dist/mklipper_1.6.4_amd64.deb`](dist/mklipper_1.6.4_amd64.deb).
 2. Install it via `apt` (or double-click in Linux Mint) so Qt 6 runtime dependencies are resolved automatically:
 
 ```bash
-sudo apt install ./mklipper_1.6.3_amd64.deb
+sudo apt install ./mklipper_1.6.4_amd64.deb
 ```
 
 3. Launch **Mklipper** from your application menu or by running `mklipper`. It will start automatically on subsequent logins via `/etc/xdg/autostart/mklipper.desktop`, and **future updates will automatically appear in Linux Mint's Update Manager** (you can also check manually via tray icon → *Check for updates…*).
@@ -183,7 +183,7 @@ chmod +x packaging/build-deb.sh
 3. Install the generated package:
 
 ```bash
-sudo apt install ./dist/mklipper_1.6.3_amd64.deb
+sudo apt install ./dist/mklipper_1.6.4_amd64.deb
 ```
 
 ### Uninstall

@@ -6,486 +6,321 @@
 
 #include <QByteArray>
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocale>
+#include <QMap>
+#include <QStandardPaths>
 #include <QTranslator>
 
+#include <algorithm>
 #include <memory>
 
 using namespace Qt::StringLiterals;
 
 namespace
 {
-class MklipperEnglishTranslator : public QTranslator
+struct LanguagePack {
+    LanguageInfo info;
+    QString filePath;
+    QList<ManualSection> manualSections;
+    QHash<QByteArray, QString> strings;
+    bool loadedBody = false;
+};
+
+QString normalizeCode(const QString &code)
+{
+    QString c = code.trimmed().toLower();
+    c.replace(QLatin1Char('-'), QLatin1Char('_'));
+    return c;
+}
+
+class JsonMapTranslator : public QTranslator
 {
 public:
-    MklipperEnglishTranslator()
+    explicit JsonMapTranslator(QHash<QByteArray, QString> map)
+        : m_map(std::move(map))
     {
-        // Complete Spanish -> English translation table covering all tr() calls in Mklipper
-        m_map = {
-            // ConfigDialog
-            {"Configurar Mklipper", u"Configure Mklipper"_s},
-            {"Gestor de portapapeles para Linux Mint", u"Clipboard manager for Linux Mint"_s},
-            {"Historial y comportamiento", u"History & Behavior"_s},
-            {"Guardar historial entre sesiones", u"Save clipboard history across sessions"_s},
-            {"Evitar que el portapapeles quede vacío al cerrar aplicaciones", u"Prevent clipboard from becoming empty when apps close"_s},
-            {"Guardar imágenes (capturas de pantalla) en el historial", u"Save images (screenshots) in history"_s},
-            {" elementos", u" items"_s},
-            {"Pedir confirmación antes de vaciar el historial", u"Ask for confirmation before clearing history"_s},
-            {"Pegar automáticamente al elegir un elemento (además de copiarlo)", u"Auto-paste when selecting an item (in addition to copying)"_s},
-            {"Pegar sin formato (solo texto plano, sin colores ni estilos HTML)", u"Paste without formatting (plain text only, no HTML colors or styles)"_s},
-            {"Mantener la ventana flotante abierta al hacer clic en elementos", u"Keep floating window open when clicking items"_s},
-            {"Cerrar la ventana al hacer clic fuera de ella", u"Close window when clicking outside"_s},
-            {"Guardar origen de los elementos copiados (aplicación y enlace/ventana)", u"Save source of copied items (application and link/window)"_s},
-            {"Mostrar etiqueta de origen en la lista del portapapeles", u"Show source label in the clipboard list"_s},
-            {"Tamaño máximo del historial:", u"Maximum history size:"_s},
-            {"Selección de texto (X11)", u"Text Selection (X11)"_s},
-            {"Guardar texto seleccionado con el mouse en el historial", u"Save mouse-selected text in history"_s},
-            {"Sincronizar selección del mouse y portapapeles (Ctrl+C)", u"Synchronize mouse selection and clipboard (Ctrl+C)"_s},
-            {"Sistema y actualizaciones", u"System & Updates"_s},
-            {"Iniciar Mklipper automáticamente al iniciar sesión", u"Start Mklipper automatically at login"_s},
-            {"Buscar actualizaciones automáticamente al iniciar", u"Check for updates automatically on startup"_s},
-            {"Idioma:", u"Language:"_s},
-            {"Automático (idioma del sistema)", u"Automatic (system language)"_s},
-            {"Versión instalada: <b>%1</b>", u"Installed version: <b>%1</b>"_s},
-            {"Buscar actualizaciones ahora…", u"Check for updates now…"_s},
-            {"General", u"General"_s},
-            {"Opciones de acciones", u"Action Options"_s},
-            {"Mostrar menú de acciones automáticamente al copiar", u"Show actions menu automatically on copy"_s},
-            {"Mostrar menú de acciones al seleccionar texto", u"Show actions menu when selecting text"_s},
-            {"Ejecutar acciones al elegir un elemento del historial", u"Run actions when choosing an item from history"_s},
-            {"Recortar espacios en blanco al evaluar acciones", u"Trim whitespace when evaluating actions"_s},
-            {"Ofrecer abrir enlaces (http/https) y archivos existentes", u"Offer to open links (http/https) and existing files"_s},
-            {" s (0 = sin límite)", u" s (0 = unlimited)"_s},
-            {"Duración del menú automático:", u"Automatic menu timeout:"_s},
-            {"Acciones personalizadas por expresión regular", u"Custom Regular Expression Actions"_s},
-            {"Agregar…", u"Add…"_s},
-            {"Editar…", u"Edit…"_s},
-            {"Eliminar", u"Delete"_s},
-            {"Acciones", u"Actions"_s},
-            {"Limpiar", u"Clear"_s},
-            {"Atajos dentro de la ventana flotante", u"Popup Window Shortcuts"_s},
-            {"Usar teclas 1–0 para pegar rápido desde la ventana flotante",
-             u"Use keys 1–0 to quick-paste from the popup window"_s},
-            {"Atajos globales del sistema", u"Global System Shortcuts"_s},
-            {"Mostrar historial bajo el cursor:", u"Show history at cursor:"_s},
-            {"Alternar «Pegar sin formato»:", u"Toggle \"Paste without formatting\":"_s},
-            {"Editar contenido actual:", u"Edit current contents:"_s},
-            {"Mostrar código QR actual:", u"Show current QR code:"_s},
-            {"Rotar historial (siguiente):", u"Cycle history (next):"_s},
-            {"Rotar historial (anterior):", u"Cycle history (previous):"_s},
-            {"Invocar acciones del elemento actual:", u"Invoke actions for current item:"_s},
-            {"Vaciar historial:", u"Clear history:"_s},
-            {"Consejo: Los atajos configurados aquí se sincronizan automáticamente con Cinnamon (Configuración del sistema → Teclado → Atajos personalizados).",
-             u"Tip: Shortcuts configured here are automatically synced with Cinnamon (System Settings → Keyboard → Custom Shortcuts)."_s},
-            {"Consejo: También podés asignar un atajo nativo en Cinnamon (Configuración del sistema → Teclado → Atajos personalizados) apuntando al comando <b>mklipper --toggle</b>.",
-             u"Tip: You can also bind a native Cinnamon shortcut (System Settings → Keyboard → Custom Shortcuts) pointing to the command <b>mklipper --toggle</b>."_s},
-            {"Atajos", u"Shortcuts"_s},
-            {"Guardar", u"Save"_s},
-            {"Cancelar", u"Cancel"_s},
-            {"Aceptar", u"OK"_s},
-
-            // ConfigDialog tooltips
-            {"Conserva el historial del portapapeles en disco para recuperarlo al reiniciar la PC o cerrar sesión.",
-             u"Saves clipboard history to disk so it is restored after logging out or restarting."_s},
-            {"En X11, si cerrás la aplicación desde donde copiaste algo, el portapapeles suele vaciarse. Esta opción conserva el contenido automáticamente.",
-             u"On X11, closing the app you copied from normally clears the clipboard. This option preserves its contents automatically."_s},
-            {"Almacena capturas de pantalla e imágenes copiadas en el historial con vista previa en miniatura.",
-             u"Stores copied images and screenshots in history with thumbnail previews."_s},
-            {"Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).",
-             u"Shows a confirmation prompt before clearing the entire history to avoid accidental loss (pinned items are always kept)."_s},
-            {"Al seleccionar un elemento del historial, lo copia al portapapeles y lo pega automáticamente en la ventana activa.",
-             u"When selecting an item from history, copies it to the clipboard and automatically pastes it into the active window."_s},
-            {"Elimina fuentes, colores y formato HTML al pegar texto. No afecta imágenes ni archivos copiados.",
-             u"Strips fonts, colors, and HTML formatting when pasting text. Does not affect copied images or files."_s},
-            {"Mantiene visible la ventana del historial después de pegar un elemento, útil para pegar varios seguidos.",
-             u"Keeps the history popup open after pasting an item—handy for pasting multiple items in a row."_s},
-            {"Cuando la ventana flotante permanece abierta al pegar, la oculta automáticamente si hacés clic en otra aplicación.",
-             u"When the floating popup stays open after pasting, hides it automatically if you click another application."_s},
-            {"Registra desde qué aplicación, ventana o sitio web se copió cada elemento para poder buscarlo o abrir el enlace original.",
-             u"Records which app, window, or webpage each item was copied from so you can search by source or reopen its URL."_s},
-            {"Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.",
-             u"Displays a subtle line under each card showing the source application or domain."_s},
-            {"Cantidad máxima de elementos no fijados que se guardan en el historial. Al superar este límite se eliminan los más antiguos.",
-             u"Maximum number of unpinned items kept in history. Older items are removed once this limit is reached."_s},
-            {"Agrega automáticamente al historial cualquier texto que resaltes con el mouse (selección primaria de X11), sin necesidad de presionar Ctrl+C.",
-             u"Automatically adds any text highlighted with the mouse (X11 primary selection) to history without pressing Ctrl+C."_s},
-            {"Mantiene sincronizado el texto seleccionado con el mouse (botón central) y el portapapeles estándar (Ctrl+C / Ctrl+V).",
-             u"Keeps mouse-selected text (middle click) synchronized with the standard clipboard (Ctrl+C / Ctrl+V)."_s},
-            {"Lanza Mklipper en segundo plano en la bandeja del sistema cada vez que iniciás sesión en Linux Mint.",
-             u"Starts Mklipper automatically in the system tray whenever you log in to Linux Mint."_s},
-            {"Comprueba si hay una versión nueva en GitHub al iniciar y te avisa con una notificación (también recibís actualizaciones desde el Gestor de actualizaciones de Mint).",
-             u"Checks GitHub for a new release on startup and shows a notification (updates also arrive via Linux Mint Update Manager)."_s},
-            {"Elige el idioma de la interfaz de Mklipper o seguí automáticamente el idioma configurado en tu sistema.",
-             u"Choose the Mklipper interface language or automatically follow your system language."_s},
-            {"Consulta de inmediato si existe una versión más reciente de Mklipper disponible para instalar.",
-             u"Checks right now if a newer version of Mklipper is available to install."_s},
-            {"Abre un menú contextual automático cuando copiás texto que coincide con una regla (por ejemplo, enlaces web o comandos personalizados).",
-             u"Automatically opens an action menu when copied text matches a rule (such as web links or custom commands)."_s},
-            {"También evalúa las reglas de acciones cuando resaltás texto con el mouse (selección primaria de X11).",
-             u"Also evaluates action rules when highlighting text with the mouse (X11 primary selection)."_s},
-            {"Vuelve a ofrecer el menú de acciones al seleccionar un elemento guardado previamente en el historial.",
-             u"Offers the actions menu again when picking an item previously saved in history."_s},
-            {"Ignora espacios y saltos de línea al inicio y al final del texto antes de comprobar si coincide con una expresión regular.",
-             u"Ignores leading and trailing spaces and line breaks before matching text against a regular expression."_s},
-            {"Detecta automáticamente URLs http/https y rutas de archivos locales existentes para ofrecer abrirlos con la aplicación predeterminada.",
-             u"Automatically detects http/https URLs and existing local file paths to offer opening them with the default application."_s},
-            {"Tiempo en segundos que permanece visible el menú automático de acciones antes de cerrarse solo. Usá 0 para que no se cierre automáticamente.",
-             u"Time in seconds that the automatic actions menu stays visible before closing. Use 0 to disable auto-close."_s},
-            {"Lista de reglas personalizadas que ejecutan comandos cuando el texto copiado coincide con una expresión regular. Hacé doble clic para editar.",
-             u"List of custom rules that run commands when copied text matches a regular expression. Double-click to edit."_s},
-            {"Crea una nueva regla de acción basada en una expresión regular.",
-             u"Creates a new action rule based on a regular expression."_s},
-            {"Modifica la regla y los comandos de la acción seleccionada.",
-             u"Edits the pattern and commands of the selected action."_s},
-            {"Elimina la acción personalizada seleccionada de la lista.",
-             u"Deletes the selected custom action from the list."_s},
-            {"Permite presionar las teclas 1 a 0 (o Alt/Ctrl + 1–0) para pegar ese elemento al instante. Desactivalo si preferís escribir números directamente en el buscador.",
-             u"Lets you press keys 1–0 (or Alt/Ctrl + 1–0) to paste that item immediately. Disable it if you prefer typing numbers directly into the search bar."_s},
-            {"Quita el atajo asignado a esta acción.",
-             u"Clears the shortcut assigned to this action."_s},
-            {"Abre u oculta la ventana flotante del historial del portapapeles justo debajo del cursor.",
-             u"Opens or closes the floating clipboard history popup right under the cursor."_s},
-            {"Activa o desactiva el modo «Pegar sin formato» desde cualquier aplicación y muestra una notificación.",
-             u"Toggles \"Paste without formatting\" mode from any application and displays a notification."_s},
-            {"Abre directamente el editor de texto de Mklipper para modificar el elemento actual del portapapeles.",
-             u"Opens Mklipper's text editor directly to modify the current clipboard item."_s},
-            {"Genera y muestra al instante el código QR del elemento actual del portapapeles.",
-             u"Instantly generates and displays a QR code for the current clipboard item."_s},
-            {"Abre el menú de acciones disponibles (abrir enlaces/archivos o reglas personalizadas) para el elemento actual del portapapeles.",
-             u"Opens the available actions menu (open links/files or custom rules) for the current clipboard item."_s},
-            {"Pasa al siguiente elemento guardado en el historial sin abrir la ventana flotante.",
-             u"Switches to the next saved item in history without opening the popup window."_s},
-            {"Vuelve al elemento anterior del historial durante la rotación rápida.",
-             u"Returns to the previous item in history while cycling."_s},
-            {"Vacía todo el historial del portapapeles (respetando la confirmación y los elementos fijados).",
-             u"Clears the entire clipboard history (respecting confirmation prompts and pinned items)."_s},
-            {"Cierra la configuración descartando los cambios no guardados.",
-             u"Closes settings and discards any unsaved changes."_s},
-            {"Guarda y aplica inmediatamente todas las opciones y atajos configurados.",
-             u"Saves and immediately applies all configured options and shortcuts."_s},
-            {"Manual de usuario", u"User Manual"_s},
-            {"Manual de usuario…", u"User Manual…"_s},
-            {"Abre la guía rápida de uso con todas las funciones y atajos de Mklipper.",
-             u"Opens the quick user guide covering all Mklipper features and shortcuts."_s},
-
-            // HelpDialog
-            {"Manual de usuario — Mklipper", u"User Manual — Mklipper"_s},
-            {"Manual de usuario de Mklipper", u"Mklipper User Manual"_s},
-            {"Guía rápida para aprovechar tu historial del portapapeles en Linux Mint",
-             u"Quick guide to getting the most out of your clipboard history on Linux Mint"_s},
-
-            // EditActionDialog
-            {"Editar comando", u"Edit Command"_s},
-            {"Ej: xdg-open %s", u"e.g. xdg-open %s"_s},
-            {"Descripción del comando", u"Command description"_s},
-            {"Ignorar salida", u"Ignore output"_s},
-            {"Reemplazar elemento en el portapapeles", u"Replace clipboard item"_s},
-            {"Agregar salida como nuevo elemento", u"Append output as new item"_s},
-            {"Habilitado", u"Enabled"_s},
-            {"Variables disponibles: %s (texto), %0..%9 (grupos capturados por la regex).",
-             u"Available variables: %s (text), %0..%9 (regex capture groups)."_s},
-            {"Comando:", u"Command:"_s},
-            {"Descripción:", u"Description:"_s},
-            {"Salida:", u"Output:"_s},
-            {"Editar acción", u"Edit Action"_s},
-            {"Nueva acción", u"New Action"_s},
-            {"Ej: ^https?://.*", u"e.g. ^https?://.*"_s},
-            {"Descripción de la acción", u"Action description"_s},
-            {"Incluir en el menú automático de acciones", u"Include in automatic actions menu"_s},
-            {"Expresión regular:", u"Regular expression:"_s},
-            {"Comando", u"Command"_s},
-            {"Descripción", u"Description"_s},
-            {"Salida", u"Output"_s},
-            {"Agregar comando", u"Add Command"_s},
-            {"Editar", u"Edit"_s},
-            {"Expresión regular inválida", u"Invalid Regular Expression"_s},
-            {"Ingresá una expresión regular válida.", u"Please enter a valid regular expression."_s},
-            {"Ignorar", u"Ignore"_s},
-            {"Reemplazar", u"Replace"_s},
-            {"Agregar", u"Add"_s},
-
-            // HistoryModel
-            {"Vaciar historial del portapapeles", u"Clear Clipboard History"_s},
-            {"¿Seguro que querés vaciar el historial del portapapeles?\n(Los elementos fijados se conservarán).",
-             u"Are you sure you want to clear the clipboard history?\n(Pinned items will be preserved)."_s},
-            {"No volver a preguntar", u"Do not ask again"_s},
-            {"Vaciar", u"Clear"_s},
-            {"Imagen %1×%2", u"Image %1×%2"_s},
-            {"Imagen", u"Image"_s},
-            {"Eliminar elemento fijado", u"Delete Pinned Item"_s},
-            {"Este elemento está fijado. ¿Seguro que querés eliminarlo del historial?",
-             u"This item is pinned. Are you sure you want to delete it from history?"_s},
-
-            // KlipperApp
-            {"Actualizar Mklipper…", u"Update Mklipper…"_s},
-            {"Abrir historial del portapapeles", u"Open clipboard history"_s},
-            {"Ejecutar acciones en elemento actual", u"Run actions on current item"_s},
-            {"Editar contenido actual…", u"Edit current contents…"_s},
-            {"Mostrar código QR actual…", u"Show current QR code…"_s},
-            {"Menú automático de acciones", u"Automatic actions menu"_s},
-            {"Vaciar historial…", u"Clear history…"_s},
-            {"Configurar Mklipper…", u"Configure Mklipper…"_s},
-            {"Buscar actualizaciones…", u"Check for updates…"_s},
-            {"Salir", u"Quit"_s},
-            {"Mklipper — Mostrar historial", u"Mklipper — Show history"_s},
-            {"Mklipper — Alternar «Pegar sin formato»", u"Mklipper — Toggle \"Paste without formatting\""_s},
-            {"Mklipper — Editar contenido actual", u"Mklipper — Edit current contents"_s},
-            {"Mklipper — Mostrar código QR actual", u"Mklipper — Show current QR code"_s},
-            {"Mklipper — Rotar historial (siguiente)", u"Mklipper — Cycle history (next)"_s},
-            {"Mklipper — Rotar historial (anterior)", u"Mklipper — Cycle history (previous)"_s},
-            {"Mklipper — Invocar acciones", u"Mklipper — Invoke actions"_s},
-            {"Mklipper — Vaciar historial", u"Mklipper — Clear history"_s},
-            {"Activado: el texto se pegará sin estilos ni colores HTML.",
-             u"Enabled: text will be pasted without HTML colors or styles."_s},
-            {"Desactivado: el texto conservará su formato original.",
-             u"Disabled: text will preserve its original formatting."_s},
-            {"Mklipper — Portapapeles vacío", u"Mklipper — Clipboard empty"_s},
-            {"Mklipper — Actual:\n%1", u"Mklipper — Current:\n%1"_s},
-            {"Actualizar a Mklipper %1…", u"Update to Mklipper %1…"_s},
-            {"Nueva versión de Mklipper disponible", u"New version of Mklipper available"_s},
-            {"Mklipper %1 ya está disponible. Hacé clic en el ícono de la bandeja → «Actualizar a Mklipper %1…» para instalarla.",
-             u"Mklipper %1 is now available. Click the tray icon → \"Update to Mklipper %1…\" to install it."_s},
-            {"Mklipper actualizado", u"Mklipper updated"_s},
-            {"Se instaló Mklipper %1 correctamente. Reiniciando…", u"Mklipper %1 was installed successfully. Restarting…"_s},
-            {"Historial del portapapeles", u"Clipboard History"_s},
-            {"Más reciente: %1", u"Newer: %1"_s},
-            {"Actual: %1", u"Current: %1"_s},
-            {"Anterior: %1", u"Previous: %1"_s},
-
-            // KlipperPopup
-            {"Aplicación: %1", u"Application: %1"_s},
-            {"Ventana: %1", u"Window: %1"_s},
-            {"Enlace: %1", u"Link: %1"_s},
-            {"Abrir enlace de origen", u"Open source link"_s},
-            {"Editar texto", u"Edit text"_s},
-            {"Mostrar código QR", u"Show QR code"_s},
-            {"Ejecutar acción", u"Run action"_s},
-            {"Desfijar", u"Unpin"_s},
-            {"Fijar elemento", u"Pin item"_s},
-            {"Mklipper — Portapapeles", u"Mklipper — Clipboard"_s},
-            {"Buscar en el historial…", u"Search history…"_s},
-            {"Mostrar solo elementos fijados", u"Show pinned items only"_s},
-            {"Vaciar historial", u"Clear history"_s},
-            {"Cerrar ventana", u"Close window"_s},
-            {"Pegar sin formato", u"Paste without formatting"_s},
-            {"Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos)",
-             u"Strips HTML colors, fonts, and styles when pasting text (does not affect images or files)"_s},
-            {"El portapapeles contiene una contraseña (no guardada)",
-             u"Clipboard contains a password (not saved)"_s},
-            {"El historial está vacío.", u"History is empty."_s},
-            {"Volver", u"Back"_s},
-            {"Editar contenido", u"Edit Contents"_s},
-            {"Solo texto plano", u"Plain text only"_s},
-            {"Con formato original", u"Original formatting"_s},
-            {"No hay coincidencias.", u"No matches found."_s},
-            {"El historial del portapapeles está vacío.", u"Clipboard history is empty."_s},
-            {"Copiá texto, enlaces o imágenes para verlos aquí.", u"Copy text, links, or images to see them here."_s},
-            {"Probá con otro término o quitá el filtro de fijados.", u"Try a different search term or clear the pinned filter."_s},
-            {"%1 elementos", u"%1 items"_s},
-            {" (%1 fijados)", u" (%1 pinned)"_s},
-            {"  ·  1–0 / Clic: pegar  ·  Supr: borrar  ·  Esc: cerrar",
-             u"  ·  1–0 / Click: paste  ·  Del: delete  ·  Esc: close"_s},
-            {"  ·  Clic / Enter: pegar  ·  Supr: borrar  ·  Esc: cerrar",
-             u"  ·  Click / Enter: paste  ·  Del: delete  ·  Esc: close"_s},
-
-            // main.cpp
-            {"Mklipper — Gestor de portapapeles nativo para Linux Mint (port de KDE Klipper)",
-             u"Mklipper — Native clipboard manager for Linux Mint (KDE Klipper port)"_s},
-            {"Mostrar el popup del historial bajo el cursor", u"Show history popup under the cursor"_s},
-            {"Mostrar u ocultar el popup del historial bajo el cursor", u"Toggle history popup under the cursor"_s},
-            {"Rotar al siguiente elemento del historial", u"Cycle to the next history item"_s},
-            {"Rotar al elemento anterior del historial", u"Cycle to the previous history item"_s},
-            {"Invocar acciones sobre el elemento actual", u"Invoke actions on the current item"_s},
-            {"Vaciar el historial del portapapeles", u"Clear clipboard history"_s},
-            {"Vaciar el historial del portapapeles (con confirmación)", u"Clear clipboard history (with confirmation)"_s},
-            {"Alternar el modo «Pegar sin formato»", u"Toggle \"Paste without formatting\" mode"_s},
-            {"Editar el contenido actual del portapapeles", u"Edit current clipboard contents"_s},
-            {"Mostrar el código QR del elemento actual", u"Show QR code for the current item"_s},
-            {"Abrir la ventana de configuración", u"Open the settings window"_s},
-            {"Buscar actualizaciones de Mklipper", u"Check for Mklipper updates"_s},
-            {"Cerrar la instancia en ejecución de Mklipper", u"Quit the running Mklipper instance"_s},
-
-            // QRCodeWidget
-            {"Código QR", u"QR Code"_s},
-            {"Copiar QR", u"Copy QR"_s},
-            {"Guardar PNG", u"Save PNG"_s},
-            {"No se pudo generar el código QR\n(el texto es demasiado largo o está vacío).",
-             u"Could not generate QR code\n(text is too long or empty)."_s},
-            {"Guardar código QR", u"Save QR Code"_s},
-            {"Imagen PNG (*.png)", u"PNG Image (*.png)"_s},
-
-            // UpdateDialog
-            {"Actualizar Mklipper", u"Update Mklipper"_s},
-            {"Ver en GitHub", u"View on GitHub"_s},
-            {"Omitir esta versión", u"Skip this version"_s},
-            {"Reintentar", u"Retry"_s},
-            {"Actualizar ahora", u"Update now"_s},
-            {"Cerrar", u"Close"_s},
-            {"Mklipper está actualizado", u"Mklipper is up to date"_s},
-            {"Ya tenés instalada la última versión disponible (%1).",
-             u"You already have the latest available version installed (%1)."_s},
-            {"No se pudo buscar actualizaciones", u"Could not check for updates"_s},
-            {"Descargando %1 (%2 / %3)…", u"Downloading %1 (%2 / %3)…"_s},
-            {"Descargando %1 (%2)…", u"Downloading %1 (%2)…"_s},
-            {"Actualización completada", u"Update complete"_s},
-            {"Mklipper se actualizó correctamente a la versión %1. Reiniciando…",
-             u"Mklipper was successfully updated to version %1. Restarting…"_s},
-            {"No se pudo completar la actualización", u"Could not complete update"_s},
-            {"Actualización cancelada.", u"Update cancelled."_s},
-            {"Buscando actualizaciones…", u"Checking for updates…"_s},
-            {"Versión instalada: %1 · Consultando GitHub Releases…",
-             u"Installed version: %1 · Checking GitHub…"_s},
-            {"Nueva versión disponible: Mklipper %1", u"New version available: Mklipper %1"_s},
-            {"Versión instalada: <b>%1</b> → Nueva versión: <b>%2</b>",
-             u"Installed version: <b>%1</b> → New version: <b>%2</b>"_s},
-            {" · Descarga: %1", u" · Download: %1"_s},
-            {"<br><i>No se encontró un paquete .deb para %1 en este release; podés abrir GitHub para descargarlo manualmente.</i>",
-             u"<br><i>No .deb package for %1 was found in this release; you can open GitHub to download it manually.</i>"_s},
-            {"No se incluyeron notas de versión para este release.",
-             u"No release notes were included for this release."_s},
-            {"Más tarde", u"Later"_s},
-            {"Descargando Mklipper %1…", u"Downloading Mklipper %1…"_s},
-            {"Instalando Mklipper %1…", u"Installing Mklipper %1…"_s},
-            {"Se abrirá el diálogo de contraseña de Linux Mint para actualizar el paquete .deb. No cierres esta ventana.",
-             u"Linux Mint's password prompt will appear to install the .deb package. Please do not close this window."_s},
-            {"Instalando…", u"Installing…"_s},
-            {"Reintentar instalación", u"Retry installation"_s},
-
-            // Updater
-            {"La URL de actualización configurada no es válida o no usa HTTPS.",
-             u"The configured update URL is invalid or does not use HTTPS."_s},
-            {"La URL de actualización redirigió a un dominio no permitido.",
-             u"The update URL redirected to a disallowed domain."_s},
-            {"Se alcanzó el límite temporal de consultas de GitHub. Intentá de nuevo en unos minutos.",
-             u"GitHub API rate limit reached. Please try again in a few minutes."_s},
-            {"No se pudo conectar con GitHub para buscar actualizaciones (%1).",
-             u"Could not connect to GitHub to check for updates (%1)."_s},
-            {"Respuesta inválida del servidor de actualizaciones.",
-             u"Invalid response from the update server."_s},
-            {"No se encontró un número de versión válido en el último release.",
-             u"No valid version number found in the latest release."_s},
-            {"No se encontró un paquete .deb compatible con tu arquitectura (%1) en este release.",
-             u"No compatible .deb package for your architecture (%1) was found in this release."_s},
-            {"No se encontró una suma de verificación SHA-256 para este release; la instalación fue cancelada por seguridad.",
-             u"No SHA-256 checksum was found for this release; installation was aborted for security."_s},
-            {"Descargando suma de verificación SHA-256…", u"Downloading SHA-256 checksum…"_s},
-            {"No se pudo descargar el archivo de verificación SHA-256.",
-             u"Could not download the SHA-256 verification file."_s},
-            {"La descarga de verificación SHA-256 redirigió a un dominio no permitido.",
-             u"The SHA-256 checksum download redirected to a disallowed domain."_s},
-            {"El archivo %1 no contiene una suma SHA-256 válida para %2.",
-             u"File %1 does not contain a valid SHA-256 checksum for %2."_s},
-            {"El nombre del archivo de actualización no es válido.",
-             u"The update package filename is not valid."_s},
-            {"No se pudo crear un directorio temporal para descargar la actualización.",
-             u"Could not create a temporary directory to download the update."_s},
-            {"No se pudo abrir el archivo temporal para escribir la actualización.",
-             u"Could not open temporary file to write the update."_s},
-            {"Descargando %1…", u"Downloading %1…"_s},
-            {"El paquete descargado excede el tamaño máximo permitido.",
-             u"The downloaded package exceeds the maximum allowed size."_s},
-            {"Error al descargar el paquete de actualización.",
-             u"Failed to download the update package."_s},
-            {"La descarga del paquete redirigió a un dominio no permitido.",
-             u"The package download redirected to a disallowed domain."_s},
-            {"No se pudo leer el paquete descargado para verificarlo.",
-             u"Could not read the downloaded package for verification."_s},
-            {"El archivo descargado no es un paquete Debian (.deb) válido.",
-             u"The downloaded file is not a valid Debian (.deb) package."_s},
-            {"Verificando integridad (SHA-256)…", u"Verifying integrity (SHA-256)…"_s},
-            {"No se pudo calcular la suma SHA-256 del paquete descargado.",
-             u"Could not compute SHA-256 checksum of the downloaded package."_s},
-            {"Error de verificación de integridad: la suma SHA-256 no coincide.",
-             u"Integrity verification failed: SHA-256 checksum mismatch."_s},
-            {"Esperada: %1\nObtenida: %2", u"Expected: %1\nActual: %2"_s},
-            {"El paquete descargado no corresponde a Mklipper para tu arquitectura.",
-             u"The downloaded package does not match Mklipper for your architecture."_s},
-            {"No se encontró 'pkexec' en el sistema para solicitar permisos de administrador.",
-             u"'pkexec' was not found on the system to request administrator privileges."_s},
-            {"Podés instalar el paquete manualmente con: sudo apt install ./%1",
-             u"You can install the package manually with: sudo apt install ./%1"_s},
-            {"Instalando actualización… Ingresá tu contraseña si el sistema la solicita.",
-             u"Installing update… Enter your password if prompted by the system."_s},
-            {"No se pudo iniciar el instalador del sistema (pkexec).",
-             u"Could not start the system installer (pkexec)."_s},
-            {"La instalación del paquete falló (código %1).",
-             u"Package installation failed (exit code %1)."_s},
-
-            // URLGrabber
-            {"Abrir enlace / archivo", u"Open link / file"_s},
-            {"Abrir con la aplicación predeterminada", u"Open with default application"_s},
-        };
     }
 
-    bool isEmpty() const override { return m_map.isEmpty(); }
-
-    QString translate(const char * /*context*/, const char *sourceText, const char * /*disambiguation*/, int /*n*/) const override
+    QString translate(const char * /*context*/,
+                      const char *sourceText,
+                      const char * /*disambiguation*/ = nullptr,
+                      int /*n*/ = -1) const override
     {
         if (!sourceText) {
             return {};
         }
-        return m_map.value(QByteArray(sourceText));
+        const auto it = m_map.constFind(QByteArray::fromRawData(sourceText, static_cast<qsizetype>(std::strlen(sourceText))));
+        if (it != m_map.constEnd()) {
+            return it.value();
+        }
+        return {};
     }
 
 private:
     QHash<QByteArray, QString> m_map;
 };
 
-std::unique_ptr<MklipperEnglishTranslator> s_translator;
-QString s_activeLang = u"es"_s;
+QMap<QString, LanguagePack> &packRegistry()
+{
+    static QMap<QString, LanguagePack> registry;
+    static bool initialized = false;
+    if (initialized) {
+        return registry;
+    }
+    initialized = true;
+
+    auto scanDir = [&](const QString &dirPath) {
+        QDir dir(dirPath);
+        if (!dir.exists()) {
+            return;
+        }
+        const QStringList files = dir.entryList({u"*.json"_s}, QDir::Files, QDir::Name);
+        for (const QString &fileName : files) {
+            const QString fullPath = dir.filePath(fileName);
+            QFile f(fullPath);
+            if (!f.open(QIODevice::ReadOnly)) {
+                continue;
+            }
+            const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+            if (!doc.isObject()) {
+                continue;
+            }
+            const QJsonObject root = doc.object();
+            const QJsonObject meta = root.value(u"_meta"_s).toObject();
+            QString code = normalizeCode(meta.value(u"code"_s).toString());
+            if (code.isEmpty()) {
+                code = normalizeCode(fileName.chopped(5));
+            }
+            if (code.isEmpty()) {
+                continue;
+            }
+
+            LanguagePack pack;
+            pack.info.code = code;
+            pack.info.nativeName = meta.value(u"nativeName"_s).toString().trimmed();
+            if (pack.info.nativeName.isEmpty()) {
+                pack.info.nativeName = meta.value(u"name"_s).toString().trimmed();
+            }
+            if (pack.info.nativeName.isEmpty()) {
+                pack.info.nativeName = code.toUpper();
+            }
+            pack.info.isSource = meta.value(u"isSource"_s).toBool(false);
+            pack.filePath = fullPath;
+            registry.insert(code, std::move(pack));
+        }
+    };
+
+    // Priority order (later entries override earlier ones if a user adds custom translations)
+    scanDir(u":/i18n"_s);
+    scanDir(u"/usr/share/mklipper/i18n"_s);
+    const QString userDataDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    if (!userDataDir.isEmpty()) {
+        scanDir(userDataDir + u"/mklipper/i18n"_s);
+    }
+
+    return registry;
+}
+
+void ensurePackLoaded(LanguagePack &pack)
+{
+    if (pack.loadedBody) {
+        return;
+    }
+    pack.loadedBody = true;
+
+    QFile f(pack.filePath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        return;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject()) {
+        return;
+    }
+    const QJsonObject root = doc.object();
+    const QJsonArray secArr = root.value(u"manualSections"_s).toArray();
+    for (const QJsonValue &sv : secArr) {
+        if (!sv.isObject()) {
+            continue;
+        }
+        const QJsonObject so = sv.toObject();
+        ManualSection sec;
+        sec.icon = so.value(u"icon"_s).toString();
+        sec.title = so.value(u"title"_s).toString();
+        sec.intro = so.value(u"intro"_s).toString();
+        const QJsonArray cardsArr = so.value(u"cards"_s).toArray();
+        for (const QJsonValue &cv : cardsArr) {
+            if (!cv.isObject()) {
+                continue;
+            }
+            const QJsonObject co = cv.toObject();
+            sec.cards.append({
+                co.value(u"icon"_s).toString(),
+                co.value(u"title"_s).toString(),
+                co.value(u"body"_s).toString(),
+            });
+        }
+        if (!sec.title.isEmpty()) {
+            pack.manualSections.append(std::move(sec));
+        }
+    }
+
+    const QJsonObject strObj = root.value(u"strings"_s).toObject();
+    pack.strings.reserve(strObj.size());
+    for (auto it = strObj.constBegin(); it != strObj.constEnd(); ++it) {
+        if (it.value().isString()) {
+            pack.strings.insert(it.key().toUtf8(), it.value().toString());
+        }
+    }
+}
+
+QString findSourceLanguageCode()
+{
+    const auto &reg = packRegistry();
+    for (auto it = reg.constBegin(); it != reg.constEnd(); ++it) {
+        if (it.value().info.isSource) {
+            return it.key();
+        }
+    }
+    return reg.contains(u"es"_s) ? u"es"_s : (reg.isEmpty() ? u"es"_s : reg.firstKey());
+}
+
+QString matchLocaleToPack(const QString &localeTag)
+{
+    const auto &reg = packRegistry();
+    const QString norm = normalizeCode(localeTag);
+    if (norm.isEmpty()) {
+        return {};
+    }
+    if (reg.contains(norm)) {
+        return norm;
+    }
+    const QString base = norm.section(QLatin1Char('_'), 0, 0);
+    if (reg.contains(base)) {
+        return base;
+    }
+    for (auto it = reg.constBegin(); it != reg.constEnd(); ++it) {
+        if (it.key().section(QLatin1Char('_'), 0, 0) == base) {
+            return it.key();
+        }
+    }
+    return {};
+}
+
+std::unique_ptr<JsonMapTranslator> s_translator;
+QString s_activeLang;
 } // namespace
 
 namespace MklipperTranslations
 {
+QList<LanguageInfo> availableLanguages()
+{
+    const auto &reg = packRegistry();
+    QList<LanguageInfo> out;
+    out.reserve(reg.size());
+    for (auto it = reg.constBegin(); it != reg.constEnd(); ++it) {
+        out.append(it.value().info);
+    }
+    std::sort(out.begin(), out.end(), [](const LanguageInfo &a, const LanguageInfo &b) {
+        if (a.isSource != b.isSource) {
+            return a.isSource;
+        }
+        return a.nativeName.localeAwareCompare(b.nativeName) < 0;
+    });
+    return out;
+}
+
 QString resolveLanguage(const QString &configured)
 {
-    const QString norm = configured.trimmed().toLower();
-    if (norm == u"es"_s || norm.startsWith(u"es_"_s) || norm.startsWith(u"es-"_s)) {
-        return u"es"_s;
-    }
-    if (norm == u"en"_s || norm.startsWith(u"en_"_s) || norm.startsWith(u"en-"_s)) {
-        return u"en"_s;
-    }
-
-    // "system" (or unrecognized): follow system locale, defaulting to English for non-Spanish locales
-    const QLocale sysLocale = QLocale::system();
-    if (sysLocale.language() == QLocale::Spanish) {
-        return u"es"_s;
-    }
-    const QStringList uiLangs = sysLocale.uiLanguages();
-    if (!uiLangs.isEmpty()) {
-        const QString primary = uiLangs.first().toLower();
-        if (primary == u"es"_s || primary.startsWith(u"es-"_s) || primary.startsWith(u"es_"_s)) {
-            return u"es"_s;
+    const QString norm = normalizeCode(configured);
+    if (!norm.isEmpty() && norm != u"system"_s) {
+        const QString matched = matchLocaleToPack(norm);
+        if (!matched.isEmpty()) {
+            return matched;
         }
     }
-    return u"en"_s;
+
+    // Match system UI languages against available JSON packs dynamically
+    const QLocale sysLocale = QLocale::system();
+    const QStringList uiLangs = sysLocale.uiLanguages();
+    for (const QString &lang : uiLangs) {
+        const QString matched = matchLocaleToPack(lang);
+        if (!matched.isEmpty()) {
+            return matched;
+        }
+    }
+    const QString fallbackLocaleMatch = matchLocaleToPack(sysLocale.name());
+    if (!fallbackLocaleMatch.isEmpty()) {
+        return fallbackLocaleMatch;
+    }
+
+    // Default fallback for locales without a dedicated pack yet: English if available, otherwise source language
+    const auto &reg = packRegistry();
+    if (reg.contains(u"en"_s)) {
+        return u"en"_s;
+    }
+    return findSourceLanguageCode();
 }
 
 QString activeLanguage()
 {
+    if (s_activeLang.isEmpty()) {
+        s_activeLang = findSourceLanguageCode();
+    }
     return s_activeLang;
 }
 
 bool applyLanguage(const QString &configured)
 {
     const QString target = resolveLanguage(configured);
-    const bool changed = (target != s_activeLang);
+    const QString previous = activeLanguage();
+    const bool changed = (target != previous);
 
     if (auto *app = QCoreApplication::instance()) {
         if (s_translator) {
             app->removeTranslator(s_translator.get());
+            s_translator.reset();
         }
-        if (target == u"en"_s) {
-            if (!s_translator) {
-                s_translator = std::make_unique<MklipperEnglishTranslator>();
+
+        auto &reg = packRegistry();
+        auto it = reg.find(target);
+        if (it != reg.end() && !it.value().info.isSource) {
+            ensurePackLoaded(it.value());
+            if (!it.value().strings.isEmpty()) {
+                s_translator = std::make_unique<JsonMapTranslator>(it.value().strings);
+                app->installTranslator(s_translator.get());
             }
-            app->installTranslator(s_translator.get());
         }
     }
 
     s_activeLang = target;
     return changed;
+}
+
+QList<ManualSection> userManualSections()
+{
+    auto &reg = packRegistry();
+    const QString active = activeLanguage();
+    if (auto it = reg.find(active); it != reg.end()) {
+        ensurePackLoaded(it.value());
+        if (!it.value().manualSections.isEmpty()) {
+            return it.value().manualSections;
+        }
+    }
+    // Fallback to English, then source language
+    for (const QString &fb : {u"en"_s, findSourceLanguageCode()}) {
+        if (auto it = reg.find(fb); it != reg.end()) {
+            ensurePackLoaded(it.value());
+            if (!it.value().manualSections.isEmpty()) {
+                return it.value().manualSections;
+            }
+        }
+    }
+    return {};
 }
 } // namespace MklipperTranslations

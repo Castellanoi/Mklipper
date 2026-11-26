@@ -4,5 +4,7 @@
     <file alias="icons/check.svg">data/icons/check.svg</file>
     <file alias="icons/chevron-up.svg">data/icons/chevron-up.svg</file>
     <file alias="icons/chevron-down.svg">data/icons/chevron-down.svg</file>
+    <file alias="i18n/es.json">data/i18n/es.json</file>
+    <file alias="i18n/en.json">data/i18n/en.json</file>
   </qresource>
 </RCC>

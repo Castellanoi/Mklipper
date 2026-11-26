@@ -5,9 +5,13 @@
 #pragma once
 
 #include <QDialog>
+#include <QList>
 
+#include "flaticons.h"
+
+class QFrame;
 class QLabel;
-class QTextBrowser;
+class QTabWidget;
 
 class HelpDialog : public QDialog
 {
@@ -19,9 +23,21 @@ public:
     void refreshTheme();
 
 private:
-    static QString manualMarkdown();
+    struct CardIconBinding {
+        QFrame *badge = nullptr;
+        QLabel *iconLabel = nullptr;
+        FlatIcon icon = FlatIcon::Info;
+    };
+
+    struct TabIconBinding {
+        int index = 0;
+        FlatIcon icon = FlatIcon::Info;
+    };
 
     QLabel *m_logoLabel = nullptr;
     QLabel *m_subtitleLabel = nullptr;
-    QTextBrowser *m_browser = nullptr;
+    QTabWidget *m_tabs = nullptr;
+    QList<QLabel *> m_mutedLabels;
+    QList<CardIconBinding> m_cardIcons;
+    QList<TabIconBinding> m_tabIcons;
 };

@@ -1,0 +1,131 @@
+{
+  "_meta": {
+    "code": "es",
+    "name": "Spanish",
+    "nativeName": "Español",
+    "isSource": true
+  },
+  "strings": {},
+  "manualSections": [
+    {
+      "icon": "clipboard",
+      "title": "Inicio",
+      "intro": "Lo esencial para usar tu historial del portapapeles todos los días.",
+      "cards": [
+        {
+          "icon": "history",
+          "title": "Abrí tu historial al instante",
+          "body": "Presioná <b>Super + V</b> (podés cambiarlo en Atajos) o hacé <b>clic izquierdo</b> en el ícono de Mklipper en la barra de tareas."
+        },
+        {
+          "icon": "copy",
+          "title": "Pegá en un solo toque",
+          "body": "Hacé clic en cualquier elemento, presioná <b>Enter</b> o usá las teclas <b>1 a 0</b> para pegar directo en la ventana donde estabas trabajando."
+        },
+        {
+          "icon": "sliders",
+          "title": "Pegar sin formato",
+          "body": "Activá el interruptor <b>Pegar sin formato</b> en la parte superior para quitar colores, fuentes y estilos HTML al pegar texto. No afecta imágenes ni archivos."
+        },
+        {
+          "icon": "settings",
+          "title": "Menú rápido en la bandeja",
+          "body": "Hacé <b>clic derecho</b> en el ícono de la bandeja para editar el último elemento, crear un código QR, vaciar el historial o abrir Configuración."
+        }
+      ]
+    },
+    {
+      "icon": "star",
+      "title": "Tarjetas",
+      "intro": "Buscá, fijá favoritos y aprovechá los botones rápidos de cada elemento.",
+      "cards": [
+        {
+          "icon": "search",
+          "title": "Búsqueda instantánea",
+          "body": "Apenas abrís Mklipper empezá a escribir para filtrar por texto, aplicación de origen, título de ventana o enlace web."
+        },
+        {
+          "icon": "star",
+          "title": "Fijá lo importante",
+          "body": "Tocá la <b>estrella</b> en una tarjeta para dejarla siempre arriba y protegerla al vaciar el historial. La estrella de la barra superior muestra solo fijados."
+        },
+        {
+          "icon": "edit",
+          "title": "Editá o generá un código QR",
+          "body": "Pasá el mouse sobre una tarjeta para <b>editar el texto</b> antes de pegarlo (<b>Ctrl + Enter</b> guarda), generar un <b>código QR</b> para escanear con el celular o abrir el enlace original."
+        },
+        {
+          "icon": "trash",
+          "title": "Eliminá lo que no necesites",
+          "body": "Usá el ícono de <b>papelera</b> o la tecla <b>Supr</b> sobre una fila para borrar ese elemento al instante."
+        }
+      ]
+    },
+    {
+      "icon": "bolt",
+      "title": "Acciones",
+      "intro": "Automatizá tareas rápidas sobre lo que copiás, como abrir enlaces o transformar texto.",
+      "cards": [
+        {
+          "icon": "link",
+          "title": "Enlaces y archivos en un clic",
+          "body": "Cuando copiás una dirección web (<code>https://...</code>) o la ruta de un archivo de tu PC, aparece el botón de <b>rayo</b> en la tarjeta para abrirlo con la app predeterminada."
+        },
+        {
+          "icon": "bolt",
+          "title": "Menú automático opcional",
+          "body": "Si querés que el menú de acciones aparezca solo apenas copiás un enlace o regla coincidente, activá <b>Menú automático de acciones</b> en la bandeja o en Configuración."
+        },
+        {
+          "icon": "settings",
+          "title": "Reglas personalizadas (avanzado)",
+          "body": "En <b>Configuración → Acciones</b> podés crear reglas con expresiones regulares que ejecutan comandos usando <code>%s</code> como el texto copiado y, si querés, reemplazan el resultado en el portapapeles."
+        }
+      ]
+    },
+    {
+      "icon": "keyboard",
+      "title": "Atajos",
+      "intro": "Manejá todo desde el teclado con compatibilidad total para teclados estándar y gamer.",
+      "cards": [
+        {
+          "icon": "keyboard",
+          "title": "Atajos globales sincronizados con Cinnamon",
+          "body": "En <b>Configuración → Atajos</b> podés asignar teclas para abrir el historial, alternar <b>Pegar sin formato</b>, editar el elemento actual, mostrar su QR, rotar el historial o vaciarlo."
+        },
+        {
+          "icon": "search",
+          "title": "¿Preferís escribir números en el buscador?",
+          "body": "Desactivá <b>Usar teclas 1–0 para pegar rápido</b> en Configuración → Atajos para que los números que tipees vayan directamente al buscador."
+        },
+        {
+          "icon": "sliders",
+          "title": "Teclados gamer y selector manual",
+          "body": "Mklipper reconoce teclas macro (<b>F13–F24</b>) y cualquier mapa de modificadores. Si el sistema o tu teclado interceptan <b>Super</b>, <b>Ctrl</b> o <b>Alt</b> al grabar, usá el botón de teclado junto al campo para elegirlos manualmente."
+        }
+      ]
+    },
+    {
+      "icon": "lock",
+      "title": "Privacidad",
+      "intro": "Tus datos quedan bajo tu control, integrados con Linux Mint y sin dejar basura en disco.",
+      "cards": [
+        {
+          "icon": "lock",
+          "title": "Contraseñas protegidas",
+          "body": "Los secretos copiados desde gestores compatibles (KeePassXC, Bitwarden, 1Password, etc.) se detectan automáticamente y <b>nunca se guardan</b> en el historial."
+        },
+        {
+          "icon": "trash",
+          "title": "Borrado limpio y real",
+          "body": "Cada elemento eliminado se sobrescribe y libera espacio en disco de inmediato (sin residuos en la base de datos ni archivos huérfanos), con permisos privados solo para tu usuario."
+        },
+        {
+          "icon": "update",
+          "title": "Actualizaciones integradas en Mint",
+          "body": "Mklipper se integra con el <b>Gestor de actualizaciones de Linux Mint</b> para actualizarse junto con tu sistema, además de avisarte si hay una versión nueva."
+        }
+      ]
+    }
+  ]
+}

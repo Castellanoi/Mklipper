@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mklipper VERSION 1.6.3 LANGUAGES CXX)
+project(mklipper VERSION 1.6.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -43,8 +43,12 @@ set(MKLIPPER_SOURCES
     src/clipcommandprocess.h
     src/urlgrabber.cpp
     src/urlgrabber.h
+    src/x11keyboard.cpp
+    src/x11keyboard.h
     src/globalshortcut.cpp
     src/globalshortcut.h
+    src/shortcutrecorder.cpp
+    src/shortcutrecorder.h
     src/x11paster.cpp
     src/x11paster.h
     src/notifications.cpp
