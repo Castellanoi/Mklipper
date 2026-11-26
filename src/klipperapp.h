@@ -26,6 +26,7 @@ class QAction;
 class QEvent;
 class QFileSystemWatcher;
 class QMenu;
+class QModelIndex;
 class QTimer;
 class SystemClipboard;
 class URLGrabber;
@@ -77,6 +78,9 @@ Q_SIGNALS:
 private Q_SLOTS:
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
     void onHistoryChanged(bool isTop);
+    void onHistoryRowsInserted(const QModelIndex &parent, int first, int last);
+    void onHistoryRowsRemoved();
+    void resetUnreadCount();
     void onInvokeActionByUuid(const QString &uuid);
     void showActionPopupMenu(QMenu *menu);
     void updateTrayTooltip();
@@ -125,4 +129,5 @@ private:
 
     bool m_urlGrabberEnabled = false;
     QString m_lastUrlGrabberText;
+    int m_unreadCount = 0;
 };

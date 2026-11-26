@@ -22,6 +22,7 @@ class QListView;
 class QPlainTextEdit;
 class QPushButton;
 class QStackedWidget;
+class QTimer;
 class QToolButton;
 class PreviewWidget;
 class QRCodeWidget;
@@ -79,6 +80,7 @@ public:
     void refreshTheme();
 
 Q_SIGNALS:
+    void popupShown();
     void configureRequested();
     void invokeActionRequested(const QString &uuid);
 
@@ -172,4 +174,5 @@ private:
     bool m_dragging = false;
     QPoint m_dragOffset;
     qint64 m_lastHideTimeMs = 0;
+    QTimer *m_relTimeTimer = nullptr;
 };

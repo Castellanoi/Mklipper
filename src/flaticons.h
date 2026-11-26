@@ -64,6 +64,6 @@ QIcon toggleIcon(FlatIcon offId,
                  const QColor &offHoverColor = {},
                  int logicalSize = 16);
 
-QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr = 1.0, bool paused = false);
-QIcon appLogoIcon(const QColor &accentColor, bool paused = false);
+QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr = 1.0, bool paused = false, int badgeCount = 0);
+QIcon appLogoIcon(const QColor &accentColor, bool paused = false, int badgeCount = 0);
 } // namespace FlatIcons

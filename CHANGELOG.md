@@ -1,5 +1,63 @@
 # Changelog
 
+## v1.8.1
+
+### 🇪🇸 Español
+- **Corrección del temporizador de tiempo relativo:**
+  - Las tarjetas y tooltips del historial ahora muestran siempre la hora original de captura (`added_time`) en lugar de sobrescribirse al reutilizar elementos, eliminar el elemento superior, vaciar el historial no fijado o reabrir la ventana.
+  - Se agregó actualización automática en vivo de las etiquetas de tiempo relativo (*«Justo ahora»*, *«Hace 1 min»*, etc.) mientras la ventana flotante permanece abierta.
+- **Círculo de notificación en el icono de la bandeja:**
+  - El icono de la bandeja del sistema muestra ahora un círculo de notificación con el contador de nuevos elementos agregados al historial (`1–99` y `99+`) y se reinicia automáticamente cada vez que abres la ventana de Mklipper.
+  - Nueva opción en *Configuración → General* (**«Mostrar contador de nuevos elementos en el icono de la bandeja»**) para desactivarlo y conservar el icono clásico sin insignia.
+
+### 🇬🇧 English
+- **Relative timestamp fix:**
+  - History cards and tooltips now always display the item's original capture time (`added_time`) instead of resetting when reusing items, deleting the top entry, clearing non-starred history, or reopening the popup.
+  - Added automatic live refresh of relative timestamp labels (*"Just now"*, *"1 min ago"*, etc.) while the floating popup remains open.
+- **Tray icon notification counter badge:**
+  - The system tray icon now displays a notification circle with the count of new items added to history (`1–99` and `99+`), automatically resetting whenever you open the Mklipper window.
+  - Added a setting in *Settings → General* (**"Show new items counter on the tray icon"**) to disable the badge and keep the classic icon.
+
+### 🇧🇷 Português (Brasil)
+- **Correção do temporizador de tempo relativo:**
+  - Os cartões e dicas do histórico agora exibem sempre o horário original de captura (`added_time`), sem reiniciar ao reutilizar itens, excluir o item do topo, limpar o histórico não fixado ou reabrir a janela.
+  - Adicionada atualização automática em tempo real dos rótulos (*«Agora mesmo»*, *«Há 1 min»*, etc.) enquanto a janela permanece aberta.
+- **Círculo de notificação no ícone da bandeja:**
+  - O ícone da bandeja agora mostra um círculo de notificação com o número de novos itens adicionados ao histórico (`1–99` e `99+`), reiniciando automaticamente ao abrir a janela do Mklipper.
+  - Nova opção em *Configurações → Geral* (**«Mostrar contador de novos itens no ícone da bandeja»**) para desativar e manter o ícone clássico.
+
+### 🇫🇷 Français
+- **Correction de l'horodatage relatif :**
+  - Les cartes et infobulles affichent désormais toujours l'heure d'origine de la capture (`added_time`), sans se réinitialiser lors de la réutilisation, de la suppression de l'élément supérieur, du vidage de l'historique non épinglé ou de la réouverture de la fenêtre.
+  - Actualisation automatique en direct des libellés temporels (*« À l'instant »*, *« Il y a 1 min »*, etc.) tant que la fenêtre reste ouverte.
+- **Badge de notification sur l'icône de la barre d'état :**
+  - L'icône affiche désormais un cercle de notification indiquant le nombre de nouveaux éléments ajoutés à l'historique (`1–99` et `99+`), remis à zéro automatiquement à chaque ouverture de la fenêtre.
+  - Nouvelle option dans *Paramètres → Général* (**« Afficher le compteur de nouveaux éléments sur l'icône de la barre d'état »**) pour le désactiver et conserver l'icône classique.
+
+### 🇮🇹 Italiano
+- **Correzione del timer di tempo relativo:**
+  - Le schede e i suggerimenti mostrano ora sempre l'orario originale di acquisizione (`added_time`), senza azzerarsi al riutilizzo degli elementi, all'eliminazione della voce in cima, allo svuotamento della cronologia non fissata o alla riapertura della finestra.
+  - Aggiornamento automatico dal vivo delle etichette (*«Proprio ora»*, *«1 min fa»*, ecc.) finché la finestra resta aperta.
+- **Cerchio di notifica sull'icona della barra di sistema:**
+  - L'icona della barra di sistema mostra ora un cerchio di notifica con il numero di nuovi elementi aggiunti alla cronologia (`1–99` e `99+`), azzerandosi automaticamente all'apertura della finestra.
+  - Nuova opzione in *Impostazioni → Generale* (**«Mostra il contatore di nuovi elementi sull'icona della barra di sistema»**) per disattivarlo e mantenere l'icona classica.
+
+### 🇩🇪 Deutsch
+- **Korrektur der relativen Zeitstempel:**
+  - Verlaufskarten und Tooltips zeigen nun immer den ursprünglichen Erfassungszeitpunkt (`added_time`) an, ohne sich beim Wiederverwenden, Löschen des obersten Eintrags, Leeren des nicht angehefteten Verlaufs oder erneuten Öffnen des Fensters zurückzusetzen.
+  - Automatische Live-Aktualisierung der Zeitangaben (*„Gerade eben“*, *„Vor 1 Min.“*, usw.), solange das Fenster geöffnet ist.
+- **Benachrichtigungszähler auf dem Infobereich-Symbol:**
+  - Das Infobereich-Symbol zeigt nun einen Benachrichtigungskreis mit der Anzahl neuer Einträge (`1–99` und `99+`) an, der beim Öffnen des Mklipper-Fensters automatisch zurückgesetzt wird.
+  - Neue Option unter *Einstellungen → Allgemein* (**„Zähler für neue Einträge auf dem Infobereich-Symbol anzeigen“**), um das klassische Symbol beizubehalten.
+
+### 🇷🇺 Русский
+- **Исправление относительного таймера времени:**
+  - Карточки и подсказки истории теперь всегда отображают исходное время захвата (`added_time`) и не сбрасываются при повторном использовании элементов, удалении верхней записи, очистке незакреплённой истории или повторном открытии окна.
+  - Добавлено автоматическое обновление относительных меток времени (*«Только что»*, *«1 мин назад»* и т. д.), пока окно остаётся открытым.
+- **Значок уведомлений на иконке в трее:**
+  - На значке в системном трее теперь отображается круг уведомления с числом новых элементов в истории (`1–99` и `99+`), который автоматически сбрасывается при открытии окна Mklipper.
+  - Добавлена опция в *Настройки → Общие* (**«Показывать счётчик новых элементов на значке в трее»**), позволяющая отключить счётчик и оставить классический значок.
+
 ## v1.8.0
 
 ### 🇪🇸 Español

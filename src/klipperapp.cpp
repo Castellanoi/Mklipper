@@ -73,6 +73,9 @@ KlipperApp::KlipperApp(QObject *parent)
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::onHistoryChanged);
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::clipboardHistoryUpdated);
     connect(m_historyModel.get(), &HistoryModel::changed, this, &KlipperApp::updateTrayTooltip);
+    connect(m_historyModel.get(), &HistoryModel::rowsInserted, this, &KlipperApp::onHistoryRowsInserted);
+    connect(m_historyModel.get(), &HistoryModel::rowsRemoved, this, &KlipperApp::onHistoryRowsRemoved);
+    connect(m_historyModel.get(), &HistoryModel::modelReset, this, &KlipperApp::resetUnreadCount);
     connect(m_historyModel.get(), &HistoryModel::capturePausedChanged, this, [this](bool paused) {
         updateTrayIcon();
         updateTrayTooltip();
@@ -82,6 +85,7 @@ KlipperApp::KlipperApp(QObject *parent)
         }
     });
 
+    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::resetUnreadCount);
     connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
 
@@ -130,7 +134,8 @@ KlipperApp::~KlipperApp()
 void KlipperApp::setupTrayIcon()
 {
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
-    QIcon icon = FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused());
+    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? m_unreadCount : 0;
+    QIcon icon = FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused(), badgeCount);
     if (icon.isNull()) {
         icon = QIcon(u":/icons/mklipper.svg"_s);
     }
@@ -149,7 +154,8 @@ void KlipperApp::updateTrayIcon()
         return;
     }
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
-    m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused()));
+    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? m_unreadCount : 0;
+    m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused(), badgeCount));
 }
 
 bool KlipperApp::eventFilter(QObject *watched, QEvent *ev)
@@ -177,9 +183,7 @@ void KlipperApp::syncThemeLive()
     if (qApp) {
         qApp->setWindowIcon(themedIcon);
     }
-    if (m_trayIcon) {
-        m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused()));
-    }
+    updateTrayIcon();
     rebuildTrayMenu();
 
     if (m_popup) {
@@ -315,6 +319,7 @@ void KlipperApp::recreatePopup()
 {
     const bool wasVisible = m_popup && m_popup->isVisible();
     m_popup = std::make_unique<KlipperPopup>();
+    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::resetUnreadCount);
     connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
     if (wasVisible) {
@@ -435,6 +440,8 @@ void KlipperApp::reloadConfig()
     m_urlGrabber->loadSettings();
     m_historyModel->loadSettings();
     registerShortcuts();
+    updateTrayIcon();
+    updateTrayTooltip();
 }
 
 void KlipperApp::setURLGrabberEnabled(bool enable)
@@ -473,6 +480,43 @@ void KlipperApp::onHistoryChanged(bool isTop)
     if (newFromSelection || newFromClipboard) {
         offerActions(m_historyModel->first(), newFromSelection);
     }
+}
+
+void KlipperApp::onHistoryRowsInserted(const QModelIndex &/*parent*/, int first, int last)
+{
+    const int added = last - first + 1;
+    if (added <= 0) {
+        return;
+    }
+    if (m_popup && m_popup->isVisible()) {
+        return;
+    }
+    m_unreadCount += added;
+    updateTrayIcon();
+    updateTrayTooltip();
+}
+
+void KlipperApp::onHistoryRowsRemoved()
+{
+    if (m_unreadCount <= 0) {
+        return;
+    }
+    const int clamped = qMin(m_unreadCount, m_historyModel->rowCount());
+    if (clamped != m_unreadCount) {
+        m_unreadCount = clamped;
+        updateTrayIcon();
+        updateTrayTooltip();
+    }
+}
+
+void KlipperApp::resetUnreadCount()
+{
+    if (m_unreadCount == 0) {
+        return;
+    }
+    m_unreadCount = 0;
+    updateTrayIcon();
+    updateTrayTooltip();
 }
 
 void KlipperApp::onInvokeActionByUuid(const QString &uuid)
@@ -516,6 +560,14 @@ void KlipperApp::updateTrayTooltip()
         if (preview.size() > 80) {
             preview = preview.left(77) + u"…"_s;
         }
+    }
+    if (MklipperSettings::self()->showTrayBadge() && m_unreadCount > 0) {
+        if (m_unreadCount == 1) {
+            m_trayIcon->setToolTip(tr("Mklipper (1 nuevo) — Actual:\n%1").arg(preview));
+        } else {
+            m_trayIcon->setToolTip(tr("Mklipper (%1 nuevos) — Actual:\n%2").arg(m_unreadCount).arg(preview));
+        }
+        return;
     }
     m_trayIcon->setToolTip(tr("Mklipper — Actual:\n%1").arg(preview));
 }

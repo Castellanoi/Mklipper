@@ -62,6 +62,9 @@ public:
     bool showSourceInfo() const { return m_showSourceInfo; }
     void setShowSourceInfo(bool v) { m_showSourceInfo = v; }
 
+    bool showTrayBadge() const { return m_showTrayBadge; }
+    void setShowTrayBadge(bool v) { m_showTrayBadge = v; }
+
     QString language() const { return m_language; }
     void setLanguage(const QString &v) { m_language = v; }
 
@@ -154,6 +157,7 @@ private:
     bool m_pastePlainText = false;
     bool m_saveSourceInfo = true;
     bool m_showSourceInfo = true;
+    bool m_showTrayBadge = true;
     QString m_language = QStringLiteral("system");
     QStringList m_ignoredApps;
 

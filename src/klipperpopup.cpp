@@ -193,6 +193,12 @@ public:
         m_hoverPos = pos;
     }
 
+    static qreal captureTimestampFor(const QModelIndex &index)
+    {
+        const qreal added = index.data(HistoryModel::AddedTimeRole).toDouble();
+        return added > 0.0 ? added : index.data(HistoryModel::LastUsedTimeRole).toDouble();
+    }
+
     static QString compactSourceFor(const QModelIndex &index)
     {
         QStringList parts;
@@ -204,8 +210,7 @@ public:
                 parts.append(src);
             }
         }
-        const qreal ts = index.data(HistoryModel::LastUsedTimeRole).toDouble();
-        const QString rel = MklipperText::formatRelativeTime(ts);
+        const QString rel = MklipperText::formatRelativeTime(captureTimestampFor(index));
         if (!rel.isEmpty()) {
             parts.append(rel);
         }
@@ -217,7 +222,7 @@ public:
         const QString app = index.data(HistoryModel::SourceAppRole).toString();
         const QString title = index.data(HistoryModel::SourceTitleRole).toString();
         const QString url = index.data(HistoryModel::SourceUrlRole).toString();
-        const QString rel = MklipperText::formatRelativeTime(index.data(HistoryModel::LastUsedTimeRole).toDouble());
+        const QString rel = MklipperText::formatRelativeTime(captureTimestampFor(index));
         if (app.isEmpty() && title.isEmpty() && url.isEmpty() && rel.isEmpty()) {
             return {};
         }
@@ -1043,10 +1048,21 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     connect(m_model.get(), &HistoryModel::modelReset, this, &KlipperPopup::updateStatusLabel);
     connect(m_model.get(), &HistoryModel::starredCountChanged, this, &KlipperPopup::updateStatusLabel);
 
+    m_relTimeTimer = new QTimer(this);
+    m_relTimeTimer->setInterval(30000);
+    connect(m_relTimeTimer, &QTimer::timeout, this, [this]() {
+        if (isVisible() && m_listView) {
+            m_listView->viewport()->update();
+        }
+    });
+
     applyTheme();
     updatePasswordBanner();
     updatePauseUi();
     updateStatusLabel();
+    if (m_listView) {
+        m_listView->viewport()->update();
+    }
     updatePersistentUi();
 }
 
@@ -1181,6 +1197,9 @@ void KlipperPopup::showPositioned(const QPoint &anchorPos, bool anchorAbove)
     updatePasswordBanner();
     updatePauseUi();
     updateStatusLabel();
+    if (m_listView) {
+        m_listView->viewport()->update();
+    }
 
     QScreen *screen = QGuiApplication::screenAt(anchorPos);
     if (!screen) {
@@ -1282,7 +1301,18 @@ void KlipperPopup::showCurrentBarcode()
 bool KlipperPopup::event(QEvent *ev)
 {
     const auto *s = MklipperSettings::self();
-    if (ev->type() == QEvent::Hide) {
+    if (ev->type() == QEvent::Show) {
+        if (m_relTimeTimer) {
+            m_relTimeTimer->start();
+        }
+        if (m_listView) {
+            m_listView->viewport()->update();
+        }
+        Q_EMIT popupShown();
+    } else if (ev->type() == QEvent::Hide) {
+        if (m_relTimeTimer) {
+            m_relTimeTimer->stop();
+        }
         m_pastingInProgress = false;
         ++m_pasteGeneration;
     } else if (ev->type() == QEvent::Enter && s->keepPopupOpen() && !m_pastingInProgress) {

@@ -286,21 +286,13 @@ HistoryModel::HistoryModel()
             return;
         }
 
-        const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
-        QSqlQuery query(m_db);
-        query.prepare(u"UPDATE main SET last_used_time = ? WHERE uuid = ?"_s);
-        query.addBindValue(nowTs);
-        query.addBindValue(m_items[0]->uuid());
-        if (query.exec()) {
-            m_items[0]->setLastUsedTime(nowTs);
-            if (m_clip->isLocked(QClipboard::Selection) || m_clip->isLocked(QClipboard::Clipboard)) {
-                return;
-            }
-            m_clip->setMimeData(m_items[0],
-                                buffersWithoutPassword,
-                                SystemClipboard::ClipboardUpdateReason::UpdateClipboard,
-                                plainOverride);
+        if (m_clip->isLocked(QClipboard::Selection) || m_clip->isLocked(QClipboard::Clipboard)) {
+            return;
         }
+        m_clip->setMimeData(m_items[0],
+                            buffersWithoutPassword,
+                            SystemClipboard::ClipboardUpdateReason::UpdateClipboard,
+                            plainOverride);
     });
 
     connect(m_clip.get(), &SystemClipboard::newClipData, this, &HistoryModel::checkClipData);
@@ -992,7 +984,9 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
                 }
             }
         }
-        moveToTop(existingIdx);
+        if (existingIdx > 0) {
+            moveToTop(existingIdx);
+        }
         return true;
     }
 
@@ -1441,6 +1435,21 @@ bool HistoryModel::importStarredFromJson(const QString &filePath, int *importedC
     return true;
 }
 
+void HistoryModel::touchLastUsedTime(qsizetype row)
+{
+    if (!m_db.isOpen() || row < 0 || row >= m_items.size()) {
+        return;
+    }
+    const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
+    QSqlQuery query(m_db);
+    query.prepare(u"UPDATE main SET last_used_time = ? WHERE uuid = ?"_s);
+    query.addBindValue(nowTs);
+    query.addBindValue(m_items[row]->uuid());
+    if (query.exec()) {
+        m_items[row]->setLastUsedTime(nowTs);
+    }
+}
+
 void HistoryModel::moveToTop(qsizetype row)
 {
     if (row < 0 || row >= m_items.size()) {
@@ -1450,6 +1459,7 @@ void HistoryModel::moveToTop(qsizetype row)
         Q_EMIT changed(true);
         return;
     }
+    touchLastUsedTime(row);
     beginMoveRows(QModelIndex(), static_cast<int>(row), static_cast<int>(row), QModelIndex(), 0);
     m_items.move(row, 0);
     endMoveRows();

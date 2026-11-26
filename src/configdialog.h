@@ -60,6 +60,7 @@ private:
     QCheckBox *m_closePopupOnFocusOut = nullptr;
     QCheckBox *m_saveSourceInfo = nullptr;
     QCheckBox *m_showSourceInfo = nullptr;
+    QCheckBox *m_showTrayBadge = nullptr;
     QSpinBox *m_maxItems = nullptr;
     QLineEdit *m_ignoredAppEdit = nullptr;
     QListWidget *m_ignoredAppsList = nullptr;

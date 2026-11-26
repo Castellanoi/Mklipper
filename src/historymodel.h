@@ -111,6 +111,7 @@ private:
     explicit HistoryModel();
 
     void moveToTop(qsizetype row);
+    void touchLastUsedTime(qsizetype row);
     bool persistMimeData(const QString &uuid,
                          const QString &text,
                          const QMimeData *mimeData,

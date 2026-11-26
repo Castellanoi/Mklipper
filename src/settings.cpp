@@ -62,6 +62,7 @@ void MklipperSettings::load()
     m_pastePlainText = m_settings.value(QStringLiteral("PastePlainText"), false).toBool();
     m_saveSourceInfo = m_settings.value(QStringLiteral("SaveSourceInfo"), true).toBool();
     m_showSourceInfo = m_settings.value(QStringLiteral("ShowSourceInfo"), true).toBool();
+    m_showTrayBadge = m_settings.value(QStringLiteral("ShowTrayBadge"), true).toBool();
     m_language = m_settings.value(QStringLiteral("Language"), QStringLiteral("system")).toString();
     setIgnoredApps(m_settings.value(QStringLiteral("IgnoredApps")).toStringList());
     m_urlGrabberEnabled = m_settings.value(QStringLiteral("URLGrabberEnabled"), false).toBool();
@@ -112,6 +113,7 @@ void MklipperSettings::save()
     m_settings.setValue(QStringLiteral("PastePlainText"), m_pastePlainText);
     m_settings.setValue(QStringLiteral("SaveSourceInfo"), m_saveSourceInfo);
     m_settings.setValue(QStringLiteral("ShowSourceInfo"), m_showSourceInfo);
+    m_settings.setValue(QStringLiteral("ShowTrayBadge"), m_showTrayBadge);
     m_settings.setValue(QStringLiteral("Language"), m_language);
     m_settings.setValue(QStringLiteral("IgnoredApps"), m_ignoredApps);
     m_settings.setValue(QStringLiteral("URLGrabberEnabled"), m_urlGrabberEnabled);

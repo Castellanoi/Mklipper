@@ -2,6 +2,7 @@
     SPDX-FileCopyrightText: 2026 Mklipper contributors
     SPDX-License-Identifier: GPL-2.0-or-later
 */
+#include "flaticons.h"
 #include "historymodel.h"
 #include "klipperpopup.h"
 #include "settings.h"
@@ -21,6 +22,7 @@
 #include <QTemporaryDir>
 #include <QUrl>
 
+#include <cmath>
 #include <iostream>
 
 using namespace Qt::StringLiterals;
@@ -226,6 +228,84 @@ void testHistoryModelAndFilters(const QString &tmpDir)
     badFile.close();
     CHECK(!model->importStarredFromJson(badPath, &imported));
 }
+
+void testTimestampPreservationAndTrayBadge()
+{
+    auto model = HistoryModel::self();
+    model->clear();
+    CHECK(model->rowCount() == 0);
+
+    const qreal nowSec = QDateTime::currentMSecsSinceEpoch() / 1000.0;
+    const qreal tenMinAgo = nowSec - 600.0;
+    const qreal fiveMinAgo = nowSec - 300.0;
+    const qreal oneMinAgo = nowSec - 60.0;
+
+    QMimeData olderMime;
+    olderMime.setText(u"Elemento capturado hace 10 minutos"_s);
+    CHECK(model->insert(&olderMime, tenMinAgo));
+
+    QMimeData midMime;
+    midMime.setText(u"Elemento capturado hace 5 minutos"_s);
+    CHECK(model->insert(&midMime, fiveMinAgo));
+
+    QMimeData newestMime;
+    newestMime.setText(u"Elemento capturado hace 1 minuto"_s);
+    CHECK(model->insert(&newestMime, oneMinAgo));
+
+    CHECK(model->rowCount() == 3);
+    // Row 0 = newest, Row 1 = mid, Row 2 = older
+    CHECK(std::abs(model->index(0).data(HistoryModel::AddedTimeRole).toDouble() - oneMinAgo) < 0.01);
+    CHECK(std::abs(model->index(1).data(HistoryModel::AddedTimeRole).toDouble() - fiveMinAgo) < 0.01);
+    CHECK(std::abs(model->index(2).data(HistoryModel::AddedTimeRole).toDouble() - tenMinAgo) < 0.01);
+
+    // 1) Deleting row 0 must NOT reset promoted row 1's AddedTime or LastUsedTime
+    const QString newestUuid = model->index(0).data(HistoryModel::UuidRole).toString();
+    CHECK(model->remove(newestUuid, false));
+    CHECK(model->rowCount() == 2);
+    CHECK(std::abs(model->index(0).data(HistoryModel::AddedTimeRole).toDouble() - fiveMinAgo) < 0.01);
+    CHECK(std::abs(model->index(0).data(HistoryModel::LastUsedTimeRole).toDouble() - fiveMinAgo) < 0.01);
+
+    // 2) Re-inserting duplicate already at row 0 must NOT reset its AddedTime or LastUsedTime
+    CHECK(model->insert(&midMime));
+    CHECK(std::abs(model->index(0).data(HistoryModel::AddedTimeRole).toDouble() - fiveMinAgo) < 0.01);
+    CHECK(std::abs(model->index(0).data(HistoryModel::LastUsedTimeRole).toDouble() - fiveMinAgo) < 0.01);
+
+    // 3) Moving older item to top (re-using / pasting it) must preserve its original AddedTime
+    const QString olderUuid = model->index(1).data(HistoryModel::UuidRole).toString();
+    model->moveToTop(olderUuid);
+    CHECK(model->index(0).data(HistoryModel::UuidRole).toString() == olderUuid);
+    CHECK(std::abs(model->index(0).data(HistoryModel::AddedTimeRole).toDouble() - tenMinAgo) < 0.01);
+
+    // 4) Clearing non-starred history must preserve surviving starred item's AddedTime
+    CHECK(model->setData(model->index(0), true, HistoryModel::StarredRole));
+    model->clearNonStarredHistory();
+    CHECK(model->rowCount() == 1);
+    CHECK(std::abs(model->index(0).data(HistoryModel::AddedTimeRole).toDouble() - tenMinAgo) < 0.01);
+
+    // 5) Tray notification badge setting & icon rendering
+    auto *settings = MklipperSettings::self();
+    const bool origBadge = settings->showTrayBadge();
+    settings->setShowTrayBadge(false);
+    CHECK(!settings->showTrayBadge());
+    settings->setShowTrayBadge(true);
+    CHECK(settings->showTrayBadge());
+    settings->setShowTrayBadge(origBadge);
+
+    const QColor accent(53, 168, 84);
+    const QImage plainImg = FlatIcons::appLogoPixmap(accent, 32, 1.0, false, 0).toImage();
+    const QImage plainClassic = FlatIcons::appLogoPixmap(accent, 32, 1.0, false).toImage();
+    const QImage badge1Img = FlatIcons::appLogoPixmap(accent, 32, 1.0, false, 1).toImage();
+    const QImage badge12Img = FlatIcons::appLogoPixmap(accent, 32, 1.0, false, 12).toImage();
+    const QImage badgeOverImg = FlatIcons::appLogoPixmap(accent, 32, 1.0, false, 120).toImage();
+    const QImage pausedImg = FlatIcons::appLogoPixmap(accent, 32, 1.0, true, 5).toImage();
+
+    CHECK(!plainImg.isNull());
+    CHECK(plainImg == plainClassic);
+    CHECK(badge1Img != plainImg);
+    CHECK(badge12Img != badge1Img);
+    CHECK(badgeOverImg != badge12Img);
+    CHECK(pausedImg != badge1Img);
+}
 } // namespace
 
 int main(int argc, char **argv)
@@ -242,6 +322,7 @@ int main(int argc, char **argv)
     testTranslationsAndChangelog();
     testIgnoredAppsAndLockscreens();
     testHistoryModelAndFilters(tmpDir.path());
+    testTimestampPreservationAndTrayBadge();
 
     if (g_failures > 0) {
         std::cerr << "Mklipper tests FAILED with " << g_failures << " failure(s)." << std::endl;

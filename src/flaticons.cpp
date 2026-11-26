@@ -6,6 +6,8 @@
 
 #include <QByteArray>
 #include <QCache>
+#include <QFont>
+#include <QFontMetricsF>
 #include <QHash>
 #include <QPainter>
 #include <QSvgRenderer>
@@ -313,7 +315,7 @@ QIcon toggleIcon(FlatIcon offId,
     return ic;
 }
 
-QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, bool paused)
+QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, bool paused, int badgeCount)
 {
     const qreal safeDpr = qMax<qreal>(1.0, dpr);
     const int px = qMax(16, qRound(logicalSize * safeDpr));
@@ -359,7 +361,53 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, boo
     img.fill(Qt::transparent);
     QPainter p(&img);
     p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::TextAntialiasing, true);
     renderer.render(&p, QRectF(0, 0, px, px));
+
+    if (!paused && badgeCount > 0) {
+        const QString label = (badgeCount > 99) ? QStringLiteral("99+") : QString::number(badgeCount);
+        const qreal scale = px / 64.0;
+        const qreal strokeW = qMax<qreal>(1.0, 2.2 * scale);
+        const qreal margin = strokeW * 0.65;
+
+        qreal badgeW = 30.0 * scale;
+        qreal badgeH = 30.0 * scale;
+        qreal fontRatio = 0.72;
+        if (label.size() == 2) {
+            badgeW = 38.0 * scale;
+            badgeH = 29.0 * scale;
+            fontRatio = 0.64;
+        } else if (label.size() >= 3) {
+            badgeW = 46.0 * scale;
+            badgeH = 27.0 * scale;
+            fontRatio = 0.56;
+        }
+
+        const QRectF badgeRect(px - margin - badgeW, px - margin - badgeH, badgeW, badgeH);
+        const qreal radius = badgeH / 2.0;
+
+        p.setPen(QPen(QColor(255, 255, 255), strokeW));
+        p.setBrush(QColor(229, 57, 53));
+        p.drawRoundedRect(badgeRect, radius, radius);
+
+        QFont font;
+        font.setStyleHint(QFont::SansSerif);
+        font.setBold(true);
+        int fontPx = qMax(7, qRound(badgeH * fontRatio));
+        const qreal maxTextW = badgeW - qMax<qreal>(3.0, 5.5 * scale);
+        while (fontPx > 6) {
+            font.setPixelSize(fontPx);
+            if (QFontMetricsF(font).horizontalAdvance(label) <= maxTextW) {
+                break;
+            }
+            --fontPx;
+        }
+        font.setPixelSize(fontPx);
+        p.setFont(font);
+        p.setPen(QColor(255, 255, 255));
+        p.drawText(badgeRect.adjusted(0, -0.3 * scale, 0, 0.3 * scale), Qt::AlignCenter, label);
+    }
+
     p.end();
 
     QPixmap pm = QPixmap::fromImage(img);
@@ -367,12 +415,12 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, boo
     return pm;
 }
 
-QIcon appLogoIcon(const QColor &accentColor, bool paused)
+QIcon appLogoIcon(const QColor &accentColor, bool paused, int badgeCount)
 {
     QIcon ic;
     for (int sz : {16, 22, 24, 32, 48, 64}) {
-        ic.addPixmap(appLogoPixmap(accentColor, sz, 1.0, paused));
-        ic.addPixmap(appLogoPixmap(accentColor, sz, 2.0, paused));
+        ic.addPixmap(appLogoPixmap(accentColor, sz, 1.0, paused, badgeCount));
+        ic.addPixmap(appLogoPixmap(accentColor, sz, 2.0, paused, badgeCount));
     }
     return ic;
 }
