@@ -226,14 +226,18 @@ bool GlobalShortcutManager::syncCinnamonShortcuts(const QList<CinnamonShortcutSp
 
     QStringList customList = parseGSettingsStringList(currentRaw);
 
-    // Keep all non-mklipper user custom shortcuts untouched
+    // Keep all non-mklipper user custom shortcuts untouched, and track old mklipper-* IDs for cleanup
     QStringList updatedList;
+    QStringList previousMklipperIds;
     for (const QString &id : std::as_const(customList)) {
         if (!id.startsWith(QStringLiteral("mklipper-"))) {
             updatedList.append(id);
+        } else {
+            previousMklipperIds.append(id);
         }
     }
 
+    QStringList activeMklipperIds;
     for (const auto &spec : specs) {
         const QString schemaPath = QStringLiteral("org.cinnamon.desktop.keybindings.custom-keybinding:/org/cinnamon/desktop/keybindings/custom-keybindings/%1/").arg(spec.id);
         const QString accel = qtKeyToCinnamonAccel(spec.key);
@@ -242,9 +246,18 @@ bool GlobalShortcutManager::syncCinnamonShortcuts(const QList<CinnamonShortcutSp
             continue;
         }
         updatedList.append(spec.id);
+        activeMklipperIds.append(spec.id);
         runGSettings({QStringLiteral("set"), schemaPath, QStringLiteral("name"), spec.label});
         runGSettings({QStringLiteral("set"), schemaPath, QStringLiteral("command"), spec.command});
         runGSettings({QStringLiteral("set"), schemaPath, QStringLiteral("binding"), formatGSettingsStringList({accel})});
+    }
+
+    // Reset any obsolete mklipper-* keybindings (e.g. removed legacy actions)
+    for (const QString &oldId : std::as_const(previousMklipperIds)) {
+        if (!activeMklipperIds.contains(oldId)) {
+            const QString schemaPath = QStringLiteral("org.cinnamon.desktop.keybindings.custom-keybinding:/org/cinnamon/desktop/keybindings/custom-keybindings/%1/").arg(oldId);
+            runGSettings({QStringLiteral("reset-recursively"), schemaPath});
+        }
     }
 
     runGSettings({QStringLiteral("set"),

@@ -318,38 +318,40 @@ public:
 
         QRect contentRect = cardRect.adjusted(12, 7, -rightReserved, -7);
 
-        // Minimalist borderless shortcut chip (1..9, 0 for 10th)
-        const int rowNum = index.row();
-        const bool hasDigitShortcut = (rowNum >= 0 && rowNum < 10);
-        const QString badgeText = (rowNum < 9) ? QString::number(rowNum + 1)
-                                : (rowNum == 9) ? u"0"_s
-                                : QString::number(rowNum + 1);
-        const int badgeW = (rowNum >= 99) ? 26 : 20;
-        const int badgeH = 20;
-        const QRect badgeRect(contentRect.left(),
-                              contentRect.center().y() - badgeH / 2,
-                              badgeW,
-                              badgeH);
+        // Minimalist borderless shortcut chip (1..9, 0 for 10th) when quick digit shortcuts are enabled
+        if (MklipperSettings::self()->quickSelectDigits()) {
+            const int rowNum = index.row();
+            const bool hasDigitShortcut = (rowNum >= 0 && rowNum < 10);
+            const QString badgeText = (rowNum < 9) ? QString::number(rowNum + 1)
+                                    : (rowNum == 9) ? u"0"_s
+                                    : QString::number(rowNum + 1);
+            const int badgeW = (rowNum >= 99) ? 26 : 20;
+            const int badgeH = 20;
+            const QRect badgeRect(contentRect.left(),
+                                  contentRect.center().y() - badgeH / 2,
+                                  badgeW,
+                                  badgeH);
 
-        if (hasDigitShortcut) {
-            QPainterPath badgePath;
-            badgePath.addRoundedRect(QRectF(badgeRect), 6.0, 6.0);
-            QColor badgeBg = isTopItem ? t.accent
-                                       : QColor(t.textPrimary.red(), t.textPrimary.green(), t.textPrimary.blue(), t.isDark ? 24 : 18);
-            painter->fillPath(badgePath, badgeBg);
+            if (hasDigitShortcut) {
+                QPainterPath badgePath;
+                badgePath.addRoundedRect(QRectF(badgeRect), 6.0, 6.0);
+                QColor badgeBg = isTopItem ? t.accent
+                                           : QColor(t.textPrimary.red(), t.textPrimary.green(), t.textPrimary.blue(), t.isDark ? 24 : 18);
+                painter->fillPath(badgePath, badgeBg);
+            }
+
+            QFont badgeFont = option.font;
+            badgeFont.setPointSizeF(qMax(8.0, badgeFont.pointSizeF() - 1.4));
+            badgeFont.setBold(hasDigitShortcut);
+            painter->setFont(badgeFont);
+            const QColor badgeFg = (hasDigitShortcut && isTopItem) ? t.accentFg
+                                 : hasDigitShortcut                ? t.textSecondary
+                                                                   : t.textMuted;
+            painter->setPen(badgeFg);
+            painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
+
+            contentRect.setLeft(badgeRect.right() + 10);
         }
-
-        QFont badgeFont = option.font;
-        badgeFont.setPointSizeF(qMax(8.0, badgeFont.pointSizeF() - 1.4));
-        badgeFont.setBold(hasDigitShortcut);
-        painter->setFont(badgeFont);
-        const QColor badgeFg = (hasDigitShortcut && isTopItem) ? t.accentFg
-                             : hasDigitShortcut                ? t.textSecondary
-                                                               : t.textMuted;
-        painter->setPen(badgeFg);
-        painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
-
-        contentRect.setLeft(badgeRect.right() + 10);
 
         // Optional compact source metadata row
         const QString sourceLabel = compactSourceFor(index);
@@ -1282,6 +1284,10 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
 
 bool KlipperPopup::tryQuickSelectDigit(QKeyEvent *ke, bool allowBareDigit)
 {
+    if (!MklipperSettings::self()->quickSelectDigits()) {
+        return false;
+    }
+
     const Qt::KeyboardModifiers mods = ke->modifiers() & ~Qt::KeypadModifier;
     const bool hasQuickMod = (mods == Qt::AltModifier || mods == Qt::ControlModifier);
     const bool isBare = (mods == Qt::NoModifier);
@@ -1530,6 +1536,7 @@ void KlipperPopup::updatePersistentUi()
         m_listView->doItemsLayout();
         m_listView->viewport()->update();
     }
+    updateStatusLabel();
 }
 
 void KlipperPopup::updateStatusLabel()
@@ -1557,7 +1564,11 @@ void KlipperPopup::updateStatusLabel()
     if (starred > 0) {
         text += tr(" (%1 fijados)").arg(starred);
     }
-    text += tr("  ·  1–0 / Clic: pegar  ·  Supr: borrar  ·  Esc: cerrar");
+    if (MklipperSettings::self()->quickSelectDigits()) {
+        text += tr("  ·  1–0 / Clic: pegar  ·  Supr: borrar  ·  Esc: cerrar");
+    } else {
+        text += tr("  ·  Clic / Enter: pegar  ·  Supr: borrar  ·  Esc: cerrar");
+    }
     m_statusLabel->setText(text);
 }
 

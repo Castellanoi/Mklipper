@@ -75,10 +75,14 @@ void MklipperSettings::load()
     m_settings.endGroup();
 
     m_settings.beginGroup(QStringLiteral("Shortcuts"));
+    m_quickSelectDigits = m_settings.value(QStringLiteral("QuickSelectDigits"), true).toBool();
     m_shortcutPopup = m_settings.value(QStringLiteral("ShowPopup"), QStringLiteral("Meta+V")).toString();
+    m_shortcutTogglePlainText = m_settings.value(QStringLiteral("TogglePlainText"), QString()).toString();
+    m_shortcutEditCurrent = m_settings.value(QStringLiteral("EditCurrent"), QString()).toString();
+    m_shortcutShowQr = m_settings.value(QStringLiteral("ShowQr"), QString()).toString();
+    m_shortcutRepeatAction = m_settings.value(QStringLiteral("RepeatAction"), QString()).toString();
     m_shortcutCycleNext = m_settings.value(QStringLiteral("CycleNext"), QString()).toString();
     m_shortcutCyclePrev = m_settings.value(QStringLiteral("CyclePrev"), QString()).toString();
-    m_shortcutRepeatAction = m_settings.value(QStringLiteral("RepeatAction"), QString()).toString();
     m_shortcutClearHistory = m_settings.value(QStringLiteral("ClearHistory"), QString()).toString();
     m_settings.endGroup();
 
@@ -119,10 +123,14 @@ void MklipperSettings::save()
     m_settings.endGroup();
 
     m_settings.beginGroup(QStringLiteral("Shortcuts"));
+    m_settings.setValue(QStringLiteral("QuickSelectDigits"), m_quickSelectDigits);
     m_settings.setValue(QStringLiteral("ShowPopup"), m_shortcutPopup);
+    m_settings.setValue(QStringLiteral("TogglePlainText"), m_shortcutTogglePlainText);
+    m_settings.setValue(QStringLiteral("EditCurrent"), m_shortcutEditCurrent);
+    m_settings.setValue(QStringLiteral("ShowQr"), m_shortcutShowQr);
+    m_settings.setValue(QStringLiteral("RepeatAction"), m_shortcutRepeatAction);
     m_settings.setValue(QStringLiteral("CycleNext"), m_shortcutCycleNext);
     m_settings.setValue(QStringLiteral("CyclePrev"), m_shortcutCyclePrev);
-    m_settings.setValue(QStringLiteral("RepeatAction"), m_shortcutRepeatAction);
     m_settings.setValue(QStringLiteral("ClearHistory"), m_shortcutClearHistory);
     m_settings.endGroup();
 

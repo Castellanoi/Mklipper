@@ -18,6 +18,7 @@
 
 class ConfigDialog;
 class GlobalShortcutManager;
+class HelpDialog;
 class HistoryCycler;
 class HistoryModel;
 class KlipperPopup;
@@ -48,13 +49,18 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setClipboardContents(const QString &s);
     Q_SCRIPTABLE void clearClipboardContents();
     Q_SCRIPTABLE void clearClipboardHistory();
+    Q_SCRIPTABLE void clearClipboardHistoryInteractive();
     Q_SCRIPTABLE void saveClipboardHistory();
     Q_SCRIPTABLE QStringList getClipboardHistoryMenu();
     Q_SCRIPTABLE QString getClipboardHistoryItem(int i);
     Q_SCRIPTABLE void showKlipperPopupMenu();
     Q_SCRIPTABLE void toggleKlipperPopupMenu();
+    Q_SCRIPTABLE void togglePastePlainText();
+    Q_SCRIPTABLE void editCurrentClipboard();
+    Q_SCRIPTABLE void showCurrentBarcode();
     Q_SCRIPTABLE void showKlipperManuallyInvokeActionMenu();
     Q_SCRIPTABLE void configure();
+    Q_SCRIPTABLE void showManual();
     Q_SCRIPTABLE void checkForUpdates();
     Q_SCRIPTABLE void reloadConfig();
     Q_SCRIPTABLE void quit();
@@ -95,10 +101,12 @@ private:
     Updater *m_updater = nullptr;
     std::unique_ptr<KlipperPopup> m_popup;
     QPointer<ConfigDialog> m_configDialog;
+    QPointer<HelpDialog> m_helpDialog;
     QPointer<UpdateDialog> m_updateDialog;
 
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
+    QAction *m_toggleActionsAct = nullptr;
     QTimer *m_themeSyncTimer = nullptr;
     bool m_syncingTheme = false;
 

@@ -151,6 +151,10 @@ const char *svgBodyFor(FlatIcon id)
         return "<path d='M4 12a8 8 0 1 0 2.3-5.6L4 8.5'/>"
                "<path d='M4 4v4.5h4.5'/>"
                "<path d='M12 7.8V12l3 2'/>";
+
+    case FlatIcon::Book:
+        return "<path d='M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22.5Z'/>"
+               "<path d='M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5a2.5 2.5 0 0 1 2.5 2.5Z'/>";
     }
     return "";
 }

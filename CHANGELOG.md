@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.6.3
+
+### 🇪🇸 Español
+- **Opción para deshabilitar los atajos rápidos `1–0`:**
+  - Nuevo ajuste en **Configuración → Atajos** (*«Usar teclas 1–0 para pegar rápido desde la ventana flotante»*): al desactivarlo, escribir números en la ventana flotante va directamente al buscador, se ocultan las insignias numéricas de las tarjetas y se actualiza la barra de ayuda inferior.
+- **Tooltips explicativos en toda la configuración:**
+  - Todas las opciones, selectores, botones y campos de **Configuración** (pestañas *General*, *Acciones* y *Atajos*) muestran ahora un tooltip estilizado al pasar el mouse explicando brevemente qué hace cada ajuste.
+- **Manual de usuario integrado y en el repositorio:**
+  - Nuevo **Manual de usuario** breve, claro y bilingüe accesible desde **Clic derecho en la bandeja → Manual de usuario…**, desde el botón **Manual de usuario** en **Configuración** y en [`MANUAL.md`](MANUAL.md).
+- **Atajos globales ampliados y accesos de Acciones completos:**
+  - Agregados 3 nuevos atajos globales útiles para Mklipper (con soporte D-Bus, CLI y sincronización automática con Cinnamon): **Alternar «Pegar sin formato»** (`--toggle-plain-text`), **Editar contenido actual** (`--edit`) y **Mostrar código QR actual** (`--qr`).
+  - Conservados y restaurados todos los accesos funcionales de **Acciones** (botón *Ejecutar acciones en elemento actual* y casilla *Menú automático de acciones* en la bandeja, más el atajo *Invocar acciones del elemento actual* en Atajos).
+  - El atajo global **Vaciar historial** ahora usa `--clear-interactive` para respetar la confirmación antes de borrar.
+- **Soporte completo en inglés:**
+  - Todas las nuevas opciones, atajos, notificaciones, el manual de usuario integrado y todos los tooltips de configuración cuentan con traducción completa al inglés.
+
+### 🇬🇧 English
+- **Option to disable quick-paste `1–0` shortcuts:**
+  - New toggle in **Settings → Shortcuts** ("Use keys 1–0 to quick-paste from the popup window"): disabling it lets you type numbers directly into the search bar, hides the number badges on cards, and updates the bottom shortcut hint.
+- **Helpful hover tooltips across all settings:**
+  - Every checkbox, spinbox, dropdown, button, and shortcut field in **Settings** (*General*, *Actions*, and *Shortcuts* tabs) now displays a styled tooltip on hover briefly explaining what it does.
+- **Built-in & repository User Manual:**
+  - New concise, easy-to-read bilingual **User Manual** accessible from **Tray Menu → User Manual…**, from the **User Manual** button in **Settings**, and in [`MANUAL.md`](MANUAL.md).
+- **Expanded global shortcuts & complete Actions access:**
+  - Added 3 practical global shortcuts for Mklipper (with full D-Bus, CLI, and Cinnamon sync support): **Toggle "Paste without formatting"** (`--toggle-plain-text`), **Edit current contents** (`--edit`), and **Show current QR code** (`--qr`).
+  - Restored and kept all working **Actions** shortcuts and tray controls (*Run actions on current item*, *Automatic actions menu* toggle, and *Invoke actions for current item* shortcut).
+  - The **Clear history** global shortcut now uses `--clear-interactive` so confirmation prompts are respected.
+- **Full English translation:**
+  - Every new option, shortcut, notification, the built-in User Manual, and all settings tooltips are fully translated into English.
+
 ## v1.6.2
 
 ### 🇪🇸 Español

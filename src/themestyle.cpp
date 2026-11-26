@@ -469,6 +469,13 @@ QString popupStyleSheet(const ThemeTokens &t)
             background-color: %WINDOW%;
             border: 1px solid %BORDER_SUBTLE%;
         }
+        QToolTip {
+            background-color: %INPUT%;
+            color: %TEXT%;
+            border: 1px solid %BORDER_SUBTLE%;
+            border-radius: 7px;
+            padding: 5px 9px;
+        }
         QFrame#mklipperDivider {
             background-color: %HAIRLINE%;
             border: none;
@@ -644,6 +651,13 @@ QString dialogStyleSheet(const ThemeTokens &t)
         QDialog {
             background-color: %WINDOW%;
             color: %TEXT%;
+        }
+        QToolTip {
+            background-color: %SURFACE%;
+            color: %TEXT%;
+            border: 1px solid %BORDER_SUBTLE%;
+            border-radius: 7px;
+            padding: 6px 10px;
         }
         QFrame#mklipperCard {
             background-color: %SURFACE%;

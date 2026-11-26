@@ -39,6 +39,14 @@ bool tryFastForwardToExistingInstance(int argc, char *argv[])
             method = "showKlipperManuallyInvokeActionMenu";
         } else if (std::strcmp(argv[i], "--clear") == 0) {
             method = "clearClipboardHistory";
+        } else if (std::strcmp(argv[i], "--clear-interactive") == 0) {
+            method = "clearClipboardHistoryInteractive";
+        } else if (std::strcmp(argv[i], "--toggle-plain-text") == 0) {
+            method = "togglePastePlainText";
+        } else if (std::strcmp(argv[i], "--edit") == 0) {
+            method = "editCurrentClipboard";
+        } else if (std::strcmp(argv[i], "--qr") == 0) {
+            method = "showCurrentBarcode";
         } else if (std::strcmp(argv[i], "--configure") == 0) {
             method = "configure";
         } else if (std::strcmp(argv[i], "--check-updates") == 0) {
@@ -128,6 +136,10 @@ int main(int argc, char *argv[])
     QCommandLineOption optCyclePrev(u"cycle-prev"_s, QObject::tr("Rotar al elemento anterior del historial"));
     QCommandLineOption optAction(u"action"_s, QObject::tr("Invocar acciones sobre el elemento actual"));
     QCommandLineOption optClear(u"clear"_s, QObject::tr("Vaciar el historial del portapapeles"));
+    QCommandLineOption optClearInteractive(u"clear-interactive"_s, QObject::tr("Vaciar el historial del portapapeles (con confirmación)"));
+    QCommandLineOption optTogglePlainText(u"toggle-plain-text"_s, QObject::tr("Alternar el modo «Pegar sin formato»"));
+    QCommandLineOption optEdit(u"edit"_s, QObject::tr("Editar el contenido actual del portapapeles"));
+    QCommandLineOption optQr(u"qr"_s, QObject::tr("Mostrar el código QR del elemento actual"));
     QCommandLineOption optConfigure(u"configure"_s, QObject::tr("Abrir la ventana de configuración"));
     QCommandLineOption optCheckUpdates(u"check-updates"_s, QObject::tr("Buscar actualizaciones de Mklipper"));
     QCommandLineOption optQuit(u"quit"_s, QObject::tr("Cerrar la instancia en ejecución de Mklipper"));
@@ -140,6 +152,10 @@ int main(int argc, char *argv[])
     parser.addOption(optCyclePrev);
     parser.addOption(optAction);
     parser.addOption(optClear);
+    parser.addOption(optClearInteractive);
+    parser.addOption(optTogglePlainText);
+    parser.addOption(optEdit);
+    parser.addOption(optQr);
     parser.addOption(optConfigure);
     parser.addOption(optCheckUpdates);
     parser.addOption(optQuit);
@@ -151,8 +167,16 @@ int main(int argc, char *argv[])
     if (existing.isValid()) {
         if (parser.isSet(optQuit)) {
             existing.call(u"quit"_s);
+        } else if (parser.isSet(optClearInteractive)) {
+            existing.call(u"clearClipboardHistoryInteractive"_s);
         } else if (parser.isSet(optClear)) {
             existing.call(u"clearClipboardHistory"_s);
+        } else if (parser.isSet(optTogglePlainText)) {
+            existing.call(u"togglePastePlainText"_s);
+        } else if (parser.isSet(optEdit)) {
+            existing.call(u"editCurrentClipboard"_s);
+        } else if (parser.isSet(optQr)) {
+            existing.call(u"showCurrentBarcode"_s);
         } else if (parser.isSet(optConfigure)) {
             existing.call(u"configure"_s);
         } else if (parser.isSet(optCheckUpdates)) {
@@ -179,6 +203,14 @@ int main(int argc, char *argv[])
 
     if (parser.isSet(optPopup) || parser.isSet(optToggle)) {
         klipper.showKlipperPopupMenu();
+    } else if (parser.isSet(optTogglePlainText)) {
+        klipper.togglePastePlainText();
+    } else if (parser.isSet(optEdit)) {
+        klipper.editCurrentClipboard();
+    } else if (parser.isSet(optQr)) {
+        klipper.showCurrentBarcode();
+    } else if (parser.isSet(optClearInteractive)) {
+        klipper.clearClipboardHistoryInteractive();
     } else if (parser.isSet(optConfigure)) {
         klipper.configure();
     } else if (parser.isSet(optCheckUpdates)) {

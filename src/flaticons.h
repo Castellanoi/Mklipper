@@ -38,6 +38,7 @@ enum class FlatIcon {
     Sliders,
     Keyboard,
     History,
+    Book,
 };
 
 namespace FlatIcons

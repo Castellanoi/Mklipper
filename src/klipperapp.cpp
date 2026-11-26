@@ -9,6 +9,7 @@
 #include "configdialog.h"
 #include "flaticons.h"
 #include "globalshortcut.h"
+#include "helpdialog.h"
 #include "historycycler.h"
 #include "historymodel.h"
 #include "klipperpopup.h"
@@ -167,6 +168,9 @@ void KlipperApp::syncThemeLive()
         m_configDialog->setStyleSheet(ThemeStyle::dialogStyleSheet(t));
         m_configDialog->update();
     }
+    if (m_helpDialog) {
+        m_helpDialog->refreshTheme();
+    }
     if (m_updateDialog) {
         m_updateDialog->setPalette(appPal);
         m_updateDialog->setWindowIcon(themedIcon);
@@ -207,6 +211,7 @@ void KlipperApp::rebuildTrayMenu()
         m_trayMenu = new QMenu;
     }
     m_trayMenu->clear();
+    m_toggleActionsAct = nullptr;
 
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
     auto menuIcon = [&t](FlatIcon id) {
@@ -239,11 +244,19 @@ void KlipperApp::rebuildTrayMenu()
 
     m_trayMenu->addSeparator();
 
+    auto *actionAct = m_trayMenu->addAction(menuIcon(FlatIcon::Bolt), tr("Ejecutar acciones en elemento actual"));
+    connect(actionAct, &QAction::triggered, this, [this]() { slotRepeatAction(false); });
+
     auto *editAct = m_trayMenu->addAction(menuIcon(FlatIcon::Edit), tr("Editar contenido actual…"));
     connect(editAct, &QAction::triggered, this, [this]() { m_popup->editCurrentClipboard(); });
 
     auto *qrAct = m_trayMenu->addAction(menuIcon(FlatIcon::QrCode), tr("Mostrar código QR actual…"));
     connect(qrAct, &QAction::triggered, this, [this]() { m_popup->showCurrentBarcode(); });
+
+    m_toggleActionsAct = m_trayMenu->addAction(tr("Menú automático de acciones"));
+    m_toggleActionsAct->setCheckable(true);
+    m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
+    connect(m_toggleActionsAct, &QAction::toggled, this, &KlipperApp::setURLGrabberEnabled);
 
     m_trayMenu->addSeparator();
 
@@ -254,6 +267,9 @@ void KlipperApp::rebuildTrayMenu()
 
     auto *configAct = m_trayMenu->addAction(menuIcon(FlatIcon::Settings), tr("Configurar Mklipper…"));
     connect(configAct, &QAction::triggered, this, &KlipperApp::configure);
+
+    auto *manualAct = m_trayMenu->addAction(menuIcon(FlatIcon::Book), tr("Manual de usuario…"));
+    connect(manualAct, &QAction::triggered, this, &KlipperApp::showManual);
 
     auto *updateAct = m_trayMenu->addAction(menuIcon(FlatIcon::Refresh), tr("Buscar actualizaciones…"));
     connect(updateAct, &QAction::triggered, this, &KlipperApp::checkForUpdates);
@@ -301,10 +317,13 @@ void KlipperApp::registerShortcuts()
         }
         const QList<CinnamonShortcutSpec> specs = {
             {u"mklipper-popup"_s, tr("Mklipper — Mostrar historial"), exe + u" --toggle"_s, QKeySequence::fromString(s->shortcutPopup())},
+            {u"mklipper-toggle-plain-text"_s, tr("Mklipper — Alternar «Pegar sin formato»"), exe + u" --toggle-plain-text"_s, QKeySequence::fromString(s->shortcutTogglePlainText())},
+            {u"mklipper-edit-current"_s, tr("Mklipper — Editar contenido actual"), exe + u" --edit"_s, QKeySequence::fromString(s->shortcutEditCurrent())},
+            {u"mklipper-show-qr"_s, tr("Mklipper — Mostrar código QR actual"), exe + u" --qr"_s, QKeySequence::fromString(s->shortcutShowQr())},
+            {u"mklipper-repeat-action"_s, tr("Mklipper — Invocar acciones"), exe + u" --action"_s, QKeySequence::fromString(s->shortcutRepeatAction())},
             {u"mklipper-cycle-next"_s, tr("Mklipper — Rotar historial (siguiente)"), exe + u" --cycle-next"_s, QKeySequence::fromString(s->shortcutCycleNext())},
             {u"mklipper-cycle-prev"_s, tr("Mklipper — Rotar historial (anterior)"), exe + u" --cycle-prev"_s, QKeySequence::fromString(s->shortcutCyclePrev())},
-            {u"mklipper-repeat-action"_s, tr("Mklipper — Invocar acciones"), exe + u" --action"_s, QKeySequence::fromString(s->shortcutRepeatAction())},
-            {u"mklipper-clear-history"_s, tr("Mklipper — Vaciar historial"), exe + u" --clear"_s, QKeySequence::fromString(s->shortcutClearHistory())},
+            {u"mklipper-clear-history"_s, tr("Mklipper — Vaciar historial"), exe + u" --clear-interactive"_s, QKeySequence::fromString(s->shortcutClearHistory())},
         };
         if (m_shortcuts->syncCinnamonShortcuts(specs)) {
             return;
@@ -314,6 +333,26 @@ void KlipperApp::registerShortcuts()
     if (!s->shortcutPopup().isEmpty()) {
         m_shortcuts->registerShortcut(u"popup"_s, QKeySequence::fromString(s->shortcutPopup()), [this]() {
             m_popup->toggleAtCursor();
+        });
+    }
+    if (!s->shortcutTogglePlainText().isEmpty()) {
+        m_shortcuts->registerShortcut(u"togglePlainText"_s, QKeySequence::fromString(s->shortcutTogglePlainText()), [this]() {
+            togglePastePlainText();
+        });
+    }
+    if (!s->shortcutEditCurrent().isEmpty()) {
+        m_shortcuts->registerShortcut(u"editCurrent"_s, QKeySequence::fromString(s->shortcutEditCurrent()), [this]() {
+            editCurrentClipboard();
+        });
+    }
+    if (!s->shortcutShowQr().isEmpty()) {
+        m_shortcuts->registerShortcut(u"showQr"_s, QKeySequence::fromString(s->shortcutShowQr()), [this]() {
+            showCurrentBarcode();
+        });
+    }
+    if (!s->shortcutRepeatAction().isEmpty()) {
+        m_shortcuts->registerShortcut(u"repeatAction"_s, QKeySequence::fromString(s->shortcutRepeatAction()), [this]() {
+            slotRepeatAction(false);
         });
     }
     if (!s->shortcutCycleNext().isEmpty()) {
@@ -326,14 +365,9 @@ void KlipperApp::registerShortcuts()
             slotCyclePrev();
         });
     }
-    if (!s->shortcutRepeatAction().isEmpty()) {
-        m_shortcuts->registerShortcut(u"repeatAction"_s, QKeySequence::fromString(s->shortcutRepeatAction()), [this]() {
-            slotRepeatAction(false);
-        });
-    }
     if (!s->shortcutClearHistory().isEmpty()) {
         m_shortcuts->registerShortcut(u"clearHistory"_s, QKeySequence::fromString(s->shortcutClearHistory()), [this]() {
-            m_historyModel->clearHistoryInteractive(nullptr);
+            clearClipboardHistoryInteractive();
         });
     }
 }
@@ -350,10 +384,16 @@ void KlipperApp::reloadConfig()
     if (langChanged) {
         rebuildTrayMenu();
         recreatePopup();
+        if (m_helpDialog) {
+            m_helpDialog->close();
+        }
         if (m_updateDialog && (!m_updater || !m_updater->isBusy())) {
             m_updateDialog->close();
         }
         updateTrayTooltip();
+    } else if (m_toggleActionsAct) {
+        QSignalBlocker blocker(m_toggleActionsAct);
+        m_toggleActionsAct->setChecked(m_urlGrabberEnabled);
     }
     m_urlGrabber->loadSettings();
     m_historyModel->loadSettings();
@@ -466,6 +506,11 @@ void KlipperApp::clearClipboardHistory()
     m_historyModel->clear();
 }
 
+void KlipperApp::clearClipboardHistoryInteractive()
+{
+    m_historyModel->clearHistoryInteractive(nullptr);
+}
+
 void KlipperApp::saveClipboardHistory()
 {
     m_historyModel->saveClipboardHistory();
@@ -500,6 +545,29 @@ void KlipperApp::toggleKlipperPopupMenu()
     m_popup->toggleAtCursor();
 }
 
+void KlipperApp::togglePastePlainText()
+{
+    auto *s = MklipperSettings::self();
+    const bool next = !s->pastePlainText();
+    s->setPastePlainText(next);
+    s->save();
+    Notifications::show(
+        tr("Pegar sin formato"),
+        next ? tr("Activado: el texto se pegará sin estilos ni colores HTML.")
+             : tr("Desactivado: el texto conservará su formato original."),
+        2500);
+}
+
+void KlipperApp::editCurrentClipboard()
+{
+    m_popup->editCurrentClipboard();
+}
+
+void KlipperApp::showCurrentBarcode()
+{
+    m_popup->showCurrentBarcode();
+}
+
 void KlipperApp::showKlipperManuallyInvokeActionMenu()
 {
     slotRepeatAction(false);
@@ -515,7 +583,20 @@ void KlipperApp::configure()
     m_configDialog = new ConfigDialog(m_urlGrabber);
     m_configDialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(m_configDialog, &ConfigDialog::checkForUpdatesRequested, this, &KlipperApp::checkForUpdates);
+    connect(m_configDialog, &ConfigDialog::showManualRequested, this, &KlipperApp::showManual);
     m_configDialog->show();
+}
+
+void KlipperApp::showManual()
+{
+    if (m_helpDialog) {
+        m_helpDialog->raise();
+        m_helpDialog->activateWindow();
+        return;
+    }
+    m_helpDialog = new HelpDialog();
+    m_helpDialog->setAttribute(Qt::WA_DeleteOnClose);
+    m_helpDialog->show();
 }
 
 UpdateDialog *KlipperApp::ensureUpdateDialog()

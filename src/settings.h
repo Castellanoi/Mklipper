@@ -83,18 +83,30 @@ public:
     int timeoutForActionPopups() const { return m_timeoutForActionPopups; }
     void setTimeoutForActionPopups(int v) { m_timeoutForActionPopups = qBound(0, v, 200); }
 
-    // Shortcuts (global X11)
+    // Shortcuts (popup & global X11 / Cinnamon)
+    bool quickSelectDigits() const { return m_quickSelectDigits; }
+    void setQuickSelectDigits(bool v) { m_quickSelectDigits = v; }
+
     QString shortcutPopup() const { return m_shortcutPopup; }
     void setShortcutPopup(const QString &v) { m_shortcutPopup = v; }
+
+    QString shortcutTogglePlainText() const { return m_shortcutTogglePlainText; }
+    void setShortcutTogglePlainText(const QString &v) { m_shortcutTogglePlainText = v; }
+
+    QString shortcutEditCurrent() const { return m_shortcutEditCurrent; }
+    void setShortcutEditCurrent(const QString &v) { m_shortcutEditCurrent = v; }
+
+    QString shortcutShowQr() const { return m_shortcutShowQr; }
+    void setShortcutShowQr(const QString &v) { m_shortcutShowQr = v; }
+
+    QString shortcutRepeatAction() const { return m_shortcutRepeatAction; }
+    void setShortcutRepeatAction(const QString &v) { m_shortcutRepeatAction = v; }
 
     QString shortcutCycleNext() const { return m_shortcutCycleNext; }
     void setShortcutCycleNext(const QString &v) { m_shortcutCycleNext = v; }
 
     QString shortcutCyclePrev() const { return m_shortcutCyclePrev; }
     void setShortcutCyclePrev(const QString &v) { m_shortcutCyclePrev = v; }
-
-    QString shortcutRepeatAction() const { return m_shortcutRepeatAction; }
-    void setShortcutRepeatAction(const QString &v) { m_shortcutRepeatAction = v; }
 
     QString shortcutClearHistory() const { return m_shortcutClearHistory; }
     void setShortcutClearHistory(const QString &v) { m_shortcutClearHistory = v; }
@@ -144,10 +156,14 @@ private:
     bool m_enableMagicMimeActions = true;
     int m_timeoutForActionPopups = 8;
 
+    bool m_quickSelectDigits = true;
     QString m_shortcutPopup = QStringLiteral("Meta+V");
+    QString m_shortcutTogglePlainText;
+    QString m_shortcutEditCurrent;
+    QString m_shortcutShowQr;
+    QString m_shortcutRepeatAction;
     QString m_shortcutCycleNext;
     QString m_shortcutCyclePrev;
-    QString m_shortcutRepeatAction;
     QString m_shortcutClearHistory;
 
     bool m_autoCheckUpdates = true;
