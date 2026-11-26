@@ -252,7 +252,7 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     m_showTrayBadge = new QCheckBox(tr("Mostrar contador de nuevos elementos en el icono de la bandeja"), histCard);
     m_showTrayBadge->setChecked(s->showTrayBadge());
     m_showTrayBadge->setToolTip(
-        tr("Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico."));
+        tr("Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico."));
 
     const QString maxItemsTip = tr("Cantidad máxima de elementos no fijados que se guardan en el historial. Al superar este límite se eliminan los más antiguos.");
 

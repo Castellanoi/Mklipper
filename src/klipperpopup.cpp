@@ -61,6 +61,9 @@ constexpr int kRowHeightText = 54;
 constexpr int kRowHeightImage = 76;
 constexpr int kActionBtnSize = 26;
 constexpr int kActionBtnGap = 2;
+constexpr qint64 kHighlightHoldMs = 650;
+constexpr qint64 kHighlightFadeMs = 2000;
+constexpr qint64 kHighlightTotalMs = kHighlightHoldMs + kHighlightFadeMs;
 
 enum class RowAction {
     None,
@@ -191,6 +194,16 @@ public:
     {
         m_hoveredIndex = idx;
         m_hoverPos = pos;
+    }
+
+    void setNewHighlights(QHash<QString, qreal> intensities)
+    {
+        m_highlightIntensities = std::move(intensities);
+    }
+
+    qreal highlightIntensityFor(const QString &uuid) const
+    {
+        return m_highlightIntensities.value(uuid, 0.0);
     }
 
     static qreal captureTimestampFor(const QModelIndex &index)
@@ -334,6 +347,8 @@ public:
         const bool isStarred = index.data(HistoryModel::StarredRole).toBool();
         const bool isTopItem = (index.row() == 0);
         const auto type = static_cast<HistoryItemType>(index.data(HistoryModel::TypeIntRole).toInt());
+        const QString itemUuid = index.data(HistoryModel::UuidRole).toString();
+        const qreal newHi = m_highlightIntensities.isEmpty() ? 0.0 : m_highlightIntensities.value(itemUuid, 0.0);
 
         const QPalette basePal = QApplication::palette();
         const ThemeTokens t = ThemeTokens::fromPalette(basePal);
@@ -352,7 +367,14 @@ public:
         cardPath.addRoundedRect(QRectF(cardRect).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
         painter->fillPath(cardPath, bg);
 
-        if (isSelected) {
+        // Subtle fading highlight wash + border for newly added items
+        if (newHi > 0.01) {
+            QColor wash(t.accent.red(), t.accent.green(), t.accent.blue(), qRound(newHi * (t.isDark ? 62.0 : 44.0)));
+            painter->fillPath(cardPath, wash);
+            QColor glowEdge(t.accent.red(), t.accent.green(), t.accent.blue(), qRound(newHi * (t.isDark ? 195.0 : 170.0)));
+            painter->setPen(QPen(glowEdge, 1.5));
+            painter->drawPath(cardPath);
+        } else if (isSelected) {
             QColor selEdge = t.accent;
             selEdge.setAlpha(t.isDark ? 120 : 95);
             painter->setPen(QPen(selEdge, 1.0));
@@ -557,9 +579,20 @@ public:
                 const QRectF iconRect(b.rect.center().x() - 7.5, b.rect.center().y() - 7.5, 15.0, 15.0);
                 FlatIcons::paint(painter, b.icon, iconRect, iconColor);
             }
-        } else if (isStarred) {
-            const QRectF starRect(cardRect.right() - 24.0, cardRect.center().y() - 7.0, 14.0, 14.0);
-            FlatIcons::paint(painter, FlatIcon::StarFilled, starRect, t.warning);
+        } else {
+            if (isStarred) {
+                const QRectF starRect(cardRect.right() - 24.0, cardRect.center().y() - 7.0, 14.0, 14.0);
+                FlatIcons::paint(painter, FlatIcon::StarFilled, starRect, t.warning);
+            }
+            if (newHi > 0.02) {
+                const qreal dotX = isStarred ? (cardRect.right() - 36.0) : (cardRect.right() - 18.0);
+                const QRectF newDotRect(dotX, cardRect.center().y() - 3.5, 7.0, 7.0);
+                QColor dotCol = t.accent;
+                dotCol.setAlpha(qRound(newHi * 235.0));
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(dotCol);
+                painter->drawEllipse(newDotRect);
+            }
         }
 
         painter->restore();
@@ -592,6 +625,7 @@ private:
 
     QModelIndex m_hoveredIndex;
     QPoint m_hoverPos;
+    QHash<QString, qreal> m_highlightIntensities;
     mutable QCache<QString, QPixmap> m_thumbCache;
 };
 
@@ -1056,6 +1090,10 @@ KlipperPopup::KlipperPopup(QWidget *parent)
         }
     });
 
+    m_highlightTimer = new QTimer(this);
+    m_highlightTimer->setInterval(33);
+    connect(m_highlightTimer, &QTimer::timeout, this, &KlipperPopup::tickNewItemHighlights);
+
     applyTheme();
     updatePasswordBanner();
     updatePauseUi();
@@ -1069,6 +1107,71 @@ KlipperPopup::KlipperPopup(QWidget *parent)
 void KlipperPopup::refreshTheme()
 {
     applyTheme();
+}
+
+void KlipperPopup::highlightNewItems(const QSet<QString> &uuids)
+{
+    if (uuids.isEmpty()) {
+        return;
+    }
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    for (const QString &uuid : uuids) {
+        if (!uuid.isEmpty()) {
+            m_highlightStartMs.insert(uuid, nowMs);
+        }
+    }
+    tickNewItemHighlights();
+    if (!m_highlightStartMs.isEmpty() && m_highlightTimer && !m_highlightTimer->isActive()) {
+        m_highlightTimer->start();
+    }
+}
+
+qreal KlipperPopup::highlightIntensityFor(const QString &uuid) const
+{
+    return m_delegate ? m_delegate->highlightIntensityFor(uuid) : 0.0;
+}
+
+void KlipperPopup::tickNewItemHighlights()
+{
+    if (m_highlightStartMs.isEmpty()) {
+        if (m_highlightTimer) {
+            m_highlightTimer->stop();
+        }
+        if (m_delegate) {
+            m_delegate->setNewHighlights({});
+        }
+        return;
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QHash<QString, qreal> intensities;
+    intensities.reserve(m_highlightStartMs.size());
+
+    for (auto it = m_highlightStartMs.begin(); it != m_highlightStartMs.end();) {
+        const qint64 elapsed = nowMs - it.value();
+        if (elapsed >= kHighlightTotalMs) {
+            it = m_highlightStartMs.erase(it);
+            continue;
+        }
+        qreal intensity = 1.0;
+        if (elapsed > kHighlightHoldMs) {
+            const qreal progress = qBound<qreal>(0.0, static_cast<qreal>(elapsed - kHighlightHoldMs) / static_cast<qreal>(kHighlightFadeMs), 1.0);
+            const qreal inv = 1.0 - progress;
+            intensity = inv * inv; // Smooth quadratic ease-out
+        }
+        intensities.insert(it.key(), intensity);
+        ++it;
+    }
+
+    if (m_delegate) {
+        m_delegate->setNewHighlights(std::move(intensities));
+    }
+    if (m_listView) {
+        m_listView->viewport()->update();
+    }
+    if (m_highlightStartMs.isEmpty() && m_highlightTimer) {
+        m_highlightTimer->stop();
+    }
 }
 
 void KlipperPopup::applyTheme()
@@ -1312,6 +1415,15 @@ bool KlipperPopup::event(QEvent *ev)
     } else if (ev->type() == QEvent::Hide) {
         if (m_relTimeTimer) {
             m_relTimeTimer->stop();
+        }
+        if (m_highlightTimer) {
+            m_highlightTimer->stop();
+        }
+        if (!m_highlightStartMs.isEmpty()) {
+            m_highlightStartMs.clear();
+            if (m_delegate) {
+                m_delegate->setNewHighlights({});
+            }
         }
         m_pastingInProgress = false;
         ++m_pasteGeneration;

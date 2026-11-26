@@ -11,6 +11,7 @@
 #include <QDBusContext>
 #include <QObject>
 #include <QPointer>
+#include <QSet>
 #include <QStringList>
 #include <QSystemTrayIcon>
 
@@ -80,6 +81,7 @@ private Q_SLOTS:
     void onHistoryChanged(bool isTop);
     void onHistoryRowsInserted(const QModelIndex &parent, int first, int last);
     void onHistoryRowsRemoved();
+    void onPopupShown();
     void resetUnreadCount();
     void onInvokeActionByUuid(const QString &uuid);
     void showActionPopupMenu(QMenu *menu);
@@ -129,5 +131,5 @@ private:
 
     bool m_urlGrabberEnabled = false;
     QString m_lastUrlGrabberText;
-    int m_unreadCount = 0;
+    QSet<QString> m_unreadUuids;
 };

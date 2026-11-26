@@ -168,6 +168,9 @@
     "Habilitado": "Activé",
     "Hace %1 h": "Il y a %1 h",
     "Hace %1 min": "Il y a %1 min",
+    "Haz clic en cualquier tarjeta para expandir la explicación detallada.": "Cliquez sur n'importe quelle carte pour afficher son explication détaillée.",
+    "Haz clic para contraer": "Cliquez pour réduire",
+    "Haz clic para ver la explicación detallada": "Cliquez pour voir l'explication détaillée",
     "Historial del portapapeles": "Historique du presse-papiers",
     "Historial y comportamiento": "Historique et comportement",
     "Idioma:": "Langue :",
@@ -240,7 +243,7 @@
     "Mostrar solo elementos fijados": "Afficher uniquement les éléments épinglés",
     "Mostrar u ocultar el popup del historial bajo el cursor": "Afficher ou masquer la fenêtre d'historique sous le curseur",
     "Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).": "Affiche une confirmation avant de tout effacer afin d'éviter toute perte accidentelle (les éléments épinglés sont toujours conservés).",
-    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico.": "Affiche un badge de notification sur l'icône de la barre d'état avec le nombre de nouveaux éléments ajoutés à l'historique. Se réinitialise à l'ouverture de la fenêtre ; désactivez-le pour conserver l'icône classique.",
+    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico.": "Affiche un badge de notification sur l'icône de la barre d'état avec le nombre de nouveaux éléments ajoutés à l'historique et les met brièvement en surbrillance à l'ouverture. Se réinitialise à l'ouverture ; désactivez-le pour garder l'icône classique.",
     "Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.": "Affiche une ligne discrète sous chaque carte indiquant l'application ou le domaine d'origine.",
     "Más reciente: %1": "Plus récent : %1",
     "Más tarde": "Plus tard",
@@ -352,121 +355,150 @@
   "manualSections": [
     {
       "icon": "clipboard",
-      "title": "Débuter",
+      "title": "Démarrage",
       "intro": "L'essentiel pour utiliser votre historique du presse-papiers au quotidien.",
       "cards": [
         {
           "icon": "history",
-          "title": "Ouvrez l'historique en un instant",
-          "body": "Appuyez sur <b>Super + V</b> (modifiable dans Raccourcis) ou faites un <b>clic gauche</b> sur l'icône Mklipper dans la zone de notification."
+          "title": "Ouvrez votre historique instantanément",
+          "body": "Appuyez sur <b>Super + V</b> (modifiable dans Raccourcis) ou faites un <b>clic gauche</b> sur l'icône Mklipper dans la barre des tâches.",
+          "details": "Le raccourci global passe directement par D-Bus pour ouvrir la fenêtre flottante sous votre curseur sans délai. Le clic gauche dans la barre d'état ancre la fenêtre près de l'icône dans les limites de l'écran ; le <b>clic central</b> l'ouvre sous le pointeur. Vous pouvez aussi la déplacer en faisant glisser une zone vide."
         },
         {
           "icon": "copy",
-          "title": "Collez en un seul geste",
-          "body": "Cliquez sur un élément, appuyez sur <b>Entrée</b> ou utilisez les touches <b>1 à 0</b> pour coller directement dans la fenêtre active."
+          "title": "Collez en un geste (et Shift pour le format)",
+          "body": "Cliquez sur un élément, appuyez sur <b>Entrée</b> ou utilisez les touches <b>1 à 0</b> pour coller directement. Maintenez <b>Shift</b> pour inverser le format ponctuellement.",
+          "details": "Mklipper mémorise la fenêtre active avant l'ouverture, lui rend le focus et envoie automatiquement <b>Ctrl + Shift + V</b> dans les terminaux ou <b>Ctrl + V</b> ailleurs. Maintenir <b>Shift</b> lors d'un clic, d'<b>Entrée</b> ou d'<b>Alt/Ctrl + 1–0</b> inverse <i>Coller sans mise en forme</i> uniquement pour ce collage. Dans <b>Paramètres → Général</b>, le mode persistant permet de coller plusieurs éléments à la suite."
         },
         {
           "icon": "sliders",
           "title": "Coller sans mise en forme",
-          "body": "Activez l'interrupteur <b>Coller sans mise en forme</b> en haut de la fenêtre pour retirer les couleurs, polices et styles HTML du texte collé. Les images et fichiers ne sont pas affectés."
+          "body": "Activez l'interrupteur <b>Coller sans mise en forme</b> en haut pour supprimer couleurs, polices et styles HTML du texte collé, sans toucher aux images ni aux fichiers.",
+          "details": "Lorsqu'il est activé, le texte enrichi copié depuis un navigateur, un document ou un e-mail (HTML, RTF, polices et arrière-plans) est converti en texte brut propre — y compris avec Ctrl + V direct — tandis que les captures d'écran et fichiers restent intacts. Un raccourci global dédié peut être configuré dans <b>Paramètres → Raccourcis</b>."
         },
         {
           "icon": "settings",
-          "title": "Menu rapide de la barre",
-          "body": "Faites un <b>clic droit</b> sur l'icône de la barre pour modifier le dernier élément, créer un code QR, vider l'historique ou ouvrir les Paramètres."
+          "title": "Compteur de la barre d'état, surbrillance et menu rapide",
+          "body": "L'icône affiche un cercle avec le nombre de nouveaux éléments et les met brièvement en surbrillance à l'ouverture. Faites un <b>clic droit</b> pour le menu rapide.",
+          "details": "Chaque élément copié lorsque la fenêtre est fermée incrémente le badge rouge sur l'icône (<code>1–99</code> et <code>99+</code>). À l'ouverture de Mklipper, le compteur se réinitialise et les nouveaux éléments s'illuminent d'une légère teinte qui s'estompe en quelques secondes. Pour conserver l'icône classique sans badge ni surbrillance, désactivez <b>Afficher le compteur de nouveaux éléments sur l'icône de la barre d'état</b> dans <b>Paramètres → Général</b>."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Cartes",
-      "intro": "Recherchez, épinglez vos favoris et utilisez les boutons rapides de chaque carte.",
+      "intro": "Recherchez sans accents, filtrez par catégorie, prévisualisez et utilisez les boutons rapides de chaque carte.",
       "cards": [
         {
           "icon": "search",
-          "title": "Recherche instantanée",
-          "body": "Dès l'ouverture de Mklipper, commencez à taper pour filtrer par texte, application d'origine, titre de fenêtre ou lien web."
+          "title": "Recherche sans accents et filtres par catégorie",
+          "body": "Tapez dès l'ouverture pour filtrer instantanément, ou passez entre <b>Tous · Texte · Images · Liens · Épinglés</b> au clic ou avec <b>Tab</b>.",
+          "details": "La recherche ignore la casse et les accents et accepte plusieurs mots dans n'importe quel ordre (par exemple <code>resume cafe</code> trouve <i>« Café Résumé »</i>). Elle parcourt le texte, l'application source, le titre de fenêtre et l'URL. La touche <b>Tab</b> fait défiler les 5 catégories."
+        },
+        {
+          "icon": "eye",
+          "title": "Aperçu agrandi et enregistrement PNG",
+          "body": "Appuyez sur <b>Espace</b> (ou le bouton <b>œil</b>) pour inspecter une grande image ou un texte long sans coller, et enregistrez les images en <b>PNG</b>.",
+          "details": "L'aperçu affiche le texte intégral avec le nombre de caractères et de lignes, ou l'image agrandie avec ses dimensions en pixels, sans modifier le presse-papiers actif. Depuis l'aperçu, vous pouvez utiliser l'élément, l'éditer ou cliquer sur <b>Enregistrer en PNG</b> (aussi disponible sur les cartes d'image). Appuyez sur <b>Échap</b> pour revenir."
         },
         {
           "icon": "star",
-          "title": "Épinglez l'essentiel",
-          "body": "Cliquez sur l'<b>étoile</b> d'une carte pour la garder en haut et la protéger lors du nettoyage. L'étoile en haut filtre uniquement les favoris."
+          "title": "Épinglez vos favoris et sauvegardez-les",
+          "body": "Cliquez sur l'<b>étoile</b> d'une carte pour la protéger lors du vidage et la retrouver dans le filtre <b>Épinglés</b>.",
+          "details": "Les éléments épinglés ne sont jamais supprimés par la limite de taille ni par le vidage de l'historique. Dans <b>Paramètres → Général → Confidentialité et sauvegarde</b>, utilisez <b>Exporter les épinglés…</b> (JSON avec images, permissions <code>0600</code>) et <b>Importer les épinglés…</b> sans créer de doublons."
         },
         {
           "icon": "edit",
-          "title": "Modifiez un texte ou générez un code QR",
-          "body": "Survolez une carte pour <b>modifier le texte</b> avant de le coller (<b>Ctrl + Entrée</b> enregistre), créer un <b>code QR</b> à scanner sur mobile ou rouvrir le lien d'origine."
+          "title": "Édition, code QR, source et heure de capture",
+          "body": "Survolez une carte pour <b>modifier le texte</b> (<b>Ctrl + Entrée</b> enregistre), créer un <b>code QR</b> ou ouvrir le lien d'origine.",
+          "details": "Chaque carte affiche l'application ou le domaine d'origine ainsi que le temps relatif depuis sa capture initiale (<i>« À l'instant »</i>, <i>« Il y a 10 min »</i>, <i>« Hier, 18:30 »</i>), actualisé en direct sans se réinitialiser à la réouverture ou lors d'une suppression. Le <b>code QR</b> hors ligne permet de transférer un lien vers votre téléphone en un instant."
         },
         {
           "icon": "trash",
-          "title": "Supprimez facilement",
-          "body": "Cliquez sur la <b>corbeille</b> ou appuyez sur <b>Suppr</b> sur la ligne sélectionnée pour effacer cet élément immédiatement."
+          "title": "Suppression rapide et sûre",
+          "body": "Utilisez l'icône <b>corbeille</b> ou la touche <b>Suppr</b> pour effacer une ligne, ou le bouton du haut pour vider l'historique non épinglé.",
+          "details": "Le vidage de l'historique et la suppression d'un élément épinglé demandent confirmation par défaut (avec option <i>Ne plus demander</i>), tout en préservant les métadonnées et l'horodatage d'origine des autres éléments."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Actions",
-      "intro": "Automatisez des tâches rapides sur ce que vous copiez, comme ouvrir des liens ou transformer du texte.",
+      "intro": "Automatisez des tâches rapides sur ce que vous copiez : liens, fichiers ou commandes personnalisées.",
       "cards": [
         {
           "icon": "link",
           "title": "Liens et fichiers en un clic",
-          "body": "Lorsque vous copiez une adresse web (<code>https://...</code>) ou un chemin de fichier local, un bouton <b>éclair</b> apparaît sur la carte pour l'ouvrir avec l'application par défaut."
+          "body": "Lorsque vous copiez une URL (<code>https://...</code>) ou un chemin de fichier existant, un bouton <b>éclair</b> apparaît pour l'ouvrir avec l'application par défaut.",
+          "details": "Mklipper détecte automatiquement les URL <code>http/https</code> valides et les fichiers locaux existants pour les ouvrir dans votre navigateur, visionneuse ou gestionnaire de fichiers. Désactivable dans <b>Paramètres → Actions</b>."
         },
         {
           "icon": "bolt",
-          "title": "Menu automatique optionnel",
-          "body": "Si vous souhaitez que le menu d'actions apparaisse automatiquement lors de la copie d'un lien ou d'une règle, activez <b>Menu automatique d'actions</b> dans le menu ou les Paramètres."
+          "title": "Menu automatique facultatif",
+          "body": "Activez <b>Menu automatique d'actions</b> depuis la barre d'état ou les Paramètres pour l'afficher automatiquement dès qu'une règle correspond.",
+          "details": "Dans <b>Paramètres → Actions</b>, réglez la durée d'affichage en secondes (<code>0</code> = sans limite), choisissez si la sélection souris déclenche les actions, ignorez les espaces superflus et choisissez de rejouer les actions sur les éléments anciens."
         },
         {
           "icon": "settings",
-          "title": "Règles personnalisées (avancé)",
-          "body": "Dans <b>Paramètres → Actions</b>, vous pouvez créer des règles par expression régulière qui exécutent des commandes avec <code>%s</code> comme texte copié et remplacent éventuellement le presse-papiers par la sortie."
+          "title": "Règles personnalisées par expression régulière",
+          "body": "Créez des règles dans <b>Paramètres → Actions</b> avec des expressions régulières et des commandes utilisant <code>%s</code> pour le texte copié.",
+          "details": "Chaque règle associe une expression régulière à une ou plusieurs commandes. Le marqueur <code>%s</code> est transmis de manière sûre et la sortie peut être ignorée, remplacer le presse-papiers ou s'ajouter à l'historique."
         }
       ]
     },
     {
       "icon": "keyboard",
       "title": "Raccourcis",
-      "intro": "Pilotez tout au clavier avec une compatibilité totale pour les claviers standard et gamer.",
+      "intro": "Pilotez tout au clavier avec prise en charge complète des claviers standard, internationaux et gaming.",
       "cards": [
         {
           "icon": "keyboard",
           "title": "Raccourcis globaux synchronisés avec Cinnamon",
-          "body": "Dans <b>Paramètres → Raccourcis</b>, assignez des touches pour ouvrir l'historique, basculer <b>Coller sans mise en forme</b>, modifier l'élément actuel, afficher le QR, parcourir l'historique ou le vider."
+          "body": "Dans <b>Paramètres → Raccourcis</b>, assignez des touches pour ouvrir l'historique, basculer <b>Coller sans mise en forme</b>, mettre en pause, éditer, afficher le QR, actions, rotation ou vidage.",
+          "details": "Sous Linux Mint Cinnamon, les 9 raccourcis globaux se synchronisent automatiquement avec <i>Paramètres système → Clavier → Raccourcis personnalisés</i> et pilotent Mklipper instantanément par D-Bus."
         },
         {
           "icon": "search",
-          "title": "Vous préférez saisir des chiffres dans la recherche ?",
-          "body": "Désactivez <b>Utiliser les touches 1–0 pour coller rapidement</b> dans Paramètres → Raccourcis afin que les chiffres tapés aillent directement dans la barre de recherche."
+          "title": "Touches rapides dans la fenêtre flottante",
+          "body": "Utilisez <b>1–0</b> pour coller aussitôt, <b>Espace</b> pour l'aperçu, <b>Tab</b> pour filtrer, <b>Shift</b> pour inverser le format et <b>Suppr</b> pour supprimer.",
+          "details": "Champ de recherche vide, les touches <b>1–9</b> et <b>0</b> collent immédiatement la ligne correspondante ; pendant une recherche, <b>Alt/Ctrl + 1–0</b> restent actifs. Désactivez <b>Utiliser les touches 1–0 pour coller rapidement</b> si vous préférez taper des chiffres dans la recherche. <b>Ctrl + F</b> cible la recherche et <b>Échap</b> revient ou ferme."
         },
         {
           "icon": "sliders",
-          "title": "Claviers gamer et sélecteur manuel",
-          "body": "Mklipper prend en charge les touches macro (<b>F13–F24</b>) et toute disposition de modificateurs. Si le système ou le clavier intercepte <b>Super</b>, <b>Ctrl</b> ou <b>Alt</b>, utilisez le bouton clavier à côté du champ pour choisir manuellement."
+          "title": "Claviers gaming et sélecteur manuel",
+          "body": "Mklipper reconnaît les touches macro (<b>F13–F24</b>) et toute disposition X11. Si le bureau intercepte <b>Super</b>, <b>Ctrl</b> ou <b>Alt</b>, utilisez le sélecteur manuel à côté du champ.",
+          "details": "Le moteur X11 interroge dynamiquement la table des touches et modificateurs active. Le sélecteur manuel permet de cocher les modificateurs et choisir n'importe quelle touche (dont <code>F13–F24</code>) même si le gestionnaire de fenêtres intercepte la combinaison."
         }
       ]
     },
     {
       "icon": "lock",
-      "title": "Vie privée",
-      "intro": "Vos données restent sous votre contrôle, intégrées à Linux Mint et sans résidus sur le disque.",
+      "title": "Confidentialité",
+      "intro": "Vos données restent sous votre contrôle, sans télémétrie, intégrées à Linux Mint et effacées proprement.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Mode pause (navigation privée)",
+          "body": "Suspendez temporairement la capture via le bouton <b>pause</b> de la fenêtre, le menu de la barre d'état ou un raccourci global.",
+          "details": "En pause, rien de ce que vous copiez n'est enregistré, l'icône affiche un badge de pause et la fenêtre montre une bannière avec le bouton <b>Reprendre</b> afin de ne jamais oublier de réactiver la capture."
+        },
+        {
           "icon": "lock",
-          "title": "Protection des mots de passe",
-          "body": "Les secrets copiés depuis les gestionnaires compatibles (KeePassXC, Bitwarden, 1Password, etc.) sont détectés automatiquement et <b>ne sont jamais enregistrés</b> dans l'historique."
+          "title": "Mots de passe et applications ignorées",
+          "body": "Les secrets des gestionnaires compatibles (KeePassXC, Bitwarden, 1Password, etc.) et écrans de verrouillage sont filtrés seuls, et vous pouvez ajouter vos propres exclusions.",
+          "details": "Mklipper détecte les indicateurs de confidentialité des gestionnaires de mots de passe, ne les enregistre jamais sur disque et affiche une bannière avec bouton <b>Effacer</b> tant que le secret reste actif. Gérez votre liste personnelle d'applications ignorées dans <b>Paramètres → Général → Confidentialité et sauvegarde</b>."
         },
         {
           "icon": "trash",
-          "title": "Suppression propre sans résidus",
-          "body": "Chaque élément supprimé est immédiatement effacé et l'espace disque est libéré (sans résidus dans la base ni fichiers orphelins), avec des permissions strictement privées."
+          "title": "Effacement propre et permissions privées",
+          "body": "Chaque élément supprimé est écrasé et libère immédiatement l'espace disque, avec des permissions réservées à votre utilisateur.",
+          "details": "La base SQLite dans <code>~/.local/share/mklipper/</code> utilise <code>secure_delete = ON</code> et <code>auto_vacuum = FULL</code>, supprime les fichiers orphelins et applique des permissions strictes <code>0700</code> / <code>0600</code> aux données, réglages et sauvegardes JSON."
         },
         {
           "icon": "update",
-          "title": "Mises à jour intégrées à Mint",
-          "body": "Mklipper s'intègre au <b>Gestionnaire de mises à jour de Linux Mint</b> et redémarre automatiquement après une mise à jour, en plus de vous prévenir des nouvelles versions."
+          "title": "Mises à jour intégrées à Linux Mint",
+          "body": "Mklipper s'intègre au <b>Gestionnaire de mises à jour de Linux Mint</b> et vous prévient dès qu'une nouvelle version paraît.",
+          "details": "Grâce au dépôt APT signé, les mises à jour arrivent avec celles du système et Mklipper redémarre proprement après l'installation. Vous pouvez aussi vérifier et installer manuellement depuis <b>Paramètres → Général → Rechercher des mises à jour maintenant…</b> avec notes traduites et vérification SHA-256."
         }
       ]
     }

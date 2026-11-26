@@ -9,7 +9,7 @@
 
 #include "flaticons.h"
 
-class QFrame;
+class ExpandableManualCard;
 class QLabel;
 class QTabWidget;
 
@@ -23,12 +23,6 @@ public:
     void refreshTheme();
 
 private:
-    struct CardIconBinding {
-        QFrame *badge = nullptr;
-        QLabel *iconLabel = nullptr;
-        FlatIcon icon = FlatIcon::Info;
-    };
-
     struct TabIconBinding {
         int index = 0;
         FlatIcon icon = FlatIcon::Info;
@@ -36,8 +30,10 @@ private:
 
     QLabel *m_logoLabel = nullptr;
     QLabel *m_subtitleLabel = nullptr;
+    QLabel *m_footerHintIcon = nullptr;
+    QLabel *m_footerHintLabel = nullptr;
     QTabWidget *m_tabs = nullptr;
     QList<QLabel *> m_mutedLabels;
-    QList<CardIconBinding> m_cardIcons;
+    QList<ExpandableManualCard *> m_cards;
     QList<TabIconBinding> m_tabIcons;
 };

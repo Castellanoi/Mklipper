@@ -44,6 +44,8 @@ enum class FlatIcon {
     Eye,
     Image,
     FileText,
+    ChevronDown,
+    ChevronUp,
 };
 
 namespace FlatIcons

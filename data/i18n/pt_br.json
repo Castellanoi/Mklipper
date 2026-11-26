@@ -168,6 +168,9 @@
     "Habilitado": "Habilitado",
     "Hace %1 h": "Há %1 h",
     "Hace %1 min": "Há %1 min",
+    "Haz clic en cualquier tarjeta para expandir la explicación detallada.": "Clique em qualquer cartão para expandir a explicação detalhada.",
+    "Haz clic para contraer": "Clique para recolher",
+    "Haz clic para ver la explicación detallada": "Clique para ver a explicação detalhada",
     "Historial del portapapeles": "Histórico da área de transferência",
     "Historial y comportamiento": "Histórico e comportamento",
     "Idioma:": "Idioma:",
@@ -240,7 +243,7 @@
     "Mostrar solo elementos fijados": "Mostrar apenas itens fixados",
     "Mostrar u ocultar el popup del historial bajo el cursor": "Alternar o popup do histórico sob o cursor",
     "Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).": "Exibe um aviso antes de apagar todo o histórico para evitar perdas acidentais (os itens fixados são sempre mantidos).",
-    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico.": "Exibe um círculo de notificação no ícone da bandeja com a quantidade de novos itens adicionados ao histórico. Reinicia ao abrir a janela; desative para manter o ícone clássico.",
+    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico.": "Exibe um círculo de notificação no ícone da bandeja com o número de novos itens adicionados ao histórico e os destaca brevemente ao abrir a janela. Reinicia ao abrir; desative para manter o ícone clássico.",
     "Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.": "Exibe uma linha discreta abaixo de cada cartão indicando o aplicativo ou domínio de origem.",
     "Más reciente: %1": "Mais recente: %1",
     "Más tarde": "Mais tarde",
@@ -353,120 +356,149 @@
     {
       "icon": "clipboard",
       "title": "Início",
-      "intro": "O essencial para usar seu histórico da área de transferência no dia a dia.",
+      "intro": "O essencial para usar seu histórico da área de transferência todos os dias.",
       "cards": [
         {
           "icon": "history",
           "title": "Abra seu histórico na hora",
-          "body": "Pressione <b>Super + V</b> (personalizável em Atalhos) ou dê um <b>clique esquerdo</b> no ícone do Mklipper na bandeja do sistema."
+          "body": "Pressione <b>Super + V</b> (personalizável em Atalhos) ou dê um <b>clique esquerdo</b> no ícone do Mklipper na barra de tarefas.",
+          "details": "O atalho global usa comunicação direta via D-Bus para abrir a janela flutuante sob o cursor instantaneamente. O clique esquerdo na bandeja posiciona o painel ao lado do relógio respeitando os limites da tela; o <b>clique do meio</b> abre exatamente no ponteiro. Você também pode arrastar a janela por qualquer área vazia."
         },
         {
           "icon": "copy",
-          "title": "Cole com um toque",
-          "body": "Clique em qualquer item, pressione <b>Enter</b> ou use as teclas <b>1 a 0</b> para colar direto na janela em que você estava trabalhando."
+          "title": "Cole em um toque (e use Shift para formato)",
+          "body": "Clique em qualquer item, pressione <b>Enter</b> ou use as teclas <b>1 a 0</b> para colar direto na janela ativa. Segure <b>Shift</b> para inverter a formatação pontualmente.",
+          "details": "O Mklipper lembra automaticamente a janela onde você estava trabalhando, restaura o foco e envia o comando certo: <b>Ctrl + Shift + V</b> em terminais e <b>Ctrl + V</b> nos demais aplicativos. Segurar <b>Shift</b> ao clicar, pressionar <b>Enter</b> ou usar <b>Alt/Ctrl + 1–0</b> inverte <i>Colar sem formatação</i> apenas naquela colagem. Em <b>Configurações → Geral</b> você pode manter a janela aberta para colar vários itens seguidos."
         },
         {
           "icon": "sliders",
           "title": "Colar sem formatação",
-          "body": "Ative a chave <b>Colar sem formatação</b> no topo da janela para remover cores, fontes e estilos HTML ao colar texto. Imagens e arquivos não são afetados."
+          "body": "Ative o botão <b>Colar sem formatação</b> no topo para remover cores, fontes e estilos HTML ao colar texto. Não afeta imagens nem arquivos.",
+          "details": "Com esta opção ativa, textos formatados copiados de navegadores, documentos ou e-mails (HTML, RTF, fontes e cores) são convertidos automaticamente em texto simples ao colar — inclusive no Ctrl + V direto — enquanto capturas de tela e caminhos de arquivos permanecem intactos. Você também pode definir um atalho global em <b>Configurações → Atalhos</b>."
         },
         {
           "icon": "settings",
-          "title": "Menu rápido na bandeja",
-          "body": "Clique com o <b>botão direito</b> no ícone da bandeja para editar o último item, gerar um código QR, limpar o histórico ou abrir as Configurações."
+          "title": "Ícone na bandeja, contador e destaque",
+          "body": "O ícone exibe um círculo com a quantidade de novos itens e os destaca brevemente ao abrir a janela. Use o <b>clique direito</b> para o menu rápido.",
+          "details": "Sempre que novos itens são capturados com a janela fechada, o ícone da bandeja mostra um círculo vermelho com o contador (<code>1–99</code> e <code>99+</code>). Ao abrir o Mklipper, o contador zera e os novos itens recebem um destaque suave que desaparece em poucos segundos. Se preferir o ícone clássico sem contador nem destaque, desative <b>Mostrar contador de novos itens no ícone da bandeja</b> em <b>Configurações → Geral</b>."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Cartões",
-      "intro": "Pesquise, fixe favoritos e aproveite os botões rápidos de cada item.",
+      "intro": "Busque sem acentos, filtre por categoria, visualize itens grandes e aproveite os botões rápidos.",
       "cards": [
         {
           "icon": "search",
-          "title": "Busca instantânea",
-          "body": "Assim que abrir o Mklipper, comece a digitar para filtrar por texto, aplicativo de origem, título da janela ou link."
+          "title": "Busca sem acentos e filtros por categoria",
+          "body": "Comece a digitar assim que abrir o Mklipper, ou alterne entre <b>Todos · Texto · Imagens · Links · Fixados</b> com clique ou tecla <b>Tab</b>.",
+          "details": "A busca ignora maiúsculas e acentos e aceita várias palavras em qualquer ordem (por exemplo, <code>configuracao codigo</code> encontra <i>«Configuração do código»</i>). Também pesquisa no nome do aplicativo, título da janela e URL de origem. Pressione <b>Tab</b> para alternar rapidamente entre os 5 filtros."
+        },
+        {
+          "icon": "eye",
+          "title": "Prévia ampliada e salvamento em PNG",
+          "body": "Pressione <b>Espaço</b> (ou clique no ícone de <b>olho</b>) para ver capturas grandes ou textos longos sem colar, e salve imagens direto em <b>PNG</b>.",
+          "details": "A prévia exibe o texto completo com contagem de caracteres e linhas, ou a imagem ampliada com resolução em pixels, sem alterar a área de transferência ativa. Direto da prévia você pode usar o item, abrir o editor ou exportar com <b>Salvar PNG</b> (disponível também nos cartões de imagem). Pressione <b>Esc</b> para voltar."
         },
         {
           "icon": "star",
-          "title": "Fixe o que importa",
-          "body": "Clique na <b>estrela</b> de um cartão para mantê-lo sempre no topo e protegido ao limpar o histórico. A estrela na barra superior filtra apenas os fixados."
+          "title": "Fixe favoritos e faça backup",
+          "body": "Clique na <b>estrela</b> de um cartão para protegê-lo ao limpar o histórico e encontrá-lo rápido no filtro <b>Fixados</b>.",
+          "details": "Itens fixados nunca são removidos ao atingir o limite máximo ou ao limpar o histórico. Em <b>Configurações → Geral → Privacidade e backup</b> você pode <b>Exportar fixados…</b> para um arquivo JSON (incluindo imagens, com permissões privadas <code>0600</code>) e <b>Importar fixados…</b> sem duplicar entradas."
         },
         {
           "icon": "edit",
-          "title": "Edite texto ou gere um código QR",
-          "body": "Passe o mouse sobre um cartão para <b>editar o texto</b> antes de colar (<b>Ctrl + Enter</b> salva), criar um <b>código QR</b> para ler no celular ou reabrir o link original."
+          "title": "Edite, gere QR, origem e hora da captura",
+          "body": "Passe o mouse sobre um cartão para <b>editar o texto</b> (<b>Ctrl + Enter</b> salva), gerar um <b>código QR</b> ou abrir o link original.",
+          "details": "Cada cartão exibe abaixo o aplicativo ou domínio de origem junto com o tempo relativo desde a captura original (<i>«Agora mesmo»</i>, <i>«Há 10 min»</i>, <i>«Ontem, 18:30»</i>), atualizado em tempo real sem zerar ao reabrir a janela ou excluir outros itens. O gerador de <b>QR</b> funciona offline para enviar links ou textos ao celular."
         },
         {
           "icon": "trash",
-          "title": "Remova o que não precisa",
-          "body": "Use o ícone de <b>lixeira</b> ou pressione <b>Del</b> no item selecionado para excluí-lo imediatamente."
+          "title": "Exclusão rápida e segura",
+          "body": "Use o ícone de <b>lixeira</b> ou a tecla <b>Del</b> para apagar um item na hora, ou o botão superior para limpar o histórico não fixado.",
+          "details": "Tanto a limpeza do histórico quanto a exclusão de itens fixados pedem confirmação por padrão para evitar perdas acidentais (com opção <i>Não perguntar novamente</i>), preservando os dados e horários dos itens restantes."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Ações",
-      "intro": "Automatize tarefas rápidas sobre o que você copia, como abrir links ou transformar texto.",
+      "intro": "Automatize tarefas rápidas sobre o que você copia, como abrir links, arquivos ou comandos personalizados.",
       "cards": [
         {
           "icon": "link",
           "title": "Links e arquivos em um clique",
-          "body": "Ao copiar um endereço web (<code>https://...</code>) ou o caminho de um arquivo no PC, o botão de <b>raio</b> aparece no cartão para abri-lo com o aplicativo padrão."
+          "body": "Ao copiar um endereço web (<code>https://...</code>) ou caminho de arquivo existente, aparece o botão de <b>raio</b> para abri-lo no app padrão.",
+          "details": "O Mklipper reconhece URLs <code>http/https</code> válidas e arquivos locais existentes para abri-los diretamente no navegador, visualizador ou gerenciador de arquivos. Você pode desativar essa detecção em <b>Configurações → Ações</b>."
         },
         {
           "icon": "bolt",
           "title": "Menu automático opcional",
-          "body": "Se quiser que o menu de ações abra automaticamente ao copiar um link ou regra correspondente, ative <b>Menu automático de ações</b> na bandeja ou nas Configurações."
+          "body": "Ative <b>Menu automático de ações</b> na bandeja ou em Configurações para abrir o menu automaticamente ao copiar conteúdo compatível.",
+          "details": "Em <b>Configurações → Ações</b> você define o tempo em segundos antes de o menu fechar sozinho (<code>0</code> = sem limite), se a seleção com o mouse dispara ações, se espaços nas bordas são ignorados e se as ações reaparecem ao selecionar itens antigos."
         },
         {
           "icon": "settings",
-          "title": "Regras personalizadas (avançado)",
-          "body": "Em <b>Configurações → Ações</b> você pode criar regras com expressões regulares que executam comandos usando <code>%s</code> como o texto copiado e, opcionalmente, substituem o resultado na área de transferência."
+          "title": "Regras personalizadas por expressão regular",
+          "body": "Crie regras em <b>Configurações → Ações</b> com expressões regulares e comandos usando <code>%s</code> como o texto copiado.",
+          "details": "Cada regra combina um padrão regex com um ou mais comandos. O marcador <code>%s</code> é passado com segurança e você escolhe se a saída do comando é ignorada, substitui a área de transferência ou é adicionada ao histórico."
         }
       ]
     },
     {
       "icon": "keyboard",
       "title": "Atalhos",
-      "intro": "Controle tudo pelo teclado com compatibilidade total para teclados comuns e gamer.",
+      "intro": "Controle tudo pelo teclado com suporte completo a teclados padrão, internacionais e gamers.",
       "cards": [
         {
           "icon": "keyboard",
           "title": "Atalhos globais sincronizados com o Cinnamon",
-          "body": "Em <b>Configurações → Atalhos</b> você pode definir teclas para abrir o histórico, alternar <b>Colar sem formatação</b>, editar o item atual, mostrar o QR, navegar no histórico ou limpá-lo."
+          "body": "Em <b>Configurações → Atalhos</b> defina teclas para abrir o histórico, alternar <b>Colar sem formatação</b>, pausar captura, editar, mostrar QR, ações, alternar ou limpar.",
+          "details": "No Linux Mint Cinnamon, os 9 atalhos globais são sincronizados automaticamente com <i>Configurações do sistema → Teclado → Atalhos personalizados</i> e acionam o Mklipper via D-Bus com resposta imediata."
         },
         {
           "icon": "search",
-          "title": "Prefere digitar números na busca?",
-          "body": "Desative <b>Usar teclas 1–0 para colar rapidamente</b> em Configurações → Atalhos para que os números digitados vão direto para o campo de busca."
+          "title": "Teclas rápidas dentro da janela flutuante",
+          "body": "Use <b>1–0</b> para colar na hora, <b>Espaço</b> para prévia, <b>Tab</b> para trocar filtro, <b>Shift</b> para inverter formato e <b>Del</b> para excluir.",
+          "details": "Com a busca vazia, pressionar <b>1–9</b> ou <b>0</b> cola o item imediatamente; com texto na busca, <b>Alt/Ctrl + 1–0</b> continuam funcionando. Se preferir digitar números direto na busca, desative <b>Usar teclas 1–0 para colar rápido</b> em <b>Configurações → Atalhos</b>. <b>Ctrl + F</b> foca a busca e <b>Esc</b> volta ou fecha."
         },
         {
           "icon": "sliders",
-          "title": "Teclados gamer e seletor manual",
-          "body": "O Mklipper reconhece teclas macro (<b>F13–F24</b>) e qualquer mapa de modificadores. Se o sistema ou o teclado interceptarem <b>Super</b>, <b>Ctrl</b> ou <b>Alt</b> ao gravar, use o botão de teclado ao lado do campo para escolher manualmente."
+          "title": "Teclados gamers e seletor manual",
+          "body": "O Mklipper reconhece teclas macro (<b>F13–F24</b>) e qualquer layout X11. Se o sistema interceptar <b>Super</b>, <b>Ctrl</b> ou <b>Alt</b>, use o botão de teclado ao lado do campo.",
+          "details": "O motor X11 consulta dinamicamente o mapa de teclas e modificadores ativo. O seletor manual permite marcar modificadores e escolher qualquer tecla (inclusive <code>F13–F24</code>) sem depender de o ambiente gráfico repassar o atalho bruto."
         }
       ]
     },
     {
       "icon": "lock",
       "title": "Privacidade",
-      "intro": "Seus dados ficam sob seu controle, integrados ao Linux Mint e sem resíduos em disco.",
+      "intro": "Seus dados ficam sob seu controle, integrados ao Linux Mint e sem deixar rastros em disco.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Modo pausa (anônimo)",
+          "body": "Suspenda temporariamente o registro pelo botão de <b>pausa</b> na janela, pelo menu da bandeja ou por um atalho global.",
+          "details": "Enquanto a captura estiver pausada, nada copiado é salvo no histórico, o ícone da bandeja mostra a insígnia de pausa e a janela exibe um aviso com o botão <b>Retomar</b> para que você nunca esqueça de reativar."
+        },
+        {
           "icon": "lock",
-          "title": "Proteção de senhas",
-          "body": "Segredos copiados de gerenciadores compatíveis (KeePassXC, Bitwarden, 1Password etc.) são detectados automaticamente e <b>nunca são salvos</b> no histórico."
+          "title": "Senhas e aplicativos ignorados",
+          "body": "Segredos de gerenciadores compatíveis (KeePassXC, Bitwarden, 1Password etc.) e telas de bloqueio são filtrados automaticamente, e você pode adicionar aplicativos ignorados.",
+          "details": "O Mklipper reconhece marcações de sigilo de gerenciadores de senhas, nunca salva senhas em disco e exibe um aviso com botão <b>Limpar</b> enquanto o segredo estiver ativo. Em <b>Configurações → Geral → Privacidade e backup</b> você gerencia sua própria lista de aplicativos ignorados."
         },
         {
           "icon": "trash",
-          "title": "Exclusão limpa e definitiva",
-          "body": "Cada item removido é sobrescrito e libera espaço em disco imediatamente (sem resíduos no banco de dados nem arquivos órfãos), com permissões privadas apenas para o seu usuário."
+          "title": "Exclusão limpa e permissões privadas",
+          "body": "Cada item excluído é sobrescrito e libera espaço real em disco na hora, com permissões restritas apenas ao seu usuário.",
+          "details": "O banco SQLite em <code>~/.local/share/mklipper/</code> usa <code>secure_delete = ON</code> e <code>auto_vacuum = FULL</code>, removendo também arquivos órfãos e aplicando permissões rígidas <code>0700</code> / <code>0600</code> em dados, configuração e backups JSON."
         },
         {
           "icon": "update",
-          "title": "Atualizações integradas ao Mint",
-          "body": "O Mklipper se integra ao <b>Gerenciador de atualizações do Linux Mint</b> e reinicia automaticamente ao ser atualizado, além de avisar sobre novas versões."
+          "title": "Atualizações integradas ao Linux Mint",
+          "body": "O Mklipper integra-se ao <b>Gerenciador de atualizações do Linux Mint</b> e avisa quando há uma nova versão.",
+          "details": "Pelo repositório APT assinado, as atualizações chegam junto com o sistema e o Mklipper reinicia automaticamente após o upgrade. Você também pode verificar e instalar em <b>Configurações → Geral → Verificar atualizações agora…</b> com notas traduzidas e verificação SHA-256."
         }
       ]
     }

@@ -168,6 +168,9 @@
     "Habilitado": "Abilitato",
     "Hace %1 h": "%1 h fa",
     "Hace %1 min": "%1 min fa",
+    "Haz clic en cualquier tarjeta para expandir la explicación detallada.": "Fai clic su qualsiasi scheda per espandere la spiegazione dettagliata.",
+    "Haz clic para contraer": "Fai clic per comprimere",
+    "Haz clic para ver la explicación detallada": "Fai clic per vedere la spiegazione dettagliata",
     "Historial del portapapeles": "Cronologia degli appunti",
     "Historial y comportamiento": "Cronologia e comportamento",
     "Idioma:": "Lingua:",
@@ -240,7 +243,7 @@
     "Mostrar solo elementos fijados": "Mostra solo gli elementi fissati",
     "Mostrar u ocultar el popup del historial bajo el cursor": "Mostra o nascondi il popup della cronologia sotto il cursore",
     "Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).": "Mostra una richiesta di conferma prima di svuotare l'intera cronologia per evitare perdite accidentali (gli elementi fissati vengono sempre conservati).",
-    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico.": "Mostra un cerchio di notifica sull'icona della barra di sistema con il numero di nuovi elementi aggiunti alla cronologia. Si azzera all'apertura della finestra; disattivalo per mantenere l'icona classica.",
+    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico.": "Mostra un cerchio di notifica sull'icona della barra di sistema con il numero di nuovi elementi aggiunti alla cronologia e li evidenzia brevemente all'apertura. Si azzera all'apertura; disattivalo per mantenere l'icona classica.",
     "Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.": "Mostra una riga discreta sotto ogni scheda con l'applicazione o il dominio di origine.",
     "Más reciente: %1": "Più recente: %1",
     "Más tarde": "Più tardi",
@@ -353,120 +356,149 @@
     {
       "icon": "clipboard",
       "title": "Inizio",
-      "intro": "Tutto ciò che serve per usare la cronologia degli appunti ogni giorno.",
+      "intro": "L'essenziale per sfruttare la cronologia degli appunti ogni giorno.",
       "cards": [
         {
           "icon": "history",
-          "title": "Apri la cronologia in un attimo",
-          "body": "Premi <b>Super + V</b> (personalizzabile in Scorciatoie) oppure fai <b>clic sinistro</b> sull'icona di Mklipper nell'area di notifica per vedere tutto ciò che hai copiato."
+          "title": "Apri la cronologia all'istante",
+          "body": "Premi <b>Super + V</b> (modificabile in Scorciatoie) o fai <b>clic sinistro</b> sull'icona di Mklipper nella barra delle applicazioni.",
+          "details": "La scorciatoia globale comunica direttamente via D-Bus per aprire la finestra fluttuante sotto il cursore senza ritardi. Il clic sinistro nella barra di sistema posiziona la finestra vicino all'icona entro i bordi dello schermo; il <b>clic centrale</b> la apre sotto il puntatore. Puoi anche trascinarla da qualsiasi area libera."
         },
         {
           "icon": "copy",
-          "title": "Incolla con un clic",
-          "body": "Fai clic su un elemento, premi <b>Invio</b> oppure usa i tasti <b>1–0</b> per incollare direttamente nella finestra in cui stavi lavorando."
+          "title": "Incolla in un tocco (e usa Shift per il formato)",
+          "body": "Fai clic su un elemento, premi <b>Invio</b> o usa i tasti <b>1–0</b> per incollare nella finestra attiva. Tieni premuto <b>Shift</b> per invertire il formato al volo.",
+          "details": "Mklipper ricorda la finestra attiva prima dell'apertura, ripristina il focus e invia automaticamente <b>Ctrl + Shift + V</b> nei terminali o <b>Ctrl + V</b> nelle altre app. Tenere <b>Shift</b> con clic, <b>Invio</b> o <b>Alt/Ctrl + 1–0</b> inverte <i>Incolla senza formattazione</i> solo per quell'operazione. In <b>Impostazioni → Generale</b> puoi mantenere la finestra aperta per incollare più elementi di seguito."
         },
         {
           "icon": "sliders",
           "title": "Incolla senza formattazione",
-          "body": "Attiva l'interruttore <b>Incolla senza formattazione</b> in alto nella finestra mobile per rimuovere colori, font e stili HTML quando incolli testo. Immagini e file non vengono alterati."
+          "body": "Attiva l'interruttore <b>Incolla senza formattazione</b> in alto per rimuovere colori, caratteri e stili HTML dal testo incollato, senza toccare immagini o file.",
+          "details": "Quando è attivo, il testo formattato copiato da browser, documenti o e-mail (HTML, RTF, font e sfondi) viene convertito in testo semplice pulito — anche con Ctrl + V diretto — mentre schermate e percorsi di file restano intatti. Puoi assegnare una scorciatoia globale in <b>Impostazioni → Scorciatoie</b>."
         },
         {
           "icon": "settings",
-          "title": "Menu rapido nell'area di notifica",
-          "body": "Fai <b>clic destro</b> sull'icona nell'area di notifica in qualsiasi momento per modificare l'ultimo elemento, generare un codice QR, svuotare la cronologia o aprire le Impostazioni."
+          "title": "Contatore nella barra, evidenziazione e menu rapido",
+          "body": "L'icona mostra un cerchio con il numero di nuovi elementi e li evidenzia brevemente all'apertura. Fai <b>clic destro</b> per il menu rapido.",
+          "details": "Ogni volta che copi qualcosa a finestra chiusa, l'icona mostra un cerchio rosso con il conteggio (<code>1–99</code> e <code>99+</code>). Aprendo Mklipper il contatore si azzera e i nuovi elementi si illuminano con un'evidenziazione discreta che svanisce in pochi secondi. Per l'icona classica senza badge né evidenziazione, disattiva <b>Mostra il contatore di nuovi elementi sull'icona della barra di sistema</b> in <b>Impostazioni → Generale</b>."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Schede",
-      "intro": "Cerca, fissa i preferiti e sfrutta le azioni rapide di ogni elemento.",
+      "intro": "Cerca senza accenti, filtra per categoria, visualizza l'anteprima e usa i pulsanti rapidi di ogni scheda.",
       "cards": [
         {
           "icon": "search",
-          "title": "Ricerca istantanea",
-          "body": "Inizia a digitare appena si apre Mklipper per filtrare per testo, applicazione di origine, titolo della finestra o URL web."
+          "title": "Ricerca senza accenti e filtri per categoria",
+          "body": "Inizia a digitare appena apri Mklipper, oppure passa tra <b>Tutti · Testo · Immagini · Link · Fissati</b> con clic o tasto <b>Tab</b>.",
+          "details": "La ricerca ignora maiuscole e accenti e accetta più parole in qualsiasi ordine (es. <code>citta perche</code> trova <i>«Città perché»</i>). Cerca sia nel contenuto che nel nome dell'app, nel titolo della finestra e nell'URL di origine. Premi <b>Tab</b> per scorrere le 5 categorie."
+        },
+        {
+          "icon": "eye",
+          "title": "Anteprima estesa e salvataggio PNG",
+          "body": "Premi <b>Spazio</b> (o il pulsante <b>occhio</b>) per esaminare immagini grandi o testi lunghi senza incollarli, e salva le immagini in <b>PNG</b>.",
+          "details": "L'anteprima mostra il testo completo con conteggio di caratteri e righe, oppure l'immagine ingrandita con le dimensioni in pixel, senza modificare gli appunti attivi. Dall'anteprima puoi usare l'elemento, modificarlo o fare clic su <b>Salva PNG</b> (presente anche sulle schede immagine). Premi <b>Esc</b> per tornare."
         },
         {
           "icon": "star",
-          "title": "Fissa ciò che conta",
-          "body": "Fai clic sulla <b>stella</b> di qualsiasi scheda per tenerla in cima e proteggerla quando svuoti la cronologia. Il pulsante stella nella barra superiore filtra solo gli elementi fissati."
+          "title": "Fissa i preferiti ed esegui backup",
+          "body": "Fai clic sulla <b>stella</b> di una scheda per proteggerla allo svuotamento e ritrovarla nel filtro <b>Fissati</b>.",
+          "details": "Gli elementi fissati non vengono mai eliminati al superamento del limite o allo svuotamento della cronologia. In <b>Impostazioni → Generale → Privacy e backup</b> puoi <b>Esportare fissati…</b> in JSON (immagini incluse, permessi <code>0600</code>) e <b>Importare fissati…</b> senza duplicati."
         },
         {
           "icon": "edit",
-          "title": "Modifica il testo o crea un codice QR",
-          "body": "Passa il mouse su una scheda per <b>modificare il testo</b> sul posto prima di incollare (<b>Ctrl + Invio</b> salva), generare un <b>codice QR</b> da scansionare con lo smartphone o riaprire il link originale."
+          "title": "Modifica, codice QR, origine e ora di acquisizione",
+          "body": "Passa il mouse su una scheda per <b>modificare il testo</b> (<b>Ctrl + Invio</b> salva), creare un <b>codice QR</b> o aprire il link di origine.",
+          "details": "Ogni scheda mostra app o dominio di origine e il tempo relativo dalla cattura originale (<i>«Proprio ora»</i>, <i>«10 min fa»</i>, <i>«Ieri, 18:30»</i>), aggiornato dal vivo senza azzerarsi alla riapertura o all'eliminazione di altre righe. Il <b>codice QR</b> offline trasferisce link e testi al telefono in un attimo."
         },
         {
           "icon": "trash",
-          "title": "Elimina senza lasciare tracce",
-          "body": "Fai clic sul pulsante <b>cestino</b> o premi <b>Canc</b> sulla riga selezionata per rimuovere subito un elemento."
+          "title": "Eliminazione rapida e sicura",
+          "body": "Usa l'icona <b>cestino</b> o il tasto <b>Canc</b> per rimuovere una voce subito, oppure il pulsante in alto per svuotare la cronologia non fissata.",
+          "details": "Sia lo svuotamento completo sia l'eliminazione di un elemento fissato chiedono conferma per impostazione predefinita (con opzione <i>Non chiedere più</i>), lasciando intatti metadati e orari degli altri elementi."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Azioni",
-      "intro": "Automatizza operazioni rapide su ciò che copi, come aprire link o trasformare testo.",
+      "intro": "Automatizza operazioni rapide sul testo copiato: link, file locali o comandi personalizzati.",
       "cards": [
         {
           "icon": "link",
           "title": "Link e file in un clic",
-          "body": "Quando copi un link web (<code>https://...</code>) o un percorso file locale, sulla scheda appare il pulsante <b>fulmine</b> per aprirlo con l'applicazione predefinita."
+          "body": "Copiando un indirizzo web (<code>https://...</code>) o un percorso file esistente, compare il pulsante <b>fulmine</b> per aprirlo con l'app predefinita.",
+          "details": "Mklipper riconosce URL <code>http/https</code> validi e file locali esistenti per aprirli nel browser, visualizzatore o gestore file. Puoi disattivare il rilevamento in <b>Impostazioni → Azioni</b>."
         },
         {
           "icon": "bolt",
           "title": "Menu automatico opzionale",
-          "body": "Se vuoi che il menu delle azioni si apra automaticamente ogni volta che copi un link o una regola corrispondente, attiva <b>Menu automatico delle azioni</b> dal menu della tray o nelle Impostazioni."
+          "body": "Attiva <b>Menu automatico azioni</b> dalla barra di sistema o dalle Impostazioni per aprirlo automaticamente quando una regola corrisponde.",
+          "details": "In <b>Impostazioni → Azioni</b> puoi scegliere i secondi di permanenza del menu (<code>0</code> = nessun limite), se attivarlo sulla selezione del mouse, rimuovere gli spazi ai bordi e riproporre azioni su elementi precedenti."
         },
         {
           "icon": "settings",
-          "title": "Regole personalizzate (utenti esperti)",
-          "body": "In <b>Impostazioni → Azioni</b> puoi definire regole con espressioni regolari che eseguono comandi usando <code>%s</code> per il testo copiato e, se vuoi, sostituiscono gli appunti con il risultato."
+          "title": "Regole personalizzate con espressioni regolari",
+          "body": "Crea regole in <b>Impostazioni → Azioni</b> usando espressioni regolari e comandi con <code>%s</code> come testo copiato.",
+          "details": "Ogni regola abbina un pattern regex a uno o più comandi. Il segnaposto <code>%s</code> viene passato in sicurezza e l'output può essere ignorato, sostituire gli appunti o aggiungersi alla cronologia."
         }
       ]
     },
     {
       "icon": "keyboard",
       "title": "Scorciatoie",
-      "intro": "Controlla tutto da tastiera, con supporto completo per tastiere standard e gaming.",
+      "intro": "Controlla tutto da tastiera con supporto completo per tastiere standard, internazionali e gaming.",
       "cards": [
         {
           "icon": "keyboard",
           "title": "Scorciatoie globali sincronizzate con Cinnamon",
-          "body": "In <b>Impostazioni → Scorciatoie</b> puoi assegnare tasti per aprire la cronologia, attivare <b>Incolla senza formattazione</b>, modificare l'elemento attuale, mostrarne il QR, scorrere o svuotare la cronologia."
+          "body": "In <b>Impostazioni → Scorciatoie</b> assegna tasti per aprire la cronologia, attivare <b>Incolla senza formattazione</b>, mettere in pausa, modificare, mostrare QR, azioni, scorrere o svuotare.",
+          "details": "Su Linux Mint Cinnamon tutte le 9 scorciatoie globali si sincronizzano automaticamente con <i>Impostazioni di sistema → Tastiera → Scorciatoie personalizzate</i> e richiamano Mklipper via D-Bus all'istante."
         },
         {
           "icon": "search",
-          "title": "Preferisci digitare numeri nella ricerca?",
-          "body": "Disattiva <b>Usa i tasti 1–0 per incollare rapidamente</b> in Impostazioni → Scorciatoie così i numeri digitati andranno direttamente nel campo di ricerca."
+          "title": "Tasti rapidi nella finestra fluttuante",
+          "body": "Usa <b>1–0</b> per incollare subito, <b>Spazio</b> per l'anteprima, <b>Tab</b> per filtrare, <b>Shift</b> per invertire il formato e <b>Canc</b> per eliminare.",
+          "details": "Con la ricerca vuota, <b>1–9</b> e <b>0</b> incollano subito la riga corrispondente; durante la ricerca restano attivi <b>Alt/Ctrl + 1–0</b>. Disattiva <b>Usa i tasti 1–0 per incollare rapidamente</b> se preferisci digitare cifre nella ricerca. <b>Ctrl + F</b> seleziona la ricerca ed <b>Esc</b> torna indietro o chiude."
         },
         {
           "icon": "sliders",
           "title": "Tastiere gaming e selettore manuale",
-          "body": "Mklipper supporta i tasti macro (<b>F13–F24</b>) e qualsiasi layout dei modificatori. Se il sistema o la tastiera intercettano <b>Super</b>, <b>Ctrl</b> o <b>Alt</b> durante la registrazione, fai clic sull'icona tastiera accanto al campo per sceglierli manualmente."
+          "body": "Mklipper supporta tasti macro (<b>F13–F24</b>) e qualsiasi layout X11. Se il sistema intercetta <b>Super</b>, <b>Ctrl</b> o <b>Alt</b>, usa il pulsante tastiera accanto al campo.",
+          "details": "Il motore X11 legge dinamicamente la mappa tasti e modificatori attiva. Il selettore manuale permette di spuntare i modificatori e scegliere qualsiasi tasto (inclusi <code>F13–F24</code>) anche quando il desktop intercetta la combinazione."
         }
       ]
     },
     {
       "icon": "lock",
       "title": "Privacy",
-      "intro": "I tuoi appunti restano privati, integrati con Linux Mint e senza residui su disco.",
+      "intro": "I tuoi dati restano sotto il tuo controllo, senza telemetria, integrati con Linux Mint e cancellati in modo pulito.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Modalità pausa (incognito)",
+          "body": "Sospendi temporaneamente la registrazione dal pulsante <b>pausa</b> nella finestra, dal menu nella barra o con una scorciatoia globale.",
+          "details": "In pausa nulla di ciò che copi viene salvato, l'icona mostra il badge di pausa e la finestra visualizza un avviso con il pulsante <b>Riprendi</b> per non dimenticare di riattivare la cattura."
+        },
+        {
           "icon": "lock",
-          "title": "Protezione delle password",
-          "body": "I segreti copiati da gestori di password compatibili (KeePassXC, Bitwarden, 1Password, ecc.) vengono rilevati automaticamente e <b>non vengono mai salvati</b> nella cronologia."
+          "title": "Password e applicazioni ignorate",
+          "body": "I segreti dei gestori compatibili (KeePassXC, Bitwarden, 1Password, ecc.) e schermate di blocco vengono filtrati in automatico, e puoi aggiungere app ignorate.",
+          "details": "Mklipper riconosce gli indicatori di segretezza dei gestori password, non li salva mai su disco e mostra un avviso con pulsante <b>Pulisci</b> finché il segreto resta attivo. Gestisci la tua lista di app ignorate in <b>Impostazioni → Generale → Privacy e backup</b>."
         },
         {
           "icon": "trash",
-          "title": "Cancellazione pulita senza residui",
-          "body": "Gli elementi eliminati vengono subito azzerati e liberati dal disco (senza crescita del database né file orfani), con permessi riservati al solo proprietario."
+          "title": "Cancellazione pulita e permessi privati",
+          "body": "Ogni voce eliminata viene sovrascritta liberando subito spazio su disco, con permessi riservati esclusivamente al tuo utente.",
+          "details": "Il database SQLite in <code>~/.local/share/mklipper/</code> usa <code>secure_delete = ON</code> e <code>auto_vacuum = FULL</code>, rimuove i file orfani e imposta permessi stretti <code>0700</code> / <code>0600</code> su dati, configurazione e backup JSON."
         },
         {
           "icon": "update",
-          "title": "Aggiornamenti nativi di Linux Mint",
-          "body": "Mklipper si integra direttamente con il <b>Gestore aggiornamenti di Linux Mint</b> così ricevi gli aggiornamenti insieme ai pacchetti di sistema, oltre alle notifiche opzionali nell'app."
+          "title": "Aggiornamenti integrati in Linux Mint",
+          "body": "Mklipper si integra con il <b>Gestore aggiornamenti di Linux Mint</b> e ti avvisa quando esce una nuova versione.",
+          "details": "Tramite il repository APT firmato gli aggiornamenti arrivano con il sistema e Mklipper si riavvia automaticamente al termine. Puoi anche verificare e installare da <b>Impostazioni → Generale → Controlla aggiornamenti ora…</b> con note tradotte e verifica SHA-256."
         }
       ]
     }

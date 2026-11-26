@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.8.2
+
+### 🇪🇸 Español
+- **Resaltado suave de nuevos elementos al abrir la ventana:**
+  - Cuando el contador de notificaciones en el icono de la bandeja está activado, los elementos nuevos agregados desde la última apertura se resaltan con un tono sutil acorde al color de acento del tema que se desvanece automáticamente en pocos segundos.
+  - Al desactivar las notificaciones del icono de la bandeja en *Configuración → General*, tampoco se aplica este resaltado.
+- **Manual de usuario actualizado e interactivo (en los 7 idiomas):**
+  - El manual integrado ahora documenta todas las novedades recientes (modo pausa/incógnito, filtros por categoría, búsqueda sin acentos, vista previa con `Espacio`, guardado PNG, inversión de formato con `Shift`, aplicaciones ignoradas, respaldo de fijados, hora original de captura y contador/resaltado de nuevos elementos).
+  - Todas las tarjetas del manual son ahora **desplegables**: haz clic en cualquier tarjeta para expandir una explicación más larga y detallada de esa función.
+
+### 🇬🇧 English
+- **Subtle fading highlight for new items:**
+  - When the tray icon notification counter is enabled, newly added items since you last opened the window receive a subtle theme-accent highlight that smoothly fades out over a few seconds.
+  - Disabling the tray icon notification counter in *Settings → General* also disables this highlight.
+- **Updated & expandable interactive User Manual (all 7 languages):**
+  - Updated to cover all recent features (pause/incognito mode, category filters, accent-insensitive search, `Space` preview, PNG export, `Shift` format override, ignored apps, pinned backup, capture timestamps, and tray counter/highlight).
+  - Every card in the User Manual is now **clickable and expandable**, revealing a longer, detailed explanation of each feature.
+
+### 🇧🇷 Português (Brasil)
+- **Destaque suave que desaparece nos novos itens:**
+  - Quando o contador de notificações do ícone da bandeja está ativo, os itens adicionados desde a última abertura recebem um destaque discreto na cor de destaque do tema que desaparece suavemente em poucos segundos.
+- **Manual do usuário atualizado e expansível (nos 7 idiomas):**
+  - Atualizado com todos os recursos recentes e agora com cartões **clicáveis e expansíveis** que revelam uma explicação detalhada ao clicar.
+
+### 🇫🇷 Français
+- **Mise en surbrillance douce des nouveaux éléments :**
+  - Lorsque le compteur de notification sur l'icône de la barre d'état est actif, les éléments ajoutés depuis la dernière ouverture s'illuminent brièvement avec la couleur d'accent du thème avant de s'estomper en quelques secondes.
+- **Manuel utilisateur mis à jour et dépliable (dans les 7 langues) :**
+  - Mis à jour avec toutes les nouveautés récentes ; chaque carte du manuel est désormais **cliquable et dépliable** pour afficher une explication longue et détaillée.
+
+### 🇮🇹 Italiano
+- **Evidenziazione discreta a dissolvenza per i nuovi elementi:**
+  - Quando il contatore di notifica sull'icona della barra di sistema è attivo, gli elementi aggiunti dall'ultima apertura vengono evidenziati brevemente con il colore d'accento del tema e sfumano in pochi secondi.
+- **Manuale utente aggiornato ed espandibile (in tutte e 7 le lingue):**
+  - Aggiornato con tutte le novità recenti; ogni scheda del manuale è ora **cliccabile ed espandibile** per mostrare una spiegazione approfondita.
+
+### 🇩🇪 Deutsch
+- **Dezente, ausblendende Hervorhebung neuer Einträge:**
+  - Ist der Benachrichtigungszähler auf dem Infobereich-Symbol aktiv, werden seit dem letzten Öffnen neu hinzugefügte Einträge kurz im Akzentfarbton des Designs hervorgehoben und blenden in wenigen Sekunden sanft aus.
+- **Aktualisiertes & aufklappbares Benutzerhandbuch (in allen 7 Sprachen):**
+  - Vollständig auf den neuesten Stand gebracht; jede Karte im Handbuch lässt sich jetzt **per Klick aufklappen**, um eine ausführliche Erklärung anzuzeigen.
+
+### 🇷🇺 Русский
+- **Плавная подсветка новых элементов при открытии окна:**
+  - При включённом счётчике уведомлений на значке в трее элементы, добавленные с момента последнего открытия окна, мягко подсвечиваются акцентным цветом темы и плавно затухают за пару секунд.
+- **Обновлённое и раскрываемое руководство пользователя (на всех 7 языках):**
+  - Дополнено всеми последними функциями; каждая карточка в руководстве теперь **раскрывается по клику**, показывая подробное описание.
+
 ## v1.8.1
 
 ### 🇪🇸 Español

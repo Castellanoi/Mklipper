@@ -62,8 +62,8 @@ def main() -> int:
 
         sections = data.get("manualSections", [])
         card_counts = [len(s.get("cards", [])) for s in sections]
-        if card_counts != [4, 4, 3, 3, 3]:
-            print(f"ERROR: {fname} manualSections card counts={card_counts}, expected [4, 4, 3, 3, 3]")
+        if card_counts != [4, 5, 3, 3, 4]:
+            print(f"ERROR: {fname} manualSections card counts={card_counts}, expected [4, 5, 3, 3, 4]")
             errors += 1
         for i, sec in enumerate(sections):
             for field in ("icon", "title", "intro"):
@@ -71,7 +71,7 @@ def main() -> int:
                     print(f"ERROR: {fname} section[{i}].{field} is empty")
                     errors += 1
             for j, card in enumerate(sec.get("cards", [])):
-                for field in ("icon", "title", "body"):
+                for field in ("icon", "title", "body", "details"):
                     if not card.get(field, "").strip():
                         print(f"ERROR: {fname} section[{i}].cards[{j}].{field} is empty")
                         errors += 1

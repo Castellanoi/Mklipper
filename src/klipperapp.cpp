@@ -85,7 +85,7 @@ KlipperApp::KlipperApp(QObject *parent)
         }
     });
 
-    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::resetUnreadCount);
+    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::onPopupShown);
     connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
 
@@ -134,7 +134,7 @@ KlipperApp::~KlipperApp()
 void KlipperApp::setupTrayIcon()
 {
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
-    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? m_unreadCount : 0;
+    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? static_cast<int>(m_unreadUuids.size()) : 0;
     QIcon icon = FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused(), badgeCount);
     if (icon.isNull()) {
         icon = QIcon(u":/icons/mklipper.svg"_s);
@@ -154,7 +154,7 @@ void KlipperApp::updateTrayIcon()
         return;
     }
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
-    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? m_unreadCount : 0;
+    const int badgeCount = MklipperSettings::self()->showTrayBadge() ? static_cast<int>(m_unreadUuids.size()) : 0;
     m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused(), badgeCount));
 }
 
@@ -319,7 +319,7 @@ void KlipperApp::recreatePopup()
 {
     const bool wasVisible = m_popup && m_popup->isVisible();
     m_popup = std::make_unique<KlipperPopup>();
-    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::resetUnreadCount);
+    connect(m_popup.get(), &KlipperPopup::popupShown, this, &KlipperApp::onPopupShown);
     connect(m_popup.get(), &KlipperPopup::configureRequested, this, &KlipperApp::configure);
     connect(m_popup.get(), &KlipperPopup::invokeActionRequested, this, &KlipperApp::onInvokeActionByUuid);
     if (wasVisible) {
@@ -484,37 +484,70 @@ void KlipperApp::onHistoryChanged(bool isTop)
 
 void KlipperApp::onHistoryRowsInserted(const QModelIndex &/*parent*/, int first, int last)
 {
-    const int added = last - first + 1;
-    if (added <= 0) {
+    if (last < first) {
+        return;
+    }
+    QSet<QString> addedUuids;
+    for (int row = first; row <= last; ++row) {
+        const QString uuid = m_historyModel->index(row).data(HistoryModel::UuidRole).toString();
+        if (!uuid.isEmpty()) {
+            addedUuids.insert(uuid);
+        }
+    }
+    if (addedUuids.isEmpty()) {
         return;
     }
     if (m_popup && m_popup->isVisible()) {
+        if (MklipperSettings::self()->showTrayBadge()) {
+            m_popup->highlightNewItems(addedUuids);
+        }
         return;
     }
-    m_unreadCount += added;
+    m_unreadUuids.unite(addedUuids);
     updateTrayIcon();
     updateTrayTooltip();
 }
 
 void KlipperApp::onHistoryRowsRemoved()
 {
-    if (m_unreadCount <= 0) {
+    if (m_unreadUuids.isEmpty()) {
         return;
     }
-    const int clamped = qMin(m_unreadCount, m_historyModel->rowCount());
-    if (clamped != m_unreadCount) {
-        m_unreadCount = clamped;
+    bool changed = false;
+    for (auto it = m_unreadUuids.begin(); it != m_unreadUuids.end();) {
+        if (m_historyModel->indexOf(*it) < 0) {
+            it = m_unreadUuids.erase(it);
+            changed = true;
+        } else {
+            ++it;
+        }
+    }
+    if (changed) {
         updateTrayIcon();
         updateTrayTooltip();
     }
 }
 
-void KlipperApp::resetUnreadCount()
+void KlipperApp::onPopupShown()
 {
-    if (m_unreadCount == 0) {
+    if (m_unreadUuids.isEmpty()) {
         return;
     }
-    m_unreadCount = 0;
+    const QSet<QString> newlyAdded = std::move(m_unreadUuids);
+    m_unreadUuids.clear();
+    updateTrayIcon();
+    updateTrayTooltip();
+    if (MklipperSettings::self()->showTrayBadge() && m_popup) {
+        m_popup->highlightNewItems(newlyAdded);
+    }
+}
+
+void KlipperApp::resetUnreadCount()
+{
+    if (m_unreadUuids.isEmpty()) {
+        return;
+    }
+    m_unreadUuids.clear();
     updateTrayIcon();
     updateTrayTooltip();
 }
@@ -561,11 +594,12 @@ void KlipperApp::updateTrayTooltip()
             preview = preview.left(77) + u"…"_s;
         }
     }
-    if (MklipperSettings::self()->showTrayBadge() && m_unreadCount > 0) {
-        if (m_unreadCount == 1) {
+    const int unreadCount = static_cast<int>(m_unreadUuids.size());
+    if (MklipperSettings::self()->showTrayBadge() && unreadCount > 0) {
+        if (unreadCount == 1) {
             m_trayIcon->setToolTip(tr("Mklipper (1 nuevo) — Actual:\n%1").arg(preview));
         } else {
-            m_trayIcon->setToolTip(tr("Mklipper (%1 nuevos) — Actual:\n%2").arg(m_unreadCount).arg(preview));
+            m_trayIcon->setToolTip(tr("Mklipper (%1 nuevos) — Actual:\n%2").arg(unreadCount).arg(preview));
         }
         return;
     }

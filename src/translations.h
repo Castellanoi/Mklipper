@@ -17,6 +17,7 @@ struct ManualCard {
     QString icon;
     QString title;
     QString body;
+    QString details;
 };
 
 struct ManualSection {

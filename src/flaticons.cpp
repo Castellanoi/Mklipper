@@ -179,6 +179,12 @@ const char *svgBodyFor(FlatIcon id)
                "<path d='M14 3.5v5h5'/>"
                "<path d='M8.5 13h7'/>"
                "<path d='M8.5 16.5h4.8'/>";
+
+    case FlatIcon::ChevronDown:
+        return "<path d='m6 9 6 6 6-6'/>";
+
+    case FlatIcon::ChevronUp:
+        return "<path d='m6 15 6-6 6 6'/>";
     }
     return "";
 }

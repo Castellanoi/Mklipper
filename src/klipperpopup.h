@@ -9,7 +9,9 @@
 #include <memory>
 
 #include <QFrame>
+#include <QHash>
 #include <QRect>
+#include <QSet>
 #include <QSortFilterProxyModel>
 
 class HistoryModel;
@@ -78,6 +80,8 @@ public:
     void editCurrentClipboard();
     void showCurrentBarcode();
     void refreshTheme();
+    void highlightNewItems(const QSet<QString> &uuids);
+    qreal highlightIntensityFor(const QString &uuid) const;
 
 Q_SIGNALS:
     void popupShown();
@@ -110,6 +114,7 @@ private Q_SLOTS:
     void updateStatusLabel();
     void updatePersistentUi();
     void onPasteFinished();
+    void tickNewItemHighlights();
 
 private:
     void applyTheme();
@@ -175,4 +180,6 @@ private:
     QPoint m_dragOffset;
     qint64 m_lastHideTimeMs = 0;
     QTimer *m_relTimeTimer = nullptr;
+    QTimer *m_highlightTimer = nullptr;
+    QHash<QString, qint64> m_highlightStartMs;
 };

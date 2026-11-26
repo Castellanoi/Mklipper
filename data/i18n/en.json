@@ -168,6 +168,9 @@
     "Habilitado": "Enabled",
     "Hace %1 h": "%1 h ago",
     "Hace %1 min": "%1 min ago",
+    "Haz clic en cualquier tarjeta para expandir la explicación detallada.": "Click any card to expand its detailed explanation.",
+    "Haz clic para contraer": "Click to collapse",
+    "Haz clic para ver la explicación detallada": "Click to view detailed explanation",
     "Historial del portapapeles": "Clipboard History",
     "Historial y comportamiento": "History & Behavior",
     "Idioma:": "Language:",
@@ -240,7 +243,7 @@
     "Mostrar solo elementos fijados": "Show pinned items only",
     "Mostrar u ocultar el popup del historial bajo el cursor": "Toggle history popup under the cursor",
     "Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).": "Shows a confirmation prompt before clearing the entire history to avoid accidental loss (pinned items are always kept).",
-    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico.": "Displays a notification badge on the tray icon with the number of new items added to history. Resets whenever you open the window; disable to keep the classic icon.",
+    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico.": "Displays a notification badge on the tray icon with the number of new items added to history and briefly highlights them when opening the window. Resets on open; disable to keep the classic icon.",
     "Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.": "Displays a subtle line under each card showing the source application or domain.",
     "Más reciente: %1": "Newer: %1",
     "Más tarde": "Later",
@@ -352,121 +355,150 @@
   "manualSections": [
     {
       "icon": "clipboard",
-      "title": "Start",
-      "intro": "Everything you need to use your clipboard history every day.",
+      "title": "Getting Started",
+      "intro": "The essentials to get the most out of your clipboard history every day.",
       "cards": [
         {
           "icon": "history",
-          "title": "Open your history in a flash",
-          "body": "Press <b>Super + V</b> (customizable in Shortcuts) or <b>left-click</b> the Mklipper icon in your system tray to see everything you copied."
+          "title": "Open your history instantly",
+          "body": "Press <b>Super + V</b> (customizable in Shortcuts) or <b>left-click</b> the Mklipper icon in your taskbar.",
+          "details": "The global shortcut uses a lightweight D-Bus fast path to open the floating window right under your cursor with near-zero latency. Left-clicking the tray icon anchors the popup beside the panel while keeping it inside screen bounds; <b>middle-clicking</b> opens it at the pointer. You can also drag the window from any empty area to reposition it."
         },
         {
           "icon": "copy",
-          "title": "Paste in one tap",
-          "body": "Click any item, press <b>Enter</b>, or press keys <b>1–0</b> to paste straight into the window you were working in."
+          "title": "One-tap paste (and Shift format override)",
+          "body": "Click any item, press <b>Enter</b>, or use keys <b>1 to 0</b> to paste directly into your active window. Hold <b>Shift</b> to invert formatting for a single paste.",
+          "details": "Mklipper automatically remembers the window you were working in before opening the popup, restores focus to it, and sends the right paste keystroke: <b>Ctrl + Shift + V</b> for terminals and <b>Ctrl + V</b> for regular apps. Holding <b>Shift</b> while clicking, pressing <b>Enter</b>, or using <b>Alt/Ctrl + 1–0</b> temporarily inverts <i>Paste without formatting</i> for that paste only. In <b>Settings → General</b> you can enable persistent mode to paste several items in a row."
         },
         {
           "icon": "sliders",
           "title": "Paste without formatting",
-          "body": "Turn on the <b>Paste without formatting</b> toggle at the top of the popup to strip HTML colors, fonts, and styles when pasting text. Images and files are unaffected."
+          "body": "Toggle <b>Paste without formatting</b> at the top to strip colors, fonts, and HTML styles when pasting text. Images and files are never affected.",
+          "details": "When enabled, rich text copied from browsers, documents, or emails (HTML, RTF, custom fonts, and background colors) is automatically stripped to clean plain text — even on direct Ctrl + V — while screenshots and file paths remain untouched. You can also assign a global shortcut under <b>Settings → Shortcuts</b> to toggle it from any application."
         },
         {
           "icon": "settings",
-          "title": "Quick tray menu",
-          "body": "<b>Right-click</b> the tray icon anytime to edit the latest item, generate a QR code, clear history, or open Settings."
+          "title": "Tray icon counter, highlight & quick menu",
+          "body": "The tray icon displays a notification circle with the count of new items and briefly highlights them when you open the window. <b>Right-click</b> for the quick menu.",
+          "details": "Whenever new items are captured while the window is closed, a red notification circle shows the count (<code>1–99</code> and <code>99+</code>). Opening Mklipper resets the counter to zero and gives newly added items a subtle fade-out accent highlight so you can spot them immediately. Prefer the classic icon with no badge or highlight? Disable <b>Show new items counter on the tray icon</b> in <b>Settings → General</b>. Right-click opens pause capture, edit current, QR code, clear history, and settings."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Cards",
-      "intro": "Search, pin favorites, and make the most of every item's quick actions.",
+      "intro": "Search without worrying about accents, filter by type, preview large items, and use per-card quick actions.",
       "cards": [
         {
           "icon": "search",
-          "title": "Instant search",
-          "body": "Start typing as soon as Mklipper opens to filter by text, source app, window title, or web URL."
+          "title": "Accent-insensitive search & category filters",
+          "body": "Start typing as soon as Mklipper opens to filter instantly, or switch between <b>All · Text · Images · Links · Pinned</b> by clicking or pressing <b>Tab</b>.",
+          "details": "Search ignores letter case and diacritics/accents and supports multiple words in any order (for example, typing <code>resume cafe</code> matches <i>“Café Résumé”</i>). It searches across both the item content and its saved source app, window title, and URL. Press <b>Tab</b> anytime to cycle swiftly through all 5 category filters."
+        },
+        {
+          "icon": "eye",
+          "title": "Full preview & save images as PNG",
+          "body": "Press <b>Space</b> (or click the <b>eye</b> button) to inspect large screenshots or multi-line text without pasting, and save images directly as <b>PNG</b>.",
+          "details": "The preview view displays full multi-line text with character and line counts, or a large scaled image with exact pixel dimensions, without modifying your active clipboard. Right from the preview you can use the item, jump into the text editor, or export the screenshot using <b>Save PNG</b> (also available directly on image cards). Press <b>Esc</b> or <b>Back</b> to return to the list."
         },
         {
           "icon": "star",
-          "title": "Pin what matters",
-          "body": "Click the <b>star</b> on any card to keep it at the top and protect it when clearing history. The star button in the top bar filters to pinned items only."
+          "title": "Pin favorites & back them up",
+          "body": "Click the <b>star</b> on a card to protect important items when clearing history and access them via the <b>Pinned</b> filter.",
+          "details": "Pinned items are never purged when the history reaches its maximum size or when you clear history. Under <b>Settings → General → Privacy & Backup</b>, you can <b>Export pinned…</b> to a JSON file (including images, saved with private <code>0600</code> permissions) and <b>Import pinned…</b> on another machine without creating duplicates."
         },
         {
           "icon": "edit",
-          "title": "Edit text or create a QR code",
-          "body": "Hover a card to <b>edit text</b> inline before pasting (<b>Ctrl + Enter</b> saves), generate a scannable <b>QR code</b> for your phone, or reopen the original link."
+          "title": "Edit, QR code, source & capture time",
+          "body": "Hover over a card to <b>edit text</b> (<b>Ctrl + Enter</b> saves), generate a scannable <b>QR code</b>, or open the original source link.",
+          "details": "Each card displays a subtle metadata line showing the source app or domain and the relative time since it was originally captured (<i>“Just now”</i>, <i>“10 min ago”</i>, <i>“Yesterday, 18:30”</i>), updating live without resetting when reopening the window or deleting other rows. The offline <b>QR code</b> view lets you transfer links or snippets straight to your phone."
         },
         {
           "icon": "trash",
-          "title": "Remove items cleanly",
-          "body": "Click the <b>trash</b> button or press <b>Del</b> on the selected row to remove an item right away."
+          "title": "Fast, safe deletion",
+          "body": "Click the <b>trash</b> button or press <b>Del</b> to remove an entry immediately, or use the top toolbar icon to clear non-pinned history.",
+          "details": "Both clearing history and deleting a pinned item ask for confirmation by default to prevent accidental loss (with a <i>Do not ask again</i> option). Remaining items keep all of their metadata and original capture timestamps intact."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Actions",
-      "intro": "Automate quick tasks on what you copy, like opening links or transforming text.",
+      "intro": "Automate quick workflows on copied text, such as opening links, files, or running custom commands.",
       "cards": [
         {
           "icon": "link",
-          "title": "One-click links & files",
-          "body": "When you copy a web link (<code>https://...</code>) or a local file path, a <b>lightning bolt</b> button appears on the card to open it with your default app."
+          "title": "One-click links & local files",
+          "body": "When you copy a web URL (<code>https://...</code>) or an existing local file path, a <b>bolt</b> button appears on the card to open it with its default app.",
+          "details": "Mklipper automatically detects valid <code>http/https</code> URLs and existing local file paths, offering to open them directly in your browser, viewer, or file manager. You can disable this built-in detection under <b>Settings → Actions</b> if you only want custom rules."
         },
         {
           "icon": "bolt",
-          "title": "Optional automatic menu",
-          "body": "If you want the actions menu to pop up automatically whenever you copy a matching link or rule, turn on <b>Automatic actions menu</b> in the tray menu or Settings."
+          "title": "Optional automatic action menu",
+          "body": "Enable <b>Automatic actions menu</b> from the tray menu or Settings to pop up matching actions automatically right when you copy.",
+          "details": "In <b>Settings → Actions</b> you can configure how many seconds the popup stays visible before closing automatically (use <code>0</code> for no timeout), choose whether primary mouse selection triggers actions, strip leading/trailing whitespace before matching, and optionally replay actions when picking older history items."
         },
         {
           "icon": "settings",
-          "title": "Custom rules (power users)",
-          "body": "In <b>Settings → Actions</b> you can define regular-expression rules that run commands using <code>%s</code> for the copied text and optionally replace the clipboard with the output."
+          "title": "Custom regular-expression rules",
+          "body": "Create custom rules in <b>Settings → Actions</b> using regular expressions and shell commands with <code>%s</code> as the copied text.",
+          "details": "Each rule defines a regex pattern and one or more commands. The <code>%s</code> placeholder is safely passed to your command, and you can choose whether command output is ignored, replaces the current clipboard entry, or is added as a new history item (handy for formatting JSON, cleaning URLs, or transforming text)."
         }
       ]
     },
     {
       "icon": "keyboard",
       "title": "Shortcuts",
-      "intro": "Control everything from your keyboard with full support for standard and gaming keyboards.",
+      "intro": "Control everything from the keyboard with full support for standard, international, and gaming keyboards.",
       "cards": [
         {
           "icon": "keyboard",
           "title": "Global shortcuts synced with Cinnamon",
-          "body": "In <b>Settings → Shortcuts</b> you can assign keys to open history, toggle <b>Paste without formatting</b>, edit the current item, show its QR code, cycle history, or clear it."
+          "body": "In <b>Settings → Shortcuts</b>, assign keys to open history, toggle <b>Paste without formatting</b>, pause capture, edit, show QR, run actions, cycle, or clear.",
+          "details": "On Linux Mint Cinnamon, all 9 global shortcuts automatically synchronize with <i>System Settings → Keyboard → Custom Shortcuts</i>. Each shortcut invokes the running instance via D-Bus (<code>--toggle</code>, <code>--toggle-plain-text</code>, <code>--toggle-pause</code>, <code>--edit</code>, <code>--qr</code>, <code>--action</code>, <code>--cycle-next</code>, <code>--cycle-prev</code>, <code>--clear-interactive</code>) for instant execution."
         },
         {
           "icon": "search",
-          "title": "Prefer typing numbers into search?",
-          "body": "Turn off <b>Use keys 1–0 to quick-paste</b> in Settings → Shortcuts so numbers you type go straight into the search box."
+          "title": "Quick keys inside the floating popup",
+          "body": "Use <b>1–0</b> for instant paste, <b>Space</b> for preview, <b>Tab</b> to switch category, <b>Shift</b> to invert format, and <b>Del</b> to remove.",
+          "details": "When the search box is empty, pressing <b>1–9</b> or <b>0</b> (10th item) pastes that row immediately; while searching, <b>Alt + 1–0</b> and <b>Ctrl + 1–0</b> still work. If you prefer typing digits straight into the search box, disable <b>Use keys 1–0 for quick paste</b> in <b>Settings → Shortcuts</b>. Also handy: <b>Ctrl + F</b> focuses search and <b>Esc</b> goes back or closes."
         },
         {
           "icon": "sliders",
-          "title": "Gaming keyboards & manual key picker",
-          "body": "Mklipper supports macro keys (<b>F13–F24</b>) and any modifier layout. If your OS or keyboard intercepts <b>Super</b>, <b>Ctrl</b>, or <b>Alt</b> while recording, click the keyboard button next to the field to pick keys manually."
+          "title": "Gaming keyboards & manual picker",
+          "body": "Mklipper recognizes macro keys (<b>F13–F24</b>) and any X11 layout. If the desktop intercepts <b>Super</b>, <b>Ctrl</b>, or <b>Alt</b>, use the keyboard picker beside the field.",
+          "details": "The X11 shortcut engine queries the live keymap and modifier map dynamically, avoiding mismatches on international or multi-layout setups. When recording a shortcut, the manual picker lets you toggle modifiers and select any key (including extended function keys <code>F13–F24</code>) even if your window manager intercepts the raw keystroke."
         }
       ]
     },
     {
       "icon": "lock",
       "title": "Privacy",
-      "intro": "Your clipboard stays private, integrated with Linux Mint, and leaves no disk leftovers.",
+      "intro": "Your data stays under your control with zero telemetry, native Linux Mint integration, and clean disk deletion.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Pause capture (incognito) mode",
+          "body": "Temporarily suspend clipboard recording from the <b>pause</b> button in the popup, the tray menu, or a global shortcut.",
+          "details": "While capture is paused, nothing you copy is saved or added to history, the tray icon switches to a muted pause badge, and the popup shows a clear banner with a <b>Resume</b> button so you never forget to turn recording back on."
+        },
+        {
           "icon": "lock",
-          "title": "Password protection",
-          "body": "Secrets copied from compatible password managers (KeePassXC, Bitwarden, 1Password, etc.) are detected automatically and <b>never saved</b> to history."
+          "title": "Passwords & ignored applications",
+          "body": "Secrets from compatible password managers (KeePassXC, Bitwarden, 1Password, etc.) and lockscreens are filtered automatically, plus you can add your own ignored apps.",
+          "details": "Mklipper honors standard password-manager secrecy hints and displays a discreet warning banner with a <b>Clear</b> button while a secret remains in the system clipboard — never writing it to disk. Screen lockers and polkit auth prompts are also ignored automatically, and under <b>Settings → General → Privacy & Backup</b> you can manage a custom ignored-applications list."
         },
         {
           "icon": "trash",
-          "title": "Clean, zero-residue deletion",
-          "body": "Deleted items are immediately zeroed out and reclaimed from disk (no database bloat or orphan files), with private owner-only file permissions."
+          "title": "Clean erasure & private permissions",
+          "body": "Every deleted entry is overwritten and immediately frees disk space, stored with private permissions restricted to your user.",
+          "details": "The SQLite database in <code>~/.local/share/mklipper/</code> runs with <code>secure_delete = ON</code> and <code>auto_vacuum = FULL</code>: deleting an entry or clearing history overwrites data pages, removes associated binary blobs, and purges orphaned files. History directories, settings, and JSON backups enforce strict <code>0700</code> / <code>0600</code> permissions. You can also turn off <i>Keep history across sessions</i> to wipe data on exit."
         },
         {
           "icon": "update",
-          "title": "Native Linux Mint updates",
-          "body": "Mklipper integrates directly with <b>Linux Mint Update Manager</b> so updates arrive alongside your system packages, plus optional in-app notifications."
+          "title": "Integrated Linux Mint updates",
+          "body": "Mklipper integrates with the <b>Linux Mint Update Manager</b> and notifies you whenever a new release is available.",
+          "details": "Installed via Mklipper's signed APT repository, updates arrive seamlessly alongside regular Mint system updates and Mklipper automatically restarts cleanly once the package upgrades. You can also check and install updates anytime from <b>Settings → General → Check for updates now…</b> with localized release notes and SHA-256 verification."
         }
       ]
     }

@@ -90,8 +90,11 @@ void testTranslationsAndChangelog()
         int cards = 0;
         for (const auto &sec : sections) {
             cards += sec.cards.size();
+            for (const auto &card : sec.cards) {
+                CHECK(!card.details.trimmed().isEmpty());
+            }
         }
-        CHECK(cards == 17);
+        CHECK(cards == 19);
     }
 
     const QString multiChangelog = u"### 🇪🇸 Español\n- Cambio ES\n\n### 🇬🇧 English\n- Change EN\n\n### 🇩🇪 Deutsch\n- Änderung DE"_s;
@@ -305,6 +308,17 @@ void testTimestampPreservationAndTrayBadge()
     CHECK(badge12Img != badge1Img);
     CHECK(badgeOverImg != badge12Img);
     CHECK(pausedImg != badge1Img);
+
+    // 6) New-item highlight animation state on popup
+    KlipperPopup popup;
+    const QString testUuid = model->index(0).data(HistoryModel::UuidRole).toString();
+    CHECK(popup.highlightIntensityFor(testUuid) == 0.0);
+    popup.highlightNewItems({testUuid});
+    CHECK(popup.highlightIntensityFor(testUuid) > 0.9);
+    CHECK(popup.highlightIntensityFor(u"0000000000000000000000000000000000000000"_s) == 0.0);
+    popup.show();
+    popup.hide();
+    CHECK(popup.highlightIntensityFor(testUuid) == 0.0);
 }
 } // namespace
 

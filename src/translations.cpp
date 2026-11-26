@@ -165,6 +165,7 @@ void ensurePackLoaded(LanguagePack &pack)
                 co.value(u"icon"_s).toString(),
                 co.value(u"title"_s).toString(),
                 co.value(u"body"_s).toString(),
+                co.value(u"details"_s).toString(),
             });
         }
         if (!sec.title.isEmpty()) {

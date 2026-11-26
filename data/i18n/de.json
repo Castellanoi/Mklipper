@@ -168,6 +168,9 @@
     "Habilitado": "Aktiviert",
     "Hace %1 h": "Vor %1 Std.",
     "Hace %1 min": "Vor %1 Min.",
+    "Haz clic en cualquier tarjeta para expandir la explicación detallada.": "Klicken Sie auf eine Karte, um die ausführliche Erklärung aufzuklappen.",
+    "Haz clic para contraer": "Zum Einklappen klicken",
+    "Haz clic para ver la explicación detallada": "Klicken für ausführliche Erklärung",
     "Historial del portapapeles": "Zwischenablage-Verlauf",
     "Historial y comportamiento": "Verlauf & Verhalten",
     "Idioma:": "Sprache:",
@@ -240,7 +243,7 @@
     "Mostrar solo elementos fijados": "Nur angeheftete Einträge anzeigen",
     "Mostrar u ocultar el popup del historial bajo el cursor": "Verlaufs-Popup unter dem Mauszeiger umschalten",
     "Muestra un aviso antes de borrar todo el historial para evitar eliminaciones accidentales (los elementos fijados siempre se conservan).": "Zeigt vor dem Leeren des gesamten Verlaufs eine Rückfrage an, um versehentlichen Verlust zu verhindern (angeheftete Einträge bleiben immer erhalten).",
-    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial. Se reinicia al abrir la ventana; desactívalo para mantener el icono clásico.": "Zeigt einen Benachrichtigungskreis mit der Anzahl neuer Einträge im Verlauf auf dem Infobereich-Symbol an. Wird beim Öffnen des Fensters zurückgesetzt; deaktivieren für das klassische Symbol.",
+    "Muestra un círculo de notificación en el icono de la bandeja con la cantidad de elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Se reinicia al abrir; desactívalo para mantener el icono clásico.": "Zeigt einen Benachrichtigungskreis mit der Anzahl neuer Einträge auf dem Infobereich-Symbol an und hebt diese beim Öffnen kurz hervor. Wird beim Öffnen zurückgesetzt; deaktivieren für das klassische Symbol.",
     "Muestra una línea discreta debajo de cada tarjeta indicando la aplicación o dominio de origen.": "Zeigt eine dezente Zeile unter jeder Karte mit der Quellanwendung oder -domain an.",
     "Más reciente: %1": "Neuer: %1",
     "Más tarde": "Später",
@@ -353,120 +356,149 @@
     {
       "icon": "clipboard",
       "title": "Start",
-      "intro": "Alles, was du brauchst, um deinen Zwischenablage-Verlauf im Alltag zu nutzen.",
+      "intro": "Das Wichtigste, um Ihren Zwischenablage-Verlauf jeden Tag mühelos zu nutzen.",
       "cards": [
         {
           "icon": "history",
-          "title": "Verlauf blitzschnell öffnen",
-          "body": "Drücke <b>Super + V</b> (anpassbar unter Tastenkürzel) oder mache einen <b>Linksklick</b> auf das Mklipper-Symbol im Systemabschnitt, um alles Kopierte zu sehen."
+          "title": "Verlauf sofort öffnen",
+          "body": "Drücken Sie <b>Super + V</b> (anpassbar unter Kürzel) oder klicken Sie <b>links</b> auf das Mklipper-Symbol in der Leiste.",
+          "details": "Das globale Tastenkürzel öffnet das schwebende Fenster per D-Bus nahezu verzögerungsfrei direkt am Mauszeiger. Ein Linksklick auf das Infobereich-Symbol öffnet es neben der Leiste innerhalb der Bildschirmgrenzen; ein <b>Mittelklick</b> öffnet es direkt am Zeiger. Sie können das Fenster an freien Stellen auch ziehen."
         },
         {
           "icon": "copy",
-          "title": "Mit einem Klick einfügen",
-          "body": "Klicke auf einen Eintrag, drücke <b>Enter</b> oder nutze die Tasten <b>1–0</b>, um direkt in das zuletzt aktive Fenster einzufügen."
+          "title": "Mit einem Klick einfügen (und Shift für Format)",
+          "body": "Klicken Sie auf einen Eintrag, drücken Sie <b>Enter</b> oder nutzen Sie <b>1 bis 0</b> zum direkten Einfügen. Halten Sie <b>Shift</b>, um die Formatierung einmalig umzukehren.",
+          "details": "Mklipper merkt sich automatisch das zuvor aktive Fenster, fokussiert es wieder und sendet <b>Strg + Shift + V</b> in Terminals bzw. <b>Strg + V</b> in normalen Apps. Halten Sie <b>Shift</b> beim Klicken, bei <b>Enter</b> oder bei <b>Alt/Strg + 1–0</b>, wird <i>Unformatiert einfügen</i> nur für diesen Vorgang umgekehrt. Unter <b>Einstellungen → Allgemein</b> lässt sich das Fenster zum mehrfachen Einfügen geöffnet halten."
         },
         {
           "icon": "sliders",
-          "title": "Ohne Formatierung einfügen",
-          "body": "Aktiviere oben im Fenster den Schalter <b>Ohne Formatierung einfügen</b>, um beim Einfügen von Text HTML-Farben, Schriftarten und Stile zu entfernen. Bilder und Dateien bleiben unverändert."
+          "title": "Unformatiert einfügen",
+          "body": "Aktivieren Sie oben <b>Unformatiert einfügen</b>, um Farben, Schriftarten und HTML-Stile beim Einfügen von Text zu entfernen. Bilder und Dateien bleiben unberührt.",
+          "details": "Ist die Option aktiv, wird formatierter Text aus Browsern, Dokumenten oder E-Mails (HTML, RTF, Schrift- und Hintergrundfarben) automatisch als sauberer Klartext eingefügt — auch bei direktem Strg + V — während Screenshots und Dateipfade unverändert bleiben. Über <b>Einstellungen → Kürzel</b> lässt sich ein globales Kürzel festlegen."
         },
         {
           "icon": "settings",
-          "title": "Schnellmenü im Systemabschnitt",
-          "body": "Ein <b>Rechtsklick</b> auf das Tray-Symbol ermöglicht dir jederzeit, den letzten Eintrag zu bearbeiten, einen QR-Code zu erzeugen, den Verlauf zu leeren oder die Einstellungen zu öffnen."
+          "title": "Zähler im Infobereich, Hervorhebung & Schnellmenü",
+          "body": "Das Symbol zeigt einen Kreis mit der Anzahl neuer Einträge und hebt diese beim Öffnen kurz hervor. <b>Rechtsklick</b> öffnet das Schnellmenü.",
+          "details": "Jeder bei geschlossenem Fenster kopierte Eintrag erhöht den roten Zähler am Symbol (<code>1–99</code> und <code>99+</code>). Beim Öffnen von Mklipper wird der Zähler zurückgesetzt und die neuen Einträge erhalten eine dezente, nach wenigen Sekunden ausblendende Hervorhebung. Für das klassische Symbol ohne Zähler deaktivieren Sie <b>Zähler für neue Einträge auf dem Infobereich-Symbol anzeigen</b> unter <b>Einstellungen → Allgemein</b>."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Karten",
-      "intro": "Suche Einträge, hefte Favoriten an und nutze die Schnellaktionen auf jeder Karte.",
+      "intro": "Suchen Sie ohne Akzente, filtern Sie nach Typ, prüfen Sie Vorschauen und nutzen Sie Schnellaktionen.",
       "cards": [
         {
           "icon": "search",
-          "title": "Sofortsuche",
-          "body": "Beginne einfach zu tippen, sobald sich Mklipper öffnet, um nach Text, Quellanwendung, Fenstertitel oder Web-URL zu filtern."
+          "title": "Akzentunabhängige Suche & Kategoriefilter",
+          "body": "Tippen Sie direkt nach dem Öffnen zum Filtern oder wechseln Sie mit Klick bzw. <b>Tab</b> zwischen <b>Alle · Text · Bilder · Links · Angeheftet</b>.",
+          "details": "Die Suche ignoriert Groß-/Kleinschreibung sowie Umlaute/Akzente und unterstützt mehrere Wörter in beliebiger Reihenfolge (z. B. findet <code>uber prufung</code> auch <i>„Überprüfung“</i>). Durchsucht werden Inhalt, Quell-App, Fenstertitel und URL. Mit <b>Tab</b> wechseln Sie blitzschnell durch alle 5 Filter."
+        },
+        {
+          "icon": "eye",
+          "title": "Großvorschau & Bilder als PNG speichern",
+          "body": "Drücken Sie <b>Leertaste</b> (oder das <b>Auge</b>-Symbol), um große Bilder oder lange Texte ohne Einfügen anzusehen, und speichern Sie Bilder als <b>PNG</b>.",
+          "details": "Die Vorschau zeigt vollständigen Mehrzeilentext samt Zeichen- und Zeilenzahl oder das skalierte Bild mit exakter Pixelauflösung, ohne die aktive Zwischenablage zu verändern. Direkt aus der Vorschau können Sie den Eintrag verwenden, bearbeiten oder per <b>Als PNG speichern</b> exportieren. <b>Esc</b> führt zurück."
         },
         {
           "icon": "star",
-          "title": "Wichtiges anheften",
-          "body": "Klicke auf den <b>Stern</b> einer Karte, um sie oben zu halten und beim Leeren des Verlaufs zu schützen. Der Stern-Button in der oberen Leiste filtert gezielt nach angehefteten Einträgen."
+          "title": "Favoriten anheften & sichern",
+          "body": "Klicken Sie auf den <b>Stern</b> einer Karte, um sie beim Leeren zu schützen und im Filter <b>Angeheftet</b> griffbereit zu halten.",
+          "details": "Angeheftete Einträge werden weder beim Erreichen des Verlaufslimits noch beim Leeren gelöscht. Unter <b>Einstellungen → Allgemein → Datenschutz & Sicherung</b> können Sie <b>Angeheftete exportieren…</b> (JSON inkl. Bildern, Rechte <code>0600</code>) und ohne Duplikate wieder importieren."
         },
         {
           "icon": "edit",
-          "title": "Text bearbeiten oder QR-Code erstellen",
-          "body": "Fahre mit der Maus über eine Karte, um <b>Text direkt zu bearbeiten</b> (<b>Strg + Enter</b> speichert), einen <b>QR-Code</b> für dein Smartphone zu erzeugen oder den ursprünglichen Link erneut zu öffnen."
+          "title": "Bearbeiten, QR-Code, Quelle & Erfassungszeit",
+          "body": "Fahren Sie über eine Karte, um <b>Text zu bearbeiten</b> (<b>Strg + Enter</b> speichert), einen <b>QR-Code</b> zu erzeugen oder den Quell-Link zu öffnen.",
+          "details": "Jede Karte zeigt dezent Quell-App oder Domain sowie die relative Zeit seit der ursprünglichen Erfassung (<i>„Gerade eben“</i>, <i>„Vor 10 Min.“</i>, <i>„Gestern, 18:30“</i>), die sich live aktualisiert und beim Wiederöffnen oder Löschen anderer Zeilen nicht zurücksetzt. Der Offline-<b>QR-Code</b> überträgt Links oder Texte sofort ans Smartphone."
         },
         {
           "icon": "trash",
-          "title": "Einträge sauber entfernen",
-          "body": "Klicke auf das <b>Papierkorb</b>-Symbol oder drücke <b>Entf</b> auf der ausgewählten Zeile, um einen Eintrag sofort zu löschen."
+          "title": "Schnelles, sicheres Löschen",
+          "body": "Nutzen Sie das <b>Papierkorb</b>-Symbol oder <b>Entf</b> zum sofortigen Löschen einer Zeile, oder das obere Symbol zum Leeren nicht angehefteter Einträge.",
+          "details": "Sowohl das Leeren des Verlaufs als auch das Löschen angehefteter Einträge fragt standardmäßig nach Bestätigung (mit Option <i>Nicht erneut fragen</i>); verbleibende Einträge behalten ihre Metadaten und Erfassungszeiten unverändert."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Aktionen",
-      "intro": "Automatisiere schnelle Aufgaben für Kopiertes – wie Links öffnen oder Text umwandeln.",
+      "intro": "Automatisieren Sie schnelle Aufgaben für kopierte Inhalte: Links, lokale Dateien oder eigene Befehle.",
       "cards": [
         {
           "icon": "link",
-          "title": "Links & Dateien mit einem Klick",
-          "body": "Wenn du einen Weblink (<code>https://...</code>) oder einen lokalen Dateipfad kopierst, erscheint ein <b>Blitz</b>-Symbol auf der Karte, um ihn mit der Standardanwendung zu öffnen."
+          "title": "Links und Dateien mit einem Klick",
+          "body": "Beim Kopieren einer Web-Adresse (<code>https://...</code>) oder eines vorhandenen Dateipfads erscheint das <b>Blitz</b>-Symbol zum Öffnen mit der Standard-App.",
+          "details": "Mklipper erkennt gültige <code>http/https</code>-URLs und existierende lokale Pfade automatisch und bietet das direkte Öffnen im Browser, Betrachter oder Dateimanager an. Abschaltbar unter <b>Einstellungen → Aktionen</b>."
         },
         {
           "icon": "bolt",
-          "title": "Optionales automatisches Menü",
-          "body": "Wenn sich das Aktionsmenü automatisch öffnen soll, sobald du einen passenden Link oder Text kopierst, aktiviere <b>Automatisches Aktionsmenü</b> im Tray-Menü oder in den Einstellungen."
+          "title": "Optionales automatisches Aktionsmenü",
+          "body": "Aktivieren Sie <b>Automatisches Aktionsmenü</b> im Infobereich-Menü oder in den Einstellungen, damit passende Aktionen direkt beim Kopieren erscheinen.",
+          "details": "Unter <b>Einstellungen → Aktionen</b> stellen Sie die Anzeigedauer in Sekunden ein (<code>0</code> = unbegrenzt), ob Mausauswahl Aktionen auslöst, ob Randleerzeichen entfernt werden und ob Aktionen auch bei älteren Einträgen erneut angeboten werden."
         },
         {
           "icon": "settings",
-          "title": "Eigene Regeln (für Profis)",
-          "body": "Unter <b>Einstellungen → Aktionen</b> kannst du Regex-Regeln festlegen, die Befehle mit <code>%s</code> für den kopierten Text ausführen und die Ausgabe auf Wunsch direkt in die Zwischenablage übernehmen."
+          "title": "Eigene Regeln per regulärem Ausdruck",
+          "body": "Erstellen Sie unter <b>Einstellungen → Aktionen</b> eigene Regex-Regeln mit Befehlen und <code>%s</code> als Platzhalter für den kopierten Text.",
+          "details": "Jede Regel verknüpft ein Regex-Muster mit einem oder mehreren Befehlen. <code>%s</code> wird sicher übergeben und die Ausgabe kann ignoriert werden, die Zwischenablage ersetzen oder als neuer Eintrag hinzugefügt werden."
         }
       ]
     },
     {
       "icon": "keyboard",
-      "title": "Tastenkürzel",
-      "intro": "Steuere alles per Tastatur – mit voller Unterstützung für Standard- und Gaming-Tastaturen.",
+      "title": "Kürzel",
+      "intro": "Steuern Sie alles per Tastatur — voll kompatibel mit Standard-, internationalen und Gaming-Tastaturen.",
       "cards": [
         {
           "icon": "keyboard",
-          "title": "Globale Tastenkürzel, synchronisiert mit Cinnamon",
-          "body": "Unter <b>Einstellungen → Tastenkürzel</b> kannst du Tasten belegen, um den Verlauf zu öffnen, <b>Ohne Formatierung einfügen</b> umzuschalten, den aktuellen Eintrag zu bearbeiten, seinen QR-Code anzuzeigen oder den Verlauf durchzuschalten bzw. zu leeren."
+          "title": "Globale Kürzel synchron mit Cinnamon",
+          "body": "Legen Sie unter <b>Einstellungen → Kürzel</b> Tasten fest für Verlauf, <b>Unformatiert einfügen</b>, Pause, Bearbeiten, QR-Code, Aktionen, Durchblättern oder Leeren.",
+          "details": "Unter Linux Mint Cinnamon werden alle 9 globalen Kürzel automatisch mit <i>Systemeinstellungen → Tastatur → Eigene Tastenkombinationen</i> synchronisiert und steuern Mklipper verzögerungsfrei per D-Bus."
         },
         {
           "icon": "search",
-          "title": "Lieber Zahlen direkt in der Suche tippen?",
-          "body": "Deaktiviere <b>Tasten 1–0 zum schnellen Einfügen verwenden</b> unter Einstellungen → Tastenkürzel, damit getippte Ziffern direkt im Suchfeld landen."
+          "title": "Schnelltasten im schwebenden Fenster",
+          "body": "Nutzen Sie <b>1–0</b> zum Sofort-Einfügen, <b>Leertaste</b> für Vorschau, <b>Tab</b> für Filter, <b>Shift</b> zum Format-Umkehren und <b>Entf</b> zum Löschen.",
+          "details": "Bei leerem Suchfeld fügen <b>1–9</b> und <b>0</b> sofort die entsprechende Zeile ein; während einer Suche funktionieren weiterhin <b>Alt/Strg + 1–0</b>. Wenn Sie Ziffern direkt eintippen möchten, deaktivieren Sie <b>Tasten 1–0 zum schnellen Einfügen verwenden</b>. <b>Strg + F</b> fokussiert die Suche, <b>Esc</b> geht zurück oder schließt."
         },
         {
           "icon": "sliders",
-          "title": "Gaming-Tastaturen & manuelle Tastenwahl",
-          "body": "Mklipper unterstützt Makrotasten (<b>F13–F24</b>) sowie beliebige Modifikator-Layouts. Falls System oder Tastatur beim Aufzeichnen <b>Super</b>, <b>Strg</b> oder <b>Alt</b> abfangen, klicke auf das Tastatur-Symbol neben dem Feld zur manuellen Auswahl."
+          "title": "Gaming-Tastaturen & manuelle Auswahl",
+          "body": "Mklipper unterstützt Makrotasten (<b>F13–F24</b>) und jedes X11-Layout. Wenn der Desktop <b>Super</b>, <b>Strg</b> oder <b>Alt</b> abfängt, nutzen Sie die Tastatur-Schaltfläche neben dem Feld.",
+          "details": "Die X11-Engine fragt Tastaturbelegung und Modifikatoren dynamisch ab. Über die manuelle Auswahl können Sie Modifikatoren ankreuzen und jede Taste (inkl. <code>F13–F24</code>) wählen, selbst wenn der Fenstermanager die Kombination abfängt."
         }
       ]
     },
     {
       "icon": "lock",
       "title": "Datenschutz",
-      "intro": "Deine Zwischenablage bleibt privat, nahtlos in Linux Mint integriert und ohne Rückstände.",
+      "intro": "Ihre Daten bleiben unter Ihrer Kontrolle — ohne Telemetrie, nahtlos in Linux Mint integriert und rückstandsfrei löschbar.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Pause-Modus (Inkognito)",
+          "body": "Unterbrechen Sie die Aufzeichnung vorübergehend über die <b>Pause</b>-Taste im Fenster, das Infobereich-Menü oder ein globales Kürzel.",
+          "details": "Während die Erfassung pausiert ist, wird nichts gespeichert, das Infobereich-Symbol zeigt ein Pause-Abzeichen und im Fenster erscheint ein Hinweis mit <b>Fortsetzen</b>, damit Sie das Wiedereinschalten nicht vergessen."
+        },
+        {
           "icon": "lock",
-          "title": "Passwortschutz",
-          "body": "Geheimnisse aus kompatiblen Passwortmanagern (KeePassXC, Bitwarden, 1Password usw.) werden automatisch erkannt und <b>niemals im Verlauf gespeichert</b>."
+          "title": "Passwörter & ignorierte Anwendungen",
+          "body": "Geheimnisse kompatibler Passwortmanager (KeePassXC, Bitwarden, 1Password usw.) und Sperrbildschirme werden automatisch gefiltert; eigene Ausnahmen sind frei pflegbar.",
+          "details": "Mklipper erkennt Geheimhaltungs-Hinweise von Passwortmanagern, speichert Passwörter niemals auf der Festplatte und zeigt ein Banner mit <b>Leeren</b>, solange ein Geheimnis aktiv ist. Eigene Ausnahmen verwalten Sie unter <b>Einstellungen → Allgemein → Datenschutz & Sicherung</b>."
         },
         {
           "icon": "trash",
-          "title": "Sauberes Löschen ohne Rückstände",
-          "body": "Gelöschte Einträge werden sofort auf der Festplatte genullt und freigegeben (kein Datenbank-Ballast und keine verwaisten Dateien) – mit privaten Dateirechten nur für deinen Benutzer."
+          "title": "Rückstandsfreies Löschen & private Rechte",
+          "body": "Jeder gelöschte Eintrag wird überschrieben und gibt Speicherplatz sofort frei — mit Zugriffsrechten ausschließlich für Ihren Benutzer.",
+          "details": "Die SQLite-Datenbank in <code>~/.local/share/mklipper/</code> arbeitet mit <code>secure_delete = ON</code> und <code>auto_vacuum = FULL</code>, bereinigt verwaiste Dateien und setzt strikte Rechte <code>0700</code> / <code>0600</code> für Verlauf, Einstellungen und JSON-Backups."
         },
         {
           "icon": "update",
-          "title": "Native Linux-Mint-Aktualisierungen",
-          "body": "Mklipper integriert sich direkt in die <b>Linux-Mint-Aktualisierungsverwaltung</b>, sodass Updates gemeinsam mit deinen Systempaketen eintreffen – plus optionale Hinweise in der App."
+          "title": "Integrierte Linux-Mint-Updates",
+          "body": "Mklipper integriert sich in die <b>Linux Mint Aktualisierungsverwaltung</b> und benachrichtigt Sie über neue Versionen.",
+          "details": "Über das signierte APT-Repository kommen Updates zusammen mit Systemaktualisierungen an und Mklipper startet nach dem Paket-Upgrade sauber neu. Alternativ können Sie unter <b>Einstellungen → Allgemein → Jetzt nach Updates suchen…</b> mit übersetzten Hinweisen und SHA-256-Prüfung aktualisieren."
         }
       ]
     }

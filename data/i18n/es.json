@@ -15,115 +15,144 @@
         {
           "icon": "history",
           "title": "Abre tu historial al instante",
-          "body": "Presiona <b>Super + V</b> (puedes cambiarlo en Atajos) o haz <b>clic izquierdo</b> en el icono de Mklipper en la barra de tareas."
+          "body": "Presiona <b>Super + V</b> (personalizable en Atajos) o haz <b>clic izquierdo</b> en el icono de Mklipper en la barra de tareas.",
+          "details": "El atajo global utiliza comunicación directa por D-Bus para abrir la ventana flotante bajo el cursor sin demora. Al hacer clic izquierdo en la bandeja, el panel se posiciona junto al reloj respetando los bordes de la pantalla; con <b>clic central</b> se abre justo bajo el puntero. También puedes arrastrar la ventana desde cualquier zona libre para reubicarla."
         },
         {
           "icon": "copy",
-          "title": "Pega en un solo toque",
-          "body": "Haz clic en cualquier elemento, presiona <b>Enter</b> o usa las teclas <b>1 a 0</b> para pegar directamente en la ventana donde estabas trabajando."
+          "title": "Pega en un solo toque (y usa Shift para formato)",
+          "body": "Haz clic en cualquier elemento, presiona <b>Enter</b> o usa las teclas <b>1 a 0</b> para pegar directo en tu ventana activa. Mantén <b>Shift</b> para invertir el formato puntualmente.",
+          "details": "Mklipper recuerda automáticamente qué ventana tenías activa antes de abrir el historial, vuelve a enfocarla y envía el pegado: usa <b>Ctrl + Shift + V</b> si es una terminal y <b>Ctrl + V</b> en el resto de aplicaciones. Si mantienes pulsada la tecla <b>Shift</b> al hacer clic, pulsar <b>Enter</b> o usar <b>Alt/Ctrl + 1–0</b>, inviertes el modo <i>Pegar sin formato</i> solo para ese pegado sin cambiar el interruptor global. En <b>Configuración → General</b> puedes activar el modo de ventana persistente para pegar varios elementos seguidos."
         },
         {
           "icon": "sliders",
           "title": "Pegar sin formato",
-          "body": "Activa el interruptor <b>Pegar sin formato</b> en la parte superior para quitar colores, fuentes y estilos HTML al pegar texto. No afecta a imágenes ni archivos."
+          "body": "Activa el interruptor <b>Pegar sin formato</b> en la parte superior para quitar colores, fuentes y estilos HTML al pegar texto. No afecta imágenes ni archivos.",
+          "details": "Al activar esta opción, cualquier texto enriquecido copiado desde navegadores, documentos o correos (HTML, RTF, estilos de color y tipografía) se limpia automáticamente a texto plano al pegarlo —incluso al usar Ctrl + V directo— mientras que las capturas de pantalla y las rutas de archivos conservan sus datos originales. También puedes asignarle un atajo global en <b>Configuración → Atajos</b> para alternarlo desde cualquier aplicación."
         },
         {
           "icon": "settings",
-          "title": "Menú rápido en la bandeja",
-          "body": "Haz <b>clic derecho</b> en el icono de la bandeja para editar el último elemento, crear un código QR, vaciar el historial o abrir Configuración."
+          "title": "Icono en la bandeja, contador y resaltado",
+          "body": "El icono muestra un círculo con los elementos nuevos agregados al historial y los resalta brevemente al abrir la ventana. Haz <b>clic derecho</b> para acceder al menú rápido.",
+          "details": "Cada vez que copias algo nuevo con la ventana cerrada, el icono de la bandeja muestra un círculo rojo con el contador (<code>1–99</code> y <code>99+</code>). Al abrir Mklipper, el contador se reinicia a cero y los elementos nuevos se destacan con un resaltado sutil que se desvanece en pocos segundos para identificarlos al instante. Si prefieres el icono clásico sin contador ni resaltado, desactiva <b>Mostrar contador de nuevos elementos en el icono de la bandeja</b> en <b>Configuración → General</b>. Con clic derecho puedes pausar la captura, editar el elemento actual, mostrar su QR o vaciar el historial."
         }
       ]
     },
     {
       "icon": "star",
       "title": "Tarjetas",
-      "intro": "Busca, fija favoritos y aprovecha los botones rápidos de cada elemento.",
+      "intro": "Busca sin acentos, filtra por tipo, previsualiza contenido y aprovecha los botones rápidos de cada tarjeta.",
       "cards": [
         {
           "icon": "search",
-          "title": "Búsqueda instantánea",
-          "body": "Apenas abras Mklipper, empieza a escribir para filtrar por texto, aplicación de origen, título de ventana o enlace web."
+          "title": "Búsqueda sin acentos y filtros por categoría",
+          "body": "Empieza a escribir apenas abras Mklipper para filtrar al instante, o cambia entre <b>Todos · Texto · Imágenes · Enlaces · Fijados</b> con clic o la tecla <b>Tab</b>.",
+          "details": "La búsqueda ignora mayúsculas y tildes/diacríticos y admite varias palabras en cualquier orden (por ejemplo, escribir <code>configuracion codigo</code> encuentra <i>«Configuración del código»</i>). Además de buscar dentro del contenido, también busca en el nombre de la aplicación de origen, el título de la ventana y el enlace web guardado. Pulsa <b>Tab</b> en cualquier momento para recorrer rápidamente las 5 categorías."
+        },
+        {
+          "icon": "eye",
+          "title": "Vista previa ampliada y guardado como PNG",
+          "body": "Pulsa <b>Espacio</b> (o el botón de <b>ojo</b>) para inspeccionar capturas grandes o textos largos sin pegarlos, y guarda imágenes directo en <b>PNG</b>.",
+          "details": "La vista previa muestra el texto completo con recuento de caracteres y líneas, o la imagen ampliada con sus dimensiones exactas en píxeles, sin alterar el portapapeles actual. Desde la propia vista previa puedes usar el elemento, abrir el editor de texto o exportar la imagen con el botón <b>Guardar PNG</b> (también disponible directamente en la barra de acciones de cada tarjeta de imagen). Pulsa <b>Esc</b> o <b>Volver</b> para regresar a la lista."
         },
         {
           "icon": "star",
-          "title": "Fija lo importante",
-          "body": "Haz clic en la <b>estrella</b> de una tarjeta para dejarla siempre arriba y protegerla al vaciar el historial. La estrella de la barra superior muestra solo los elementos fijados."
+          "title": "Fija favoritos y respalda tus elementos",
+          "body": "Haz clic en la <b>estrella</b> de una tarjeta para protegerla al vaciar el historial y acceder rápido desde el filtro <b>Fijados</b>.",
+          "details": "Los elementos fijados nunca se eliminan automáticamente al superar el límite máximo del historial ni al usar <i>Vaciar historial</i>. Además, en <b>Configuración → General → Privacidad y respaldo</b> puedes <b>Exportar fijados…</b> a un archivo JSON (incluidas imágenes, guardado con permisos privados <code>0600</code>) e <b>Importar fijados…</b> en otro equipo o tras reinstalar el sistema sin duplicar elementos."
         },
         {
           "icon": "edit",
-          "title": "Edita o genera un código QR",
-          "body": "Pasa el ratón sobre una tarjeta para <b>editar el texto</b> antes de pegarlo (<b>Ctrl + Enter</b> guarda), generar un <b>código QR</b> para escanear con el teléfono móvil o abrir el enlace original."
+          "title": "Edita, genera QR, origen y hora de captura",
+          "body": "Pasa el ratón sobre una tarjeta para <b>editar el texto</b> (<b>Ctrl + Enter</b> guarda), generar un <b>código QR</b> o abrir el enlace de origen.",
+          "details": "Cada tarjeta muestra debajo una línea discreta con la aplicación o dominio de origen y el tiempo relativo exacto desde su captura original (<i>«Justo ahora»</i>, <i>«Hace 10 min»</i>, <i>«Ayer, 18:30»</i>), que se actualiza en vivo y no se reinicia al reabrir la ventana ni al eliminar otros elementos. El generador de <b>código QR</b> funciona sin conexión para pasar textos o enlaces a tu teléfono en segundos."
         },
         {
           "icon": "trash",
-          "title": "Elimina lo que no necesites",
-          "body": "Usa el icono de <b>papelera</b> o la tecla <b>Supr</b> sobre una fila para borrar ese elemento al instante."
+          "title": "Elimina elementos con seguridad",
+          "body": "Usa el icono de <b>papelera</b> o la tecla <b>Supr</b> para borrar una fila al instante, o el botón superior para vaciar todo el historial no fijado.",
+          "details": "Tanto el vaciado completo como la eliminación individual de elementos fijados solicitan confirmación por defecto para evitar pérdidas accidentales (con la opción <i>No volver a preguntar</i>). Los elementos que permanecen en la lista conservan intactos sus metadatos y su hora original de captura."
         }
       ]
     },
     {
       "icon": "bolt",
       "title": "Acciones",
-      "intro": "Automatiza tareas rápidas sobre lo que copias, como abrir enlaces o transformar texto.",
+      "intro": "Automatiza tareas rápidas sobre lo que copias, como abrir enlaces, archivos o ejecutar comandos personalizados.",
       "cards": [
         {
           "icon": "link",
           "title": "Enlaces y archivos en un clic",
-          "body": "Cuando copias una dirección web (<code>https://...</code>) o la ruta de un archivo de tu equipo, aparece el botón de <b>rayo</b> en la tarjeta para abrirlo con la aplicación predeterminada."
+          "body": "Al copiar una dirección web (<code>https://...</code>) o la ruta de un archivo existente, aparece el botón de <b>rayo</b> en la tarjeta para abrirlo con su aplicación predeterminada.",
+          "details": "Mklipper valida automáticamente si el texto copiado corresponde a una URL <code>http/https</code> válida o a una ruta local existente en tu equipo y ofrece abrirlo directamente en tu navegador, visor de documentos o gestor de archivos. Puedes desactivar esta detección automática desde <b>Configuración → Acciones</b> si solo deseas usar tus propias reglas."
         },
         {
           "icon": "bolt",
           "title": "Menú automático opcional",
-          "body": "Si quieres que el menú de acciones aparezca automáticamente al copiar un enlace o regla coincidente, activa <b>Menú automático de acciones</b> en la bandeja o en Configuración."
+          "body": "Activa <b>Menú automático de acciones</b> en la bandeja o en Configuración para que el menú aparezca solo al copiar contenido que coincida con una regla.",
+          "details": "En <b>Configuración → Acciones</b> puedes ajustar cuántos segundos permanece abierto el menú emergente antes de cerrarse automáticamente (usa <code>0</code> para que no se cierre solo), elegir si también se dispara al seleccionar texto con el ratón, si recorta espacios en blanco al evaluar y si vuelve a ofrecer acciones al elegir elementos antiguos del historial."
         },
         {
           "icon": "settings",
-          "title": "Reglas personalizadas (avanzado)",
-          "body": "En <b>Configuración → Acciones</b> puedes crear reglas con expresiones regulares que ejecutan comandos usando <code>%s</code> como el texto copiado y, si lo deseas, reemplazan el resultado en el portapapeles."
+          "title": "Reglas personalizadas por expresión regular",
+          "body": "Crea tus propias reglas en <b>Configuración → Acciones</b> usando expresiones regulares y comandos con <code>%s</code> como el texto copiado.",
+          "details": "Cada regla define un patrón de expresión regular y uno o más comandos de consola. El marcador <code>%s</code> se pasa de forma segura al comando y puedes elegir qué hacer con la salida: ignorarla, reemplazar el portapapeles actual o agregar el resultado como un nuevo elemento del historial (útil para formatear JSON, acortar enlaces o limpiar texto repetitivo)."
         }
       ]
     },
     {
       "icon": "keyboard",
       "title": "Atajos",
-      "intro": "Controla todo desde el teclado con compatibilidad total para teclados estándar y gaming.",
+      "intro": "Controla todo desde el teclado con compatibilidad total para teclados estándar, internacionales y gaming.",
       "cards": [
         {
           "icon": "keyboard",
           "title": "Atajos globales sincronizados con Cinnamon",
-          "body": "En <b>Configuración → Atajos</b> puedes asignar teclas para abrir el historial, alternar <b>Pegar sin formato</b>, editar el elemento actual, mostrar su QR, rotar el historial o vaciarlo."
+          "body": "En <b>Configuración → Atajos</b> asigna teclas para abrir el historial, alternar <b>Pegar sin formato</b>, pausar la captura, editar, mostrar QR, invocar acciones, rotar o vaciar.",
+          "details": "En Linux Mint Cinnamon, los 9 atajos globales se registran y sincronizan automáticamente con <i>Configuración del sistema → Teclado → Atajos personalizados</i>. Cada atajo invoca la instancia activa por D-Bus (<code>--toggle</code>, <code>--toggle-plain-text</code>, <code>--toggle-pause</code>, <code>--edit</code>, <code>--qr</code>, <code>--action</code>, <code>--cycle-next</code>, <code>--cycle-prev</code>, <code>--clear-interactive</code>) con respuesta instantánea."
         },
         {
           "icon": "search",
-          "title": "¿Prefieres escribir números en el buscador?",
-          "body": "Desactiva <b>Usar teclas 1–0 para pegar rápido</b> en Configuración → Atajos para que los números que escribas vayan directamente al buscador."
+          "title": "Teclas rápidas dentro de la ventana flotante",
+          "body": "Usa <b>1–0</b> para pegar al instante, <b>Espacio</b> para vista previa, <b>Tab</b> para cambiar filtro, <b>Shift</b> para invertir formato y <b>Supr</b> para eliminar.",
+          "details": "Cuando el buscador está vacío, pulsar <b>1 a 9</b> o <b>0</b> (décimo elemento) pega esa tarjeta de inmediato; con texto escrito puedes seguir usando <b>Alt + 1–0</b> o <b>Ctrl + 1–0</b>. Si prefieres escribir números directamente en el buscador sin activar pegado rápido, desactiva <b>Usar teclas 1–0 para pegar rápido</b> en <b>Configuración → Atajos</b>. Otros atajos útiles: <b>Ctrl + F</b> enfoca el buscador y <b>Esc</b> vuelve atrás o cierra."
         },
         {
           "icon": "sliders",
           "title": "Teclados gaming y selector manual",
-          "body": "Mklipper reconoce teclas macro (<b>F13–F24</b>) y cualquier mapa de modificadores. Si el sistema o tu teclado interceptan <b>Super</b>, <b>Ctrl</b> o <b>Alt</b> al grabar, usa el botón de teclado junto al campo para elegirlos manualmente."
+          "body": "Mklipper reconoce teclas macro (<b>F13–F24</b>) y cualquier distribución X11. Si el sistema intercepta <b>Super</b>, <b>Ctrl</b> o <b>Alt</b>, usa el botón de teclado junto al campo.",
+          "details": "El motor X11 consulta dinámicamente el mapa real de teclas y modificadores del servidor gráfico, evitando conflictos en teclados en español, latinoamericanos o con varios idiomas configurados. Al grabar un atajo, el botón de selector manual te permite marcar modificadores y elegir cualquier tecla (incluidas teclas de función extendidas <code>F13–F24</code>) sin depender de que el escritorio deje pasar la combinación."
         }
       ]
     },
     {
       "icon": "lock",
       "title": "Privacidad",
-      "intro": "Tus datos permanecen bajo tu control, integrados con Linux Mint y sin dejar residuos en disco.",
+      "intro": "Tus datos permanecen bajo tu control, sin telemetría, integrados con Linux Mint y sin dejar residuos en disco.",
       "cards": [
         {
+          "icon": "pause",
+          "title": "Modo pausa (incógnito)",
+          "body": "Suspende temporalmente el registro del portapapeles desde el botón de <b>pausa</b> en la ventana, el menú de la bandeja o un atajo global.",
+          "details": "Mientras la captura está en pausa, nada de lo que copies se guarda ni entra al historial, el icono de la bandeja cambia a tono neutro con una insignia de pausa y la ventana muestra un aviso visible con el botón <b>Reanudar</b>. Es ideal al trabajar con datos bancarios, claves temporales o información confidencial que no quieres registrar."
+        },
+        {
           "icon": "lock",
-          "title": "Contraseñas protegidas",
-          "body": "Los secretos copiados desde gestores compatibles (KeePassXC, Bitwarden, 1Password, etc.) se detectan automáticamente y <b>nunca se guardan</b> en el historial."
+          "title": "Contraseñas y aplicaciones ignoradas",
+          "body": "Los secretos de gestores compatibles (KeePassXC, Bitwarden, 1Password, etc.) y pantallas de bloqueo se filtran solos, y puedes añadir tus propias aplicaciones ignoradas.",
+          "details": "Mklipper detecta las pistas de confidencialidad estándar de los gestores de contraseñas y muestra un aviso discreto con botón <b>Limpiar</b> mientras la clave siga en el portapapeles del sistema, sin guardarla nunca en disco. Además, ignora automáticamente pantallas de bloqueo y agentes de autenticación, y en <b>Configuración → General → Privacidad y respaldo</b> puedes añadir cualquier aplicación adicional (como clientes remotos o apps bancarias)."
         },
         {
           "icon": "trash",
-          "title": "Borrado limpio y real",
-          "body": "Cada elemento eliminado se sobrescribe y libera espacio en disco de inmediato (sin residuos en la base de datos ni archivos huérfanos), con permisos privados solo para tu usuario."
+          "title": "Borrado limpio y permisos privados",
+          "body": "Cada elemento eliminado se sobrescribe y libera espacio en disco de inmediato, almacenado con permisos privados exclusivos para tu usuario.",
+          "details": "La base de datos SQLite en <code>~/.local/share/mklipper/</code> funciona con <code>secure_delete = ON</code> y <code>auto_vacuum = FULL</code>: al borrar un elemento o vaciar el historial, los datos se sobrescriben, se eliminan los archivos binarios asociados y se limpia cualquier residuo huérfano. Tanto las carpetas de historial como la configuración y respaldos JSON aplican permisos estrictos (<code>0700</code> / <code>0600</code>). También puedes desactivar <i>Guardar historial entre sesiones</i> si prefieres que se limpie al salir."
         },
         {
           "icon": "update",
-          "title": "Actualizaciones integradas en Mint",
-          "body": "Mklipper se integra con el <b>Gestor de actualizaciones de Linux Mint</b> para actualizarse junto con tu sistema, además de avisarte si hay una versión nueva."
+          "title": "Actualizaciones integradas en Linux Mint",
+          "body": "Mklipper se integra con el <b>Gestor de actualizaciones de Linux Mint</b> y también te avisa si hay una versión nueva disponible.",
+          "details": "Al instalar mediante el repositorio APT firmado de Mklipper, las nuevas versiones llegan directo junto con las actualizaciones habituales de Linux Mint y la app se reinicia limpiamente de forma automática al actualizarse el paquete. Además, puedes comprobar e instalar actualizaciones desde <b>Configuración → General → Buscar actualizaciones ahora…</b> con notas de versión en tu idioma y verificación criptográfica SHA-256."
         }
       ]
     }
