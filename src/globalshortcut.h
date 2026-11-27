@@ -51,6 +51,7 @@ private:
         std::function<void()> callback;
     };
 
+    bool registerShortcutInternal(const QString &id, const QKeySequence &sequence, std::function<void()> callback, bool refreshModMap);
     void ungrab(const GrabbedKey &entry);
     void refreshAllGrabs();
 

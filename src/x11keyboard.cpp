@@ -4,7 +4,9 @@
 */
 #include "x11keyboard.h"
 
+#include <QByteArray>
 #include <QGuiApplication>
+#include <QHash>
 #include <QSet>
 
 #include <X11/XKBlib.h>
@@ -17,6 +19,13 @@ static_assert(std::is_same_v<X11KeySym, KeySym>, "X11KeySym must match Xlib KeyS
 
 namespace
 {
+using X11ErrorHandlerFn = int (*)(Display *, XErrorEvent *);
+
+int ignoreX11Error(Display *, XErrorEvent *)
+{
+    return 0;
+}
+
 bool isKeycodeHeld(const char keys[32], KeyCode code)
 {
     if (code == 0) {
@@ -111,10 +120,46 @@ Qt::KeyboardModifiers X11ModifierMap::x11MaskToQt(unsigned int mask) const
 
 namespace X11Keyboard
 {
+ScopedErrorGuard::ScopedErrorGuard(X11Display *dpy)
+    : m_dpy(dpy)
+    , m_prev(reinterpret_cast<void *>(XSetErrorHandler(ignoreX11Error)))
+{
+}
+
+ScopedErrorGuard::~ScopedErrorGuard()
+{
+    if (m_dpy) {
+        XSync(m_dpy, False);
+    }
+    XSetErrorHandler(reinterpret_cast<X11ErrorHandlerFn>(m_prev));
+}
+
 Display *display()
 {
     auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
     return x11App ? x11App->display() : nullptr;
+}
+
+unsigned long internAtomCached(Display *dpy, const char *name, bool onlyIfExists)
+{
+    if (!dpy || !name || !*name) {
+        return None;
+    }
+    static Display *s_cachedDpy = nullptr;
+    static QHash<QByteArray, Atom> s_atomCache;
+    if (s_cachedDpy != dpy) {
+        s_cachedDpy = dpy;
+        s_atomCache.clear();
+    }
+    const QByteArray key(name);
+    if (const auto it = s_atomCache.constFind(key); it != s_atomCache.constEnd()) {
+        return it.value();
+    }
+    const Atom atom = XInternAtom(dpy, name, onlyIfExists ? True : False);
+    if (atom != None) {
+        s_atomCache.insert(key, atom);
+    }
+    return atom;
 }
 
 X11ModifierMap queryModifierMap(Display *dpy)
@@ -235,17 +280,64 @@ X11ModifierMap queryModifierMap(Display *dpy)
     }
 
     // Ensure standard left/right keycodes are always included for live XQueryKeymap polling
-    auto addSymCodes = [&](QList<KeyCode> &dest, std::initializer_list<KeySym> syms) {
-        for (KeySym sym : syms) {
-            for (KeyCode c : keycodesForKeysym(dpy, sym)) {
-                appendUnique(dest, c);
+    // Fetch the X11 keyboard mapping ONCE instead of 12 separate XGetKeyboardMapping round-trips
+    int minKeycode = 0;
+    int maxKeycode = 0;
+    XDisplayKeycodes(dpy, &minKeycode, &maxKeycode);
+    int symsPerKeycode = 0;
+    KeySym *mapping = (minKeycode > 0 && maxKeycode >= minKeycode)
+        ? XGetKeyboardMapping(dpy, static_cast<KeyCode>(minKeycode), maxKeycode - minKeycode + 1, &symsPerKeycode)
+        : nullptr;
+
+    if (mapping && symsPerKeycode > 0) {
+        const int numCodes = maxKeycode - minKeycode + 1;
+        const int maxCol = qMin(symsPerKeycode, 4);
+        for (int i = 0; i < numCodes; ++i) {
+            const KeyCode code = static_cast<KeyCode>(minKeycode + i);
+            for (int col = 0; col < maxCol; ++col) {
+                switch (mapping[i * symsPerKeycode + col]) {
+                case XK_Shift_L:
+                case XK_Shift_R:
+                    appendUnique(map.shiftKeycodes, code);
+                    break;
+                case XK_Control_L:
+                case XK_Control_R:
+                    appendUnique(map.controlKeycodes, code);
+                    break;
+                case XK_Alt_L:
+                case XK_Alt_R:
+                    appendUnique(map.altKeycodes, code);
+                    break;
+                case XK_Super_L:
+                case XK_Super_R:
+                case XK_Meta_L:
+                case XK_Meta_R:
+                case XK_Hyper_L:
+                case XK_Hyper_R:
+                    appendUnique(map.superKeycodes, code);
+                    break;
+                default:
+                    break;
+                }
             }
         }
-    };
-    addSymCodes(map.shiftKeycodes, {XK_Shift_L, XK_Shift_R});
-    addSymCodes(map.controlKeycodes, {XK_Control_L, XK_Control_R});
-    addSymCodes(map.altKeycodes, {XK_Alt_L, XK_Alt_R});
-    addSymCodes(map.superKeycodes, {XK_Super_L, XK_Super_R, XK_Meta_L, XK_Meta_R, XK_Hyper_L, XK_Hyper_R});
+        XFree(mapping);
+    } else {
+        if (mapping) {
+            XFree(mapping);
+        }
+        auto addFallback = [&](QList<KeyCode> &dest, std::initializer_list<KeySym> syms) {
+            for (KeySym sym : syms) {
+                if (const KeyCode c = XKeysymToKeycode(dpy, sym); c != 0) {
+                    appendUnique(dest, c);
+                }
+            }
+        };
+        addFallback(map.shiftKeycodes, {XK_Shift_L, XK_Shift_R});
+        addFallback(map.controlKeycodes, {XK_Control_L, XK_Control_R});
+        addFallback(map.altKeycodes, {XK_Alt_L, XK_Alt_R});
+        addFallback(map.superKeycodes, {XK_Super_L, XK_Super_R, XK_Meta_L, XK_Meta_R, XK_Hyper_L, XK_Hyper_R});
+    }
 
     return map;
 }

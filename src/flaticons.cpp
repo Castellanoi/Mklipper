@@ -226,6 +226,29 @@ QCache<PixCacheKey, QPixmap> &pixCache()
     static QCache<PixCacheKey, QPixmap> cache(256);
     return cache;
 }
+
+struct LogoCacheKey {
+    QRgb accentRgba;
+    int px;
+    bool paused;
+    int badgeBucket;
+
+    bool operator==(const LogoCacheKey &o) const
+    {
+        return accentRgba == o.accentRgba && px == o.px && paused == o.paused && badgeBucket == o.badgeBucket;
+    }
+};
+
+inline size_t qHash(const LogoCacheKey &k, size_t seed = 0) noexcept
+{
+    return qHashMulti(seed, k.accentRgba, k.px, k.paused, k.badgeBucket);
+}
+
+QCache<LogoCacheKey, QPixmap> &logoCache()
+{
+    static QCache<LogoCacheKey, QPixmap> cache(64);
+    return cache;
+}
 } // namespace
 
 namespace FlatIcons
@@ -325,8 +348,16 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, boo
 {
     const qreal safeDpr = qMax<qreal>(1.0, dpr);
     const int px = qMax(16, qRound(logicalSize * safeDpr));
-    const QColor acc = paused ? QColor(126, 134, 146)
-                              : (accentColor.isValid() ? accentColor : QColor(255, 113, 57));
+    const int normalizedBadge = paused ? 0 : qBound(0, badgeCount, 100);
+    const QColor resolvedAccent = accentColor.isValid() ? accentColor : QColor(255, 113, 57);
+    const LogoCacheKey cacheKey{resolvedAccent.rgba(), px, paused, normalizedBadge};
+    if (const QPixmap *cached = logoCache().object(cacheKey)) {
+        QPixmap copy = *cached;
+        copy.setDevicePixelRatio(safeDpr);
+        return copy;
+    }
+
+    const QColor acc = paused ? QColor(126, 134, 146) : resolvedAccent;
     const QByteArray accHex = acc.name(QColor::HexRgb).toLatin1();
 
     QByteArray svg;
@@ -416,9 +447,11 @@ QPixmap appLogoPixmap(const QColor &accentColor, int logicalSize, qreal dpr, boo
 
     p.end();
 
-    QPixmap pm = QPixmap::fromImage(img);
-    pm.setDevicePixelRatio(safeDpr);
-    return pm;
+    auto *pm = new QPixmap(QPixmap::fromImage(img));
+    QPixmap copy = *pm;
+    logoCache().insert(cacheKey, pm);
+    copy.setDevicePixelRatio(safeDpr);
+    return copy;
 }
 
 QIcon appLogoIcon(const QColor &accentColor, bool paused, int badgeCount)

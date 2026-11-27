@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
     app.setApplicationVersion(QStringLiteral(MKLIPPER_VERSION));
     app.setOrganizationName(u"mklipper"_s);
     app.setDesktopFileName(u"mklipper"_s);
-    app.setWindowIcon(QIcon(u":/icons/mklipper.svg"_s));
     app.setQuitOnLastWindowClosed(false);
 
     // Sync exact Linux Mint Cinnamon GTK3 theme & accent color into Qt's palette
@@ -219,6 +218,8 @@ int main(int argc, char *argv[])
         klipper.showCurrentBarcode();
     } else if (parser.isSet(optClearInteractive)) {
         klipper.clearClipboardHistoryInteractive();
+    } else if (parser.isSet(optClear)) {
+        klipper.clearClipboardHistory();
     } else if (parser.isSet(optConfigure)) {
         klipper.configure();
     } else if (parser.isSet(optCheckUpdates)) {

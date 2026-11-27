@@ -142,29 +142,32 @@ QString textFromMimeData(const QMimeData *mimeData)
 
 constexpr qsizetype kMaxClipboardPayloadBytes = 20 * 1000 * 1000;
 
-QString imageMimeTypesSqlList()
+const QString &imageMimeTypesSqlList()
 {
-    const auto supported = QImageReader::supportedMimeTypes();
-    if (supported.isEmpty()) {
-        return u"'image/png'"_s;
-    }
-    QStringList quoted;
-    quoted.reserve(supported.size());
-    for (const QByteArray &m : supported) {
-        bool safe = !m.isEmpty();
-        for (const char ch : m) {
-            const bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
-                || (ch >= '0' && ch <= '9') || ch == '/' || ch == '+' || ch == '-' || ch == '.';
-            if (!ok) {
-                safe = false;
-                break;
+    static const QString s_sqlList = []() -> QString {
+        const auto supported = QImageReader::supportedMimeTypes();
+        if (supported.isEmpty()) {
+            return u"'image/png'"_s;
+        }
+        QStringList quoted;
+        quoted.reserve(supported.size());
+        for (const QByteArray &m : supported) {
+            bool safe = !m.isEmpty();
+            for (const char ch : m) {
+                const bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+                    || (ch >= '0' && ch <= '9') || ch == '/' || ch == '+' || ch == '-' || ch == '.';
+                if (!ok) {
+                    safe = false;
+                    break;
+                }
+            }
+            if (safe) {
+                quoted.append(u'\'' + QString::fromLatin1(m) + u'\'');
             }
         }
-        if (safe) {
-            quoted.append(u'\'' + QString::fromLatin1(m) + u'\'');
-        }
-    }
-    return quoted.isEmpty() ? u"'image/png'"_s : quoted.join(u", "_s);
+        return quoted.isEmpty() ? u"'image/png'"_s : quoted.join(u", "_s);
+    }();
+    return s_sqlList;
 }
 
 bool isSecretMimeData(const QMimeData *data)
@@ -472,9 +475,12 @@ void HistoryModel::clear()
         beginResetModel();
         m_items.clear();
         m_starredCache.clear();
+        m_imageMetaCache.clear();
         m_starredCount = 0;
         endResetModel();
         Q_EMIT starredCountChanged(0);
+    } else {
+        m_imageMetaCache.clear();
     }
     clearBuffers();
 }
@@ -515,6 +521,7 @@ void HistoryModel::clearNonStarredHistory()
     for (const QString &uuid : std::as_const(nonStarredUuids)) {
         removeItemDataDir(uuid);
         m_starredCache.remove(uuid);
+        m_imageMetaCache.remove(uuid);
     }
 
     clearPasswords();
@@ -584,22 +591,71 @@ void HistoryModel::clearBuffers()
     clearHasPassword();
 }
 
+void HistoryModel::trimExcessItems()
+{
+    if (m_items.size() <= m_maxSize || !m_db.isOpen()) {
+        return;
+    }
+
+    const qsizetype excess = m_items.size() - m_maxSize;
+    QList<int> rowsToRemove;
+    rowsToRemove.reserve(static_cast<int>(excess));
+    QStringList uuidsToRemove;
+    uuidsToRemove.reserve(static_cast<int>(excess));
+
+    for (qsizetype i = m_items.size() - 1; i >= 0 && rowsToRemove.size() < excess; --i) {
+        if (!isItemStarred(m_items[i]->uuid())) {
+            rowsToRemove.append(static_cast<int>(i));
+            uuidsToRemove.append(m_items[i]->uuid());
+        }
+    }
+    if (rowsToRemove.isEmpty()) {
+        return;
+    }
+
+    if (rowsToRemove.size() == 1) {
+        removeRow(rowsToRemove.first());
+        return;
+    }
+
+    {
+        TransactionGuard tx(&m_db);
+        for (const QString &uuid : std::as_const(uuidsToRemove)) {
+            QSqlQuery q1(m_db);
+            q1.prepare(u"DELETE FROM main WHERE uuid = ?"_s);
+            q1.addBindValue(uuid);
+            QSqlQuery q2(m_db);
+            q2.prepare(u"DELETE FROM aux WHERE uuid = ?"_s);
+            q2.addBindValue(uuid);
+            if (!tx.exec(q1) || !tx.exec(q2)) {
+                return;
+            }
+        }
+    }
+
+    for (const QString &uuid : std::as_const(uuidsToRemove)) {
+        removeItemDataDir(uuid);
+        m_starredCache.remove(uuid);
+        m_imageMetaCache.remove(uuid);
+    }
+
+    reclaimDiskSpace(false);
+
+    // rowsToRemove is in descending order, so removing back-to-front keeps indices valid
+    for (int row : std::as_const(rowsToRemove)) {
+        beginRemoveRows(QModelIndex(), row, row);
+        m_items.removeAt(row);
+        endRemoveRows();
+    }
+}
+
 void HistoryModel::setMaxSize(qsizetype size)
 {
     if (m_maxSize == size) {
         return;
     }
     m_maxSize = size;
-    if (m_items.size() > m_maxSize) {
-        qsizetype itemsToRemove = m_items.size() - m_maxSize;
-        qsizetype removedCount = 0;
-        for (qsizetype i = m_items.size() - 1; i >= 0 && removedCount < itemsToRemove; --i) {
-            if (!isItemStarred(m_items[i]->uuid())) {
-                removeRow(static_cast<int>(i));
-                ++removedCount;
-            }
-        }
-    }
+    trimExcessItems();
 }
 
 int HistoryModel::rowCount(const QModelIndex &parent) const
@@ -610,6 +666,30 @@ int HistoryModel::rowCount(const QModelIndex &parent) const
     return static_cast<int>(m_items.size());
 }
 
+HistoryModel::CachedImageMeta HistoryModel::cachedImageMeta(const QString &uuid) const
+{
+    if (const auto it = m_imageMetaCache.constFind(uuid); it != m_imageMetaCache.constEnd()) {
+        return it.value();
+    }
+
+    CachedImageMeta meta;
+    if (m_db.isOpen() && HistoryItem::isValidUuid(uuid)) {
+        QSqlQuery query(m_db);
+        query.prepare(u"SELECT data_uuid FROM aux WHERE uuid = ? AND mimetype IN (%1) ORDER BY rowid ASC LIMIT 1"_s.arg(imageMimeTypesSqlList()));
+        query.addBindValue(uuid);
+        if (query.exec() && query.next()) {
+            const QString dataUuid = query.value(0).toString();
+            if (HistoryItem::isValidUuid(dataUuid)) {
+                meta.path = m_dbFolder + u"/data/"_s + uuid + u'/' + dataUuid;
+                meta.size = QImageReader(meta.path).size();
+            }
+        }
+    }
+
+    m_imageMetaCache.insert(uuid, meta);
+    return meta;
+}
+
 QVariant HistoryModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_items.size() || index.column() != 0) {
@@ -618,32 +698,12 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
 
     const HistoryItemPtr &item = m_items.at(index.row());
 
-    auto queryImagePath = [this, &item]() -> QString {
-        if (!m_db.isOpen() || !HistoryItem::isValidUuid(item->uuid())) {
-            return {};
-        }
-        QSqlQuery query(m_db);
-        query.prepare(u"SELECT data_uuid FROM aux WHERE uuid = ? AND mimetype IN (%1) ORDER BY rowid ASC LIMIT 1"_s.arg(imageMimeTypesSqlList()));
-        query.addBindValue(item->uuid());
-        if (query.exec() && query.next()) {
-            const QString dataUuid = query.value(0).toString();
-            if (!HistoryItem::isValidUuid(dataUuid)) {
-                return {};
-            }
-            return m_dbFolder + u"/data/"_s + item->uuid() + u'/' + dataUuid;
-        }
-        return {};
-    };
-
     switch (role) {
     case Qt::DisplayRole: {
         if (item->type() == HistoryItemType::Image) {
-            const QString path = queryImagePath();
-            if (!path.isEmpty()) {
-                const QSize size = QImageReader(path).size();
-                if (size.isValid()) {
-                    return tr("Imagen %1×%2").arg(size.width()).arg(size.height());
-                }
+            const CachedImageMeta meta = cachedImageMeta(item->uuid());
+            if (meta.size.isValid()) {
+                return tr("Imagen %1×%2").arg(meta.size.width()).arg(meta.size.height());
             }
             return tr("Imagen");
         }
@@ -653,15 +713,14 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
         if (!(item->allTypes() & HistoryItemType::Image)) {
             return QUrl();
         }
-        const QString path = queryImagePath();
-        return path.isEmpty() ? QUrl() : QUrl::fromLocalFile(path);
+        const CachedImageMeta meta = cachedImageMeta(item->uuid());
+        return meta.path.isEmpty() ? QUrl() : QUrl::fromLocalFile(meta.path);
     }
     case ImageSizeRole: {
         if (!(item->allTypes() & HistoryItemType::Image)) {
             return QSize();
         }
-        const QString path = queryImagePath();
-        return path.isEmpty() ? QSize() : QImageReader(path).size();
+        return cachedImageMeta(item->uuid()).size;
     }
     case HistoryItemConstPtrRole:
         return QVariant::fromValue<HistoryItemConstPtr>(std::const_pointer_cast<const HistoryItem>(item));
@@ -723,13 +782,15 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
 
         const QString oldUuid = item->uuid();
         const bool wasStarred = isItemStarred(oldUuid);
+        const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
         {
             TransactionGuard tx(&m_db);
             QSqlQuery upd(m_db);
-            upd.prepare(u"UPDATE main SET uuid = ?, mimetypes = ?, text = ? WHERE uuid = ?"_s);
+            upd.prepare(u"UPDATE main SET uuid = ?, mimetypes = ?, text = ?, last_used_time = ? WHERE uuid = ?"_s);
             upd.addBindValue(newUuid);
             upd.addBindValue(mimetypes.join(u','));
             upd.addBindValue(text);
+            upd.addBindValue(nowTs);
             upd.addBindValue(oldUuid);
 
             QSqlQuery delAux(m_db);
@@ -756,6 +817,7 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
         saveToFile(m_dbFolder, text.toUtf8(), newUuid, newUuid);
         reclaimDiskSpace(false);
         m_starredCache.remove(oldUuid);
+        m_imageMetaCache.remove(oldUuid);
         if (wasStarred) {
             m_starredCache.insert(newUuid, true);
         }
@@ -764,7 +826,6 @@ bool HistoryModel::setData(const QModelIndex &index, const QVariant &value, int 
         const QString preservedTitle = item->sourceTitle();
         const QString preservedUrl = item->sourceUrl();
         const qreal preservedAdded = item->addedTime();
-        const qreal nowTs = QDateTime::currentMSecsSinceEpoch() / 1000.0;
         item = std::make_shared<HistoryItem>(std::move(newUuid),
                                              mimetypes,
                                              std::move(text),
@@ -836,6 +897,7 @@ bool HistoryModel::removeRows(int row, int count, const QModelIndex &parent)
     for (const QString &uuid : std::as_const(uuidsToRemove)) {
         removeItemDataDir(uuid);
         m_starredCache.remove(uuid);
+        m_imageMetaCache.remove(uuid);
     }
 
     reclaimDiskSpace(false);
@@ -987,7 +1049,12 @@ bool HistoryModel::persistMimeData(const QString &uuid,
                 if (usePng) {
                     bytes = mimeData->data(MimeTypes::png);
                     if (bytes.size() <= kMaxClipboardPayloadBytes) {
-                        image = QImage::fromData(bytes, "PNG");
+                        if (mimeData->hasImage()) {
+                            image = mimeData->imageData().value<QImage>();
+                        }
+                        if (image.isNull()) {
+                            image = QImage::fromData(bytes, "PNG");
+                        }
                     }
                 } else {
                     image = mimeData->imageData().value<QImage>();
@@ -1123,15 +1190,18 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     if (const int existingIdx = indexOf(uuid); existingIdx >= 0) {
         if (!effectiveSource.isEmpty()) {
             auto &existing = m_items[existingIdx];
-            if (!existing->hasSourceInfo() || (!effectiveSource.url.isEmpty() && existing->sourceUrl().isEmpty())) {
+            const QString mergedApp = !existing->sourceApp().isEmpty() ? existing->sourceApp() : effectiveSource.app;
+            const QString mergedTitle = !existing->sourceTitle().isEmpty() ? existing->sourceTitle() : effectiveSource.title;
+            const QString mergedUrl = !existing->sourceUrl().isEmpty() ? existing->sourceUrl() : effectiveSource.url;
+            if (mergedApp != existing->sourceApp() || mergedTitle != existing->sourceTitle() || mergedUrl != existing->sourceUrl()) {
                 QSqlQuery updSrc(m_db);
                 updSrc.prepare(u"UPDATE main SET source_app = ?, source_title = ?, source_url = ? WHERE uuid = ?"_s);
-                updSrc.addBindValue(effectiveSource.app);
-                updSrc.addBindValue(effectiveSource.title);
-                updSrc.addBindValue(effectiveSource.url);
+                updSrc.addBindValue(mergedApp);
+                updSrc.addBindValue(mergedTitle);
+                updSrc.addBindValue(mergedUrl);
                 updSrc.addBindValue(uuid);
                 if (updSrc.exec()) {
-                    existing->setSourceInfo(effectiveSource.app, effectiveSource.title, effectiveSource.url);
+                    existing->setSourceInfo(mergedApp, mergedTitle, mergedUrl);
                     const QModelIndex idx = this->index(existingIdx);
                     Q_EMIT dataChanged(idx, idx, {SourceAppRole, SourceTitleRole, SourceUrlRole});
                 }
@@ -1162,19 +1232,7 @@ bool HistoryModel::insert(const QMimeData *mimeData, qreal timestamp, const Clip
     m_items.prepend(std::move(item));
     endInsertRows();
 
-    while (m_items.size() > m_maxSize) {
-        int itemToRemove = -1;
-        for (qsizetype i = m_items.size() - 1; i >= 0; --i) {
-            if (!isItemStarred(m_items[i]->uuid())) {
-                itemToRemove = static_cast<int>(i);
-                break;
-            }
-        }
-        if (itemToRemove < 0) {
-            break;
-        }
-        removeRow(itemToRemove);
-    }
+    trimExcessItems();
 
     return true;
 }
@@ -1308,24 +1366,13 @@ bool HistoryModel::loadHistory()
     beginResetModel();
     m_items = std::move(loadedItems);
     m_starredCache = std::move(starredMap);
+    m_imageMetaCache.clear();
     m_starredCount = starred;
     endResetModel();
     Q_EMIT starredCountChanged(m_starredCount);
 
     // Trim any excess non-starred rows if maxSize was lowered since last session
-    while (m_items.size() > m_maxSize) {
-        int itemToRemove = -1;
-        for (qsizetype i = m_items.size() - 1; i >= 0; --i) {
-            if (!isItemStarred(m_items[i]->uuid())) {
-                itemToRemove = static_cast<int>(i);
-                break;
-            }
-        }
-        if (itemToRemove < 0) {
-            break;
-        }
-        removeRow(itemToRemove);
-    }
+    trimExcessItems();
 
     // Restore top clipboard entry on startup only if clipboard is currently empty
     const QClipboard *sysClip = QGuiApplication::clipboard();
@@ -1539,26 +1586,56 @@ bool HistoryModel::importStarredFromJson(const QString &filePath, int *importedC
     }
 
     const QJsonArray itemsArr = root.value(u"items"_s).toArray();
+    constexpr qsizetype kMaxImportItems = 2048;
+    constexpr qsizetype kMaxExportImageBase64Chars = ((10 * 1024 * 1024) * 4) / 3 + 8;
+    const qsizetype limit = qMin<qsizetype>(itemsArr.size(), kMaxImportItems);
     int imported = 0;
 
     // Import in reverse order so the top-most exported item remains on top
-    for (qsizetype i = itemsArr.size() - 1; i >= 0; --i) {
+    for (qsizetype i = limit - 1; i >= 0; --i) {
         const QJsonObject obj = itemsArr.at(i).toObject();
         const QString type = obj.value(u"type"_s).toString(u"text"_s);
         ClipboardSourceInfo src;
-        src.app = obj.value(u"sourceApp"_s).toString();
-        src.title = obj.value(u"sourceTitle"_s).toString();
-        src.url = obj.value(u"sourceUrl"_s).toString();
+        src.app = obj.value(u"sourceApp"_s).toString().trimmed();
+        src.title = obj.value(u"sourceTitle"_s).toString().trimmed();
+        const QString rawSrcUrl = obj.value(u"sourceUrl"_s).toString().trimmed();
+        if (isSafeHttpUrl(rawSrcUrl)) {
+            src.url = rawSrcUrl;
+        }
 
         auto mime = std::make_unique<QMimeData>();
         if (type == u"image"_s) {
-            const QByteArray raw = QByteArray::fromBase64(obj.value(u"imagePngBase64"_s).toString().toLatin1());
+            const QString b64 = obj.value(u"imagePngBase64"_s).toString();
+            if (b64.isEmpty() || b64.size() > kMaxExportImageBase64Chars) {
+                continue;
+            }
+            const QByteArray raw = QByteArray::fromBase64(b64.toLatin1());
+            if (raw.isEmpty() || raw.size() > kMaxClipboardPayloadBytes) {
+                continue;
+            }
             const QImage img = QImage::fromData(raw, "PNG");
             if (img.isNull()) {
                 continue;
             }
             mime->setImageData(img);
             mime->setData(QString(MimeTypes::png), raw);
+        } else if (type == u"url"_s) {
+            const QString text = obj.value(u"text"_s).toString().trimmed();
+            if (text.isEmpty()) {
+                continue;
+            }
+            QList<QUrl> urls;
+            const QStringList parts = text.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            for (const QString &part : parts) {
+                const QUrl u = QUrl::fromEncoded(part.toUtf8());
+                if (u.isValid() && !u.scheme().isEmpty()) {
+                    urls.append(u);
+                }
+            }
+            if (!urls.isEmpty()) {
+                mime->setUrls(urls);
+            }
+            mime->setText(text);
         } else {
             const QString text = obj.value(u"text"_s).toString();
             if (text.trimmed().isEmpty()) {
@@ -1768,7 +1845,10 @@ void HistoryModel::moveBackToTop()
         return;
     }
     clearHasPassword();
-    moveToTop(m_items.size() - 1);
+    const int lastRow = static_cast<int>(m_items.size()) - 1;
+    beginMoveRows(QModelIndex(), lastRow, lastRow, QModelIndex(), 0);
+    m_items.move(lastRow, 0);
+    endMoveRows();
 }
 
 QHash<int, QByteArray> HistoryModel::roleNames() const
@@ -1794,7 +1874,9 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
     if (m_capturePaused) {
         return;
     }
-    if (isIgnoredClipboardSource(mode, MklipperSettings::self()->ignoredApps())) {
+    const ClipboardSourceInspection srcInspect = inspectClipboardSource(
+        mode, data, MklipperSettings::self()->ignoredApps(), m_bSaveSourceInfo);
+    if (srcInspect.ignored) {
         return;
     }
 
@@ -1862,7 +1944,7 @@ void HistoryModel::checkClipData(QClipboard::Mode mode, const QMimeData *data)
         plainOnly->setText(data->text());
     }
 
-    const ClipboardSourceInfo sourceInfo = m_bSaveSourceInfo ? captureClipboardSource(mode, data) : ClipboardSourceInfo{};
+    const ClipboardSourceInfo &sourceInfo = srcInspect.info;
 
     if (insert(data, 0, sourceInfo)) {
         if (stripFormatting && !selectionMode) {

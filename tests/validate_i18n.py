@@ -53,6 +53,13 @@ def main() -> int:
             print("  MISSING:", repr(key))
         errors += len(missing_in_en)
 
+    unused_in_en = en_keys - cpp_keys
+    if unused_in_en:
+        print(f"ERROR: {len(unused_in_en)} obsolete/unused JSON keys in en.json:")
+        for key in sorted(unused_in_en):
+            print("  UNUSED:", repr(key))
+        errors += len(unused_in_en)
+
     for fname, data in packs.items():
         meta = data.get("_meta", {})
         for field in ("code", "name", "nativeName"):

@@ -401,6 +401,7 @@ void UpdateDialog::setMode(Mode mode)
 
     case Mode::Installing:
         m_titleLabel->setText(tr("Instalando Mklipper %1…").arg(m_release.version));
+        m_subtitleLabel->setTextFormat(Qt::PlainText);
         m_subtitleLabel->setText(
             tr("Se abrirá el diálogo de contraseña de Linux Mint para actualizar el paquete .deb. No cierres esta ventana."));
         m_statusLabel->setVisible(true);

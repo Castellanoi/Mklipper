@@ -85,6 +85,35 @@ bool isSafeExternalHttpUrl(const QUrl &url)
     const QString scheme = url.scheme().toLower();
     return scheme == u"http"_s || scheme == u"https"_s;
 }
+
+// Fast O(1)-bounded extraction of first 2 non-empty preview lines (avoids splitting multi-MB strings on paint)
+void extractFirstTwoLines(const QString &rawText, QString &line1, QString &line2)
+{
+    constexpr qsizetype kMaxScanChars = 2048;
+    constexpr qsizetype kMaxLineChars = 256;
+    const QStringView view(rawText.constData(), qMin(rawText.size(), kMaxScanChars));
+
+    qsizetype pos = 0;
+    const qsizetype len = view.size();
+    while (pos < len && line2.isEmpty()) {
+        const qsizetype nl = view.indexOf(QLatin1Char('\n'), pos);
+        const qsizetype end = (nl < 0) ? len : nl;
+        const QStringView slice = view.sliced(pos, qMin(end - pos, kMaxLineChars));
+        const QString simplified = slice.toString().simplified();
+        if (!simplified.isEmpty()) {
+            if (line1.isEmpty()) {
+                line1 = simplified;
+            } else {
+                line2 = simplified;
+                break;
+            }
+        }
+        if (nl < 0) {
+            break;
+        }
+        pos = nl + 1;
+    }
+}
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -118,6 +147,7 @@ void HistoryFilterProxyModel::setSearchQuery(const QString &query)
     }
     m_rawQuery = query;
     m_foldedQuery = MklipperText::foldSearchText(query);
+    m_foldedTokens = MklipperText::splitSearchTokens(m_foldedQuery);
     invalidateFilter();
 }
 
@@ -156,19 +186,37 @@ bool HistoryFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
         break;
     }
 
-    if (m_foldedQuery.trimmed().isEmpty()) {
+    if (m_foldedTokens.isEmpty()) {
         return true;
     }
 
-    // Accent- and case-insensitive match across text + source metadata
-    if (MklipperText::matchesFoldedQuery(text, m_foldedQuery)) {
+    // Accent- and case-insensitive match across text + source metadata (fold text ONCE)
+    const QString foldedText = MklipperText::foldSearchText(text);
+    bool allInText = true;
+    for (const QString &token : m_foldedTokens) {
+        if (!foldedText.contains(token)) {
+            allInText = false;
+            break;
+        }
+    }
+    if (allInText) {
         return true;
     }
+
     const QString srcApp = idx.data(HistoryModel::SourceAppRole).toString();
     const QString srcTitle = idx.data(HistoryModel::SourceTitleRole).toString();
     const QString srcUrl = idx.data(HistoryModel::SourceUrlRole).toString();
-    const QString combined = text + QLatin1Char(' ') + srcApp + QLatin1Char(' ') + srcTitle + QLatin1Char(' ') + srcUrl;
-    return MklipperText::matchesFoldedQuery(combined, m_foldedQuery);
+    if (srcApp.isEmpty() && srcTitle.isEmpty() && srcUrl.isEmpty()) {
+        return false;
+    }
+    const QString foldedMeta = MklipperText::foldSearchText(
+        srcApp + QLatin1Char(' ') + srcTitle + QLatin1Char(' ') + srcUrl);
+    for (const QString &token : m_foldedTokens) {
+        if (!foldedText.contains(token) && !foldedMeta.contains(token)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,14 +229,22 @@ class ClipboardItemDelegate : public QStyledItemDelegate
 public:
     explicit ClipboardItemDelegate(QObject *parent = nullptr)
         : QStyledItemDelegate(parent)
+        , m_tokens(ThemeTokens::fromPalette(QApplication::palette()))
         , m_thumbCache(64)
     {
+    }
+
+    void refreshTheme(const ThemeTokens &tokens)
+    {
+        m_tokens = tokens;
     }
 
     static QRect cardRectFor(const QRect &itemRect)
     {
         return itemRect.adjusted(4, 2, -4, -3);
     }
+
+    QModelIndex hoveredIndex() const { return m_hoveredIndex; }
 
     void setHoveredIndex(const QModelIndex &idx, const QPoint &pos)
     {
@@ -350,8 +406,7 @@ public:
         const QString itemUuid = index.data(HistoryModel::UuidRole).toString();
         const qreal newHi = m_highlightIntensities.isEmpty() ? 0.0 : m_highlightIntensities.value(itemUuid, 0.0);
 
-        const QPalette basePal = QApplication::palette();
-        const ThemeTokens t = ThemeTokens::fromPalette(basePal);
+        const ThemeTokens &t = m_tokens;
 
         // Minimalist Cinnamon 6.6 flat surface layering (no heavy wireframe borders)
         QColor bg = t.surfaceBg;
@@ -456,13 +511,15 @@ public:
             const QUrl imgUrl = index.data(HistoryModel::ImageUrlRole).toUrl();
             const QString uuid = index.data(HistoryModel::UuidRole).toString();
             const int maxThumbH = qMax(36, contentRect.height() - 2);
-            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(92, maxThumbH));
+            const qreal dpr = painter->device() ? qMax<qreal>(1.0, painter->device()->devicePixelRatioF()) : 1.0;
+            QPixmap thumb = loadThumbnail(uuid, imgUrl.toLocalFile(), QSize(92, maxThumbH), dpr);
 
             if (!thumb.isNull()) {
+                const QSize logicalThumb = thumb.deviceIndependentSize().toSize();
                 const QRect thumbRect(contentRect.left(),
-                                      contentRect.center().y() - thumb.height() / 2,
-                                      thumb.width(),
-                                      thumb.height());
+                                      contentRect.center().y() - logicalThumb.height() / 2,
+                                      logicalThumb.width(),
+                                      logicalThumb.height());
                 painter->save();
                 QPainterPath thumbClip;
                 thumbClip.addRoundedRect(QRectF(thumbRect), 6.0, 6.0);
@@ -482,16 +539,16 @@ public:
             painter->drawText(contentRect, Qt::AlignVCenter | Qt::AlignLeft,
                               painter->fontMetrics().elidedText(label, Qt::ElideRight, contentRect.width()));
         } else {
-            QString rawText = index.data(Qt::DisplayRole).toString();
+            const QString rawText = index.data(Qt::DisplayRole).toString();
             if (type == HistoryItemType::Url) {
                 const QRectF iconRect(contentRect.left(), contentRect.center().y() - 7.0, 14.0, 14.0);
                 FlatIcons::paint(painter, FlatIcon::Link, iconRect, t.accent);
                 contentRect.setLeft(qRound(iconRect.right()) + 7);
             }
 
-            QStringList lines = rawText.trimmed().split(QLatin1Char('\n'), Qt::SkipEmptyParts);
-            QString line1 = lines.isEmpty() ? rawText.simplified() : lines.first().simplified();
-            QString line2 = (lines.size() > 1) ? lines.at(1).simplified() : QString();
+            QString line1;
+            QString line2;
+            extractFirstTwoLines(rawText, line1, line2);
 
             painter->setPen(t.textPrimary);
             QFont mainFont = option.font;
@@ -547,7 +604,7 @@ public:
                                  btns.first().rect.top() - 2,
                                  btns.first().rect.right() - btns.last().rect.left() + 7,
                                  btns.first().rect.height() + 4);
-            QColor pillBg = t.isDark ? t.surfaceBg : t.surfaceBg;
+            QColor pillBg = t.surfaceBg;
             pillBg.setAlpha(t.isDark ? 238 : 242);
             QPainterPath pillPath;
             pillPath.addRoundedRect(QRectF(pillRect).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
@@ -600,31 +657,39 @@ public:
     }
 
 private:
-    QPixmap loadThumbnail(const QString &uuid, const QString &filePath, const QSize &maxSize) const
+    QPixmap loadThumbnail(const QString &uuid, const QString &filePath, const QSize &maxLogicalSize, qreal dpr) const
     {
         if (filePath.isEmpty()) {
             return {};
         }
-        if (auto *cached = m_thumbCache.object(uuid)) {
-            return *cached;
+        const qreal safeDpr = qMax<qreal>(1.0, dpr);
+        const QSize targetPx(qMax(1, qRound(maxLogicalSize.width() * safeDpr)),
+                             qMax(1, qRound(maxLogicalSize.height() * safeDpr)));
+        const QString cacheKey = uuid + QLatin1Char('@') + QString::number(targetPx.width()) + QLatin1Char('x') + QString::number(targetPx.height());
+        if (auto *cached = m_thumbCache.object(cacheKey)) {
+            QPixmap copy = *cached;
+            copy.setDevicePixelRatio(safeDpr);
+            return copy;
         }
         QImageReader reader(filePath);
         reader.setAutoTransform(true);
         const QSize orig = reader.size();
         if (orig.isValid()) {
-            reader.setScaledSize(orig.scaled(maxSize, Qt::KeepAspectRatio));
+            reader.setScaledSize(orig.scaled(targetPx, Qt::KeepAspectRatio));
         }
         const QImage img = reader.read();
         if (img.isNull()) {
             return {};
         }
-        auto *pix = new QPixmap(QPixmap::fromImage(img.scaled(maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+        auto *pix = new QPixmap(QPixmap::fromImage(img.scaled(targetPx, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
         QPixmap copy = *pix;
-        m_thumbCache.insert(uuid, pix);
+        m_thumbCache.insert(cacheKey, pix);
+        copy.setDevicePixelRatio(safeDpr);
         return copy;
     }
 
-    QModelIndex m_hoveredIndex;
+    ThemeTokens m_tokens;
+    QPersistentModelIndex m_hoveredIndex;
     QPoint m_hoverPos;
     QHash<QString, qreal> m_highlightIntensities;
     mutable QCache<QString, QPixmap> m_thumbCache;
@@ -1266,6 +1331,9 @@ void KlipperPopup::applyTheme()
     if (m_previewWidget) {
         m_previewWidget->refreshTheme();
     }
+    if (m_delegate) {
+        m_delegate->refreshTheme(t);
+    }
     if (m_plainTextSwitch) {
         m_plainTextSwitch->update();
     }
@@ -1426,6 +1494,15 @@ bool KlipperPopup::event(QEvent *ev)
                 m_delegate->setNewHighlights({});
             }
         }
+        if (m_previewWidget) {
+            m_previewWidget->clearPreview();
+        }
+        if (m_editArea) {
+            m_editArea->clear();
+        }
+        m_editingUuid.clear();
+        m_lastHoverTooltip.clear();
+        m_lastHoverTooltipIndex = QModelIndex();
         m_pastingInProgress = false;
         ++m_pasteGeneration;
     } else if (ev->type() == QEvent::Enter && s->keepPopupOpen() && !m_pastingInProgress) {
@@ -1514,27 +1591,44 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
         if (ev->type() == QEvent::MouseMove) {
             auto *me = static_cast<QMouseEvent *>(ev);
             const QPoint pos = me->position().toPoint();
+            const QModelIndex prevIdx = m_delegate->hoveredIndex();
             const QModelIndex idx = m_listView->indexAt(pos);
             m_delegate->setHoveredIndex(idx, pos);
-            m_listView->viewport()->update();
 
+            // Repaint only affected row(s) instead of the entire viewport on every pixel move
+            if (prevIdx.isValid() && prevIdx != idx) {
+                m_listView->viewport()->update(m_listView->visualRect(prevIdx));
+            }
             if (idx.isValid()) {
+                m_listView->viewport()->update(m_listView->visualRect(idx));
                 const QRect cardRect = ClipboardItemDelegate::cardRectFor(m_listView->visualRect(idx));
                 QString tip;
-                if (m_delegate->hitTestButton(cardRect, idx, pos, &tip) != RowAction::None && !tip.isEmpty()) {
-                    QToolTip::showText(me->globalPosition().toPoint(), tip, m_listView->viewport());
-                } else {
-                    const QString srcTip = ClipboardItemDelegate::sourceTooltipFor(idx);
-                    if (!srcTip.isEmpty()) {
-                        QToolTip::showText(me->globalPosition().toPoint(), srcTip, m_listView->viewport());
+                if (m_delegate->hitTestButton(cardRect, idx, pos, &tip) == RowAction::None || tip.isEmpty()) {
+                    tip = ClipboardItemDelegate::sourceTooltipFor(idx);
+                }
+                if (tip != m_lastHoverTooltip || idx != m_lastHoverTooltipIndex) {
+                    m_lastHoverTooltip = tip;
+                    m_lastHoverTooltipIndex = idx;
+                    if (!tip.isEmpty()) {
+                        QToolTip::showText(me->globalPosition().toPoint(), tip, m_listView->viewport());
                     } else {
                         QToolTip::hideText();
                     }
                 }
+            } else if (!m_lastHoverTooltip.isEmpty() || m_lastHoverTooltipIndex.isValid()) {
+                m_lastHoverTooltip.clear();
+                m_lastHoverTooltipIndex = QModelIndex();
+                QToolTip::hideText();
             }
         } else if (ev->type() == QEvent::Leave) {
+            const QModelIndex prevIdx = m_delegate->hoveredIndex();
             m_delegate->setHoveredIndex(QModelIndex(), QPoint(-1, -1));
-            m_listView->viewport()->update();
+            m_lastHoverTooltip.clear();
+            m_lastHoverTooltipIndex = QModelIndex();
+            QToolTip::hideText();
+            if (prevIdx.isValid()) {
+                m_listView->viewport()->update(m_listView->visualRect(prevIdx));
+            }
         } else if (ev->type() == QEvent::MouseButtonRelease) {
             auto *me = static_cast<QMouseEvent *>(ev);
             if (me->button() == Qt::LeftButton) {
@@ -1897,6 +1991,13 @@ void KlipperPopup::invokeItemAction(const QModelIndex &proxyIndex)
 
 void KlipperPopup::returnToListPage()
 {
+    if (m_previewWidget) {
+        m_previewWidget->clearPreview();
+    }
+    if (m_editArea) {
+        m_editArea->clear();
+    }
+    m_editingUuid.clear();
     m_stack->setCurrentIndex(0);
     m_searchEdit->setFocus();
 }

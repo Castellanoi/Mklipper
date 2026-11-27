@@ -13,6 +13,7 @@
 #include <QClipboard>
 #include <QHash>
 #include <QPointer>
+#include <QSize>
 #include <QSqlDatabase>
 
 #include "historyitem.h"
@@ -110,6 +111,13 @@ private Q_SLOTS:
 private:
     explicit HistoryModel();
 
+    struct CachedImageMeta {
+        QString path;
+        QSize size;
+    };
+
+    CachedImageMeta cachedImageMeta(const QString &uuid) const;
+    void trimExcessItems();
     void moveToTop(qsizetype row);
     void touchLastUsedTime(qsizetype row);
     bool persistMimeData(const QString &uuid,
@@ -133,6 +141,7 @@ private:
     std::shared_ptr<SystemClipboard> m_clip;
     QList<HistoryItemPtr> m_items;
     QHash<QString, bool> m_starredCache;
+    mutable QHash<QString, CachedImageMeta> m_imageMetaCache;
     QPointer<URLGrabber> m_urlGrabber;
     int m_starredCount = 0;
     QString m_dbFolder;

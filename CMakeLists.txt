@@ -85,8 +85,11 @@ target_include_directories(mklipper_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+set(MKLIPPER_REPO_SLUG "Castellanoi/Mklipper" CACHE STRING "GitHub owner/repo slug used by the in-app updater")
+
 target_compile_definitions(mklipper_core PUBLIC
     MKLIPPER_VERSION="${PROJECT_VERSION}"
+    MKLIPPER_REPO_SLUG="${MKLIPPER_REPO_SLUG}"
 )
 
 target_link_libraries(mklipper_core PUBLIC
@@ -104,6 +107,11 @@ target_link_libraries(mklipper_core PUBLIC
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(mklipper_core PUBLIC
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wnon-virtual-dtor
+        -Woverloaded-virtual
         -fstack-protector-strong
         -Wformat
         -Wformat-security

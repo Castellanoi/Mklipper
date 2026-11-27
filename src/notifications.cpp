@@ -4,8 +4,12 @@
 */
 #include "notifications.h"
 
+#include <QCoreApplication>
 #include <QDBusConnection>
-#include <QDBusInterface>
+#include <QDBusMessage>
+#include <QDBusPendingCall>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 #include <QVariantMap>
 
 namespace Notifications
@@ -14,28 +18,37 @@ static quint32 s_lastNotificationId = 0;
 
 void show(const QString &title, const QString &body, int timeoutMs)
 {
-    QDBusInterface iface(QStringLiteral("org.freedesktop.Notifications"),
-                         QStringLiteral("/org/freedesktop/Notifications"),
-                         QStringLiteral("org.freedesktop.Notifications"),
-                         QDBusConnection::sessionBus());
-    if (!iface.isValid()) {
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected()) {
         return;
     }
 
     QVariantMap hints;
     hints.insert(QStringLiteral("desktop-entry"), QStringLiteral("mklipper"));
 
-    QDBusMessage reply = iface.call(QStringLiteral("Notify"),
-                                    QStringLiteral("Mklipper"),
-                                    s_lastNotificationId,
-                                    QStringLiteral("mklipper"),
-                                    title,
-                                    body.toHtmlEscaped(),
-                                    QStringList(),
-                                    hints,
-                                    timeoutMs);
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        s_lastNotificationId = reply.arguments().first().toUInt();
-    }
+    QDBusMessage msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.Notifications"),
+                                                      QStringLiteral("/org/freedesktop/Notifications"),
+                                                      QStringLiteral("org.freedesktop.Notifications"),
+                                                      QStringLiteral("Notify"));
+    msg.setArguments({
+        QStringLiteral("Mklipper"),
+        s_lastNotificationId,
+        QStringLiteral("mklipper"),
+        title,
+        body.toHtmlEscaped(),
+        QStringList(),
+        hints,
+        timeoutMs,
+    });
+
+    const QDBusPendingCall pending = bus.asyncCall(msg, 2000);
+    auto *watcher = new QDBusPendingCallWatcher(pending, QCoreApplication::instance());
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher, [](QDBusPendingCallWatcher *w) {
+        QDBusPendingReply<quint32> reply = *w;
+        if (!reply.isError()) {
+            s_lastNotificationId = reply.value();
+        }
+        w->deleteLater();
+    });
 }
 }

@@ -39,7 +39,7 @@ ClipAction::ClipAction(QSettings &settings, const QString &groupName)
     m_compiledRegex = QRegularExpression(m_regexPattern);
     m_description = settings.value(u"Description"_s).toString();
     m_automatic = settings.value(u"Automatic"_s, true).toBool();
-    const int numCommands = settings.value(u"Number of commands"_s, 0).toInt();
+    const int numCommands = qBound(0, settings.value(u"Number of commands"_s, 0).toInt(), 64);
     settings.endGroup();
 
     for (int i = 0; i < numCommands; ++i) {
@@ -50,7 +50,10 @@ ClipAction::ClipAction(QSettings &settings, const QString &groupName)
         cmd.description = settings.value(u"Description"_s).toString();
         cmd.isEnabled = settings.value(u"Enabled"_s, true).toBool();
         cmd.icon = settings.value(u"Icon"_s).toString();
-        cmd.output = static_cast<ClipCommand::Output>(settings.value(u"Output"_s, 0).toInt());
+        const int rawOut = qBound(static_cast<int>(ClipCommand::IGNORE),
+                                  settings.value(u"Output"_s, 0).toInt(),
+                                  static_cast<int>(ClipCommand::ADD));
+        cmd.output = static_cast<ClipCommand::Output>(rawOut);
         settings.endGroup();
         m_commands.append(cmd);
     }
@@ -150,8 +153,15 @@ QMimeType URLGrabber::urlMimeType(const QString &clipData) const
         return {};
     }
 
-    QUrl url = QUrl::fromUserInput(clipData);
-    if (clipData.startsWith(u"http://"_s) || clipData.startsWith(u"https://"_s)) {
+    if (clipData.startsWith(u"http://"_s, Qt::CaseInsensitive)
+        || clipData.startsWith(u"https://"_s, Qt::CaseInsensitive)) {
+        if (clipData.contains(QLatin1Char(' ')) || clipData.contains(QLatin1Char('\t'))) {
+            return {};
+        }
+        const QUrl httpUrl(clipData);
+        if (!httpUrl.isValid() || httpUrl.host().isEmpty()) {
+            return {};
+        }
         QMimeDatabase db;
         return db.mimeTypeForName(u"text/html"_s);
     }
@@ -173,9 +183,21 @@ QMimeType URLGrabber::urlMimeType(const QString &clipData) const
         return db.mimeTypeForFile(rawUrl.toLocalFile());
     }
 
-    if (rawUrl.scheme() == u"mailto"_s || rawUrl.scheme() == u"ftp"_s) {
+    const QString scheme = rawUrl.scheme().toLower();
+    if (scheme == u"mailto"_s || scheme == u"ftp"_s) {
+        if (clipData.contains(QLatin1Char(' ')) || clipData.contains(QLatin1Char('\t'))) {
+            return {};
+        }
+        if ((scheme == u"mailto"_s && rawUrl.path().isEmpty())
+            || (scheme == u"ftp"_s && rawUrl.host().isEmpty())) {
+            return {};
+        }
         QMimeDatabase db;
-        return db.mimeTypeForName(u"text/uri-list"_s);
+        QMimeType mt = db.mimeTypeForName(u"text/uri-list"_s);
+        if (!mt.isValid()) {
+            mt = db.mimeTypeForName(u"text/plain"_s);
+        }
+        return mt;
     }
 
     return {};
@@ -200,6 +222,11 @@ bool URLGrabber::hasMatchingActions(const HistoryItemConstPtr &item) const
 
 void URLGrabber::setActionList(const ActionList &list)
 {
+    m_popupKillTimer->stop();
+    m_commandMapper.clear();
+    m_ephemeralMatches.clear();
+    m_clipItem.reset();
+    m_menu.reset();
     qDeleteAll(m_actions);
     m_actions = list;
 }
@@ -303,7 +330,7 @@ void URLGrabber::slotItemSelected(QAction *action)
 
 void URLGrabber::execute(const ClipAction *action, int commandIdx) const
 {
-    if (!action || !m_clipItem) {
+    if (!action || !m_clipItem || commandIdx < 0 || commandIdx >= action->commands().size()) {
         return;
     }
     const ClipCommand cmd = action->command(commandIdx);
@@ -342,12 +369,17 @@ void URLGrabber::loadSettings()
     m_stripWhiteSpace = s->stripWhiteSpace();
     m_popupKillTimeout = s->timeoutForActionPopups();
 
+    m_popupKillTimer->stop();
+    m_commandMapper.clear();
+    m_ephemeralMatches.clear();
+    m_clipItem.reset();
+    m_menu.reset();
     qDeleteAll(m_actions);
     m_actions.clear();
 
     QSettings &raw = s->rawSettings();
     raw.beginGroup(u"CustomActions"_s);
-    const int num = raw.value(u"Count"_s, 0).toInt();
+    const int num = qBound(0, raw.value(u"Count"_s, 0).toInt(), 256);
     raw.endGroup();
 
     for (int i = 0; i < num; ++i) {

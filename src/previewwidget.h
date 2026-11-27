@@ -30,6 +30,7 @@ public:
     void setImagePreview(const QString &uuid,
                          const QString &imagePath,
                          const QString &metaLine);
+    void clearPreview();
     void refreshTheme();
 
 Q_SIGNALS:

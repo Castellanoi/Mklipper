@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include <QColor>
 #include <QDBusContext>
 #include <QObject>
 #include <QPointer>
@@ -132,4 +133,9 @@ private:
     bool m_urlGrabberEnabled = false;
     QString m_lastUrlGrabberText;
     QSet<QString> m_unreadUuids;
+    QStringList m_lastShortcutSignature;
+    bool m_hasTrayIconCache = false;
+    QRgb m_lastTrayAccent = 0;
+    bool m_lastTrayPaused = false;
+    int m_lastTrayBadge = -1;
 };

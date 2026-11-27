@@ -15,19 +15,20 @@
 
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 namespace
 {
-QColor blend(const QColor &base, const QColor &overlay, qreal ratio)
+QColor blend(const QColor &base, const QColor &overlay, float ratio)
 {
-    const qreal inv = 1.0 - ratio;
+    const float inv = 1.0f - ratio;
     return QColor::fromRgbF(
         base.redF() * inv + overlay.redF() * ratio,
         base.greenF() * inv + overlay.greenF() * ratio,
         base.blueF() * inv + overlay.blueF() * ratio,
-        1.0);
+        1.0f);
 }
 
 QString readGSetting(const QString &schema, const QString &key)
@@ -69,11 +70,13 @@ QString readGSetting(const QString &schema, const QString &key)
     close(pipefd[1]);
     QByteArray rawOut;
     char buf[256];
+    bool eofReached = false;
     struct pollfd pfd { pipefd[0], POLLIN, 0 };
     while (poll(&pfd, 1, 600) > 0) {
         if (pfd.revents & (POLLIN | POLLHUP)) {
             const ssize_t n = read(pipefd[0], buf, sizeof(buf));
             if (n <= 0) {
+                eofReached = true;
                 break;
             }
             rawOut.append(buf, static_cast<qsizetype>(n));
@@ -87,6 +90,24 @@ QString readGSetting(const QString &schema, const QString &key)
     close(pipefd[0]);
 
     int status = 0;
+    if (!eofReached) {
+        // Child timed out or flooded output: terminate cleanly so waitpid() can never block indefinitely
+        kill(pid, SIGTERM);
+        bool reaped = false;
+        for (int attempt = 0; attempt < 10; ++attempt) {
+            if (waitpid(pid, &status, WNOHANG) == pid) {
+                reaped = true;
+                break;
+            }
+            usleep(10000);
+        }
+        if (!reaped) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+        }
+        return {};
+    }
+
     waitpid(pid, &status, 0);
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
         return {};
@@ -119,12 +140,12 @@ QString detectGtkThemeName()
 bool detectPreferDark()
 {
     const QString portal = readGSetting(QStringLiteral("org.x.apps.portal"), QStringLiteral("color-scheme"));
-    if (portal.contains(QStringLiteral("dark"), Qt::CaseInsensitive)) {
-        return true;
+    if (!portal.isEmpty()) {
+        return portal.contains(QStringLiteral("dark"), Qt::CaseInsensitive);
     }
     const QString gnome = readGSetting(QStringLiteral("org.gnome.desktop.interface"), QStringLiteral("color-scheme"));
-    if (gnome.contains(QStringLiteral("dark"), Qt::CaseInsensitive)) {
-        return true;
+    if (!gnome.isEmpty()) {
+        return gnome.contains(QStringLiteral("dark"), Qt::CaseInsensitive);
     }
     const QString iniPath = QDir::homePath() + QStringLiteral("/.config/gtk-3.0/settings.ini");
     if (QFileInfo::exists(iniPath)) {
@@ -242,7 +263,16 @@ void collectDefineColorsFromFile(const QString &cssPath, QHash<QString, QString>
             const QString target = im.captured(1).trimmed();
             if (!target.startsWith(QStringLiteral("resource://")) && !target.contains(QStringLiteral(".."))) {
                 const QString resolved = QFileInfo(target).isAbsolute() ? target : baseDir.filePath(target);
-                collectDefineColorsFromFile(resolved, outDefs, depth + 1);
+                const QString home = QDir::homePath();
+                const bool safeImport = !QFileInfo(target).isAbsolute()
+                    || resolved.startsWith(QStringLiteral("/usr/share/themes/"))
+                    || resolved.startsWith(QStringLiteral("/usr/local/share/themes/"))
+                    || resolved.startsWith(home + QStringLiteral("/.themes/"))
+                    || resolved.startsWith(home + QStringLiteral("/.local/share/themes/"))
+                    || resolved.startsWith(home + QStringLiteral("/.config/gtk-3.0/"));
+                if (safeImport) {
+                    collectDefineColorsFromFile(resolved, outDefs, depth + 1);
+                }
             }
             continue;
         }
@@ -278,18 +308,18 @@ ThemeTokens ThemeTokens::fromPalette(const QPalette &pal)
 
     if (t.isDark) {
         // Cinnamon 6.6 dark surface layering (works cleanly even when Mint-Y Base == Window)
-        t.surfaceBg = blend(t.windowBg, Qt::white, 0.055);
-        t.surfaceHoverBg = blend(t.windowBg, Qt::white, 0.11);
-        t.surfaceActiveBg = blend(t.windowBg, Qt::white, 0.16);
-        t.inputBg = blend(t.windowBg, Qt::white, 0.07);
+        t.surfaceBg = blend(t.windowBg, Qt::white, 0.055f);
+        t.surfaceHoverBg = blend(t.windowBg, Qt::white, 0.11f);
+        t.surfaceActiveBg = blend(t.windowBg, Qt::white, 0.16f);
+        t.inputBg = blend(t.windowBg, Qt::white, 0.07f);
         t.hairline = QColor(255, 255, 255, 20);
         t.borderSubtle = QColor(255, 255, 255, 34);
     } else {
         // Cinnamon 6.6 / Mint-Y light surface layering
         const bool validLightBase = rawBase.isValid() && rawBase.alpha() > 0 && rawBase.lightness() > t.windowBg.lightness();
         t.surfaceBg = validLightBase ? rawBase : QColor(255, 255, 255);
-        t.surfaceHoverBg = blend(t.windowBg, Qt::black, 0.055);
-        t.surfaceActiveBg = blend(t.windowBg, Qt::black, 0.10);
+        t.surfaceHoverBg = blend(t.windowBg, Qt::black, 0.055f);
+        t.surfaceActiveBg = blend(t.windowBg, Qt::black, 0.10f);
         t.inputBg = t.surfaceBg;
         t.hairline = QColor(0, 0, 0, 18);
         t.borderSubtle = QColor(0, 0, 0, 32);
@@ -303,8 +333,8 @@ ThemeTokens ThemeTokens::fromPalette(const QPalette &pal)
     if (!t.accentFg.isValid() || t.accentFg.alpha() == 0) {
         t.accentFg = Qt::white;
     }
-    t.accentHover = t.isDark ? blend(t.accent, Qt::white, 0.12) : blend(t.accent, Qt::black, 0.08);
-    t.accentPressed = t.isDark ? blend(t.accent, Qt::black, 0.12) : blend(t.accent, Qt::black, 0.18);
+    t.accentHover = t.isDark ? blend(t.accent, Qt::white, 0.12f) : blend(t.accent, Qt::black, 0.08f);
+    t.accentPressed = t.isDark ? blend(t.accent, Qt::black, 0.12f) : blend(t.accent, Qt::black, 0.18f);
     t.accentSoft = QColor(t.accent.red(), t.accent.green(), t.accent.blue(), t.isDark ? 42 : 28);
     t.accentSoftStrong = QColor(t.accent.red(), t.accent.green(), t.accent.blue(), t.isDark ? 64 : 44);
 
@@ -408,9 +438,9 @@ bool syncApplicationPalette()
         const QColor opaqueBg(bg.red(), bg.green(), bg.blue(), 255);
         const bool isDark = opaqueBg.lightness() < 128;
         pal.setColor(QPalette::Window, opaqueBg);
-        pal.setColor(QPalette::Button, isDark ? blend(opaqueBg, Qt::white, 0.08) : blend(opaqueBg, Qt::black, 0.04));
-        pal.setColor(QPalette::AlternateBase, isDark ? blend(opaqueBg, Qt::white, 0.05) : blend(opaqueBg, Qt::black, 0.03));
-        pal.setColor(QPalette::ToolTipBase, isDark ? blend(opaqueBg, Qt::white, 0.10) : QColor(255, 255, 255));
+        pal.setColor(QPalette::Button, isDark ? blend(opaqueBg, Qt::white, 0.08f) : blend(opaqueBg, Qt::black, 0.04f));
+        pal.setColor(QPalette::AlternateBase, isDark ? blend(opaqueBg, Qt::white, 0.05f) : blend(opaqueBg, Qt::black, 0.03f));
+        pal.setColor(QPalette::ToolTipBase, isDark ? blend(opaqueBg, Qt::white, 0.10f) : QColor(255, 255, 255));
     }
     if (base.isValid()) {
         pal.setColor(QPalette::Base, QColor(base.red(), base.green(), base.blue(), 255));

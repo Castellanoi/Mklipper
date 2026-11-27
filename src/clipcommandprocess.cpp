@@ -14,7 +14,7 @@
 
 namespace
 {
-constexpr qsizetype kMaxCommandOutputChars = 10 * 1024 * 1024;
+constexpr qsizetype kMaxCommandOutputBytes = 10 * 1024 * 1024;
 
 QString stripNulBytes(QString value)
 {
@@ -163,15 +163,16 @@ void ClipCommandProcess::launch()
     start(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), m_shellCommand});
 }
 
-void ClipCommandProcess::slotFinished(int /*exitCode*/, QProcess::ExitStatus /*exitStatus*/)
+void ClipCommandProcess::slotFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    if (!m_newHistoryText.isEmpty()) {
+    const QString decodedOutput = m_rawOutput.isEmpty() ? QString() : QString::fromLocal8Bit(m_rawOutput);
+    if (!decodedOutput.isEmpty()) {
         auto data = std::make_unique<QMimeData>();
-        data->setText(m_newHistoryText);
+        data->setText(decodedOutput);
         m_clip->setMimeData(data.get(), SystemClipboard::SelectionMode(SystemClipboard::Selection | SystemClipboard::Clipboard));
         m_clip->checkClipData(QClipboard::Clipboard, data.get());
     }
-    if (m_historyItem) {
+    if (m_historyItem && (!decodedOutput.isEmpty() || (exitStatus == QProcess::NormalExit && exitCode == 0))) {
         m_model->remove(m_historyItem->uuid(), false);
     }
     deleteLater();
@@ -180,10 +181,9 @@ void ClipCommandProcess::slotFinished(int /*exitCode*/, QProcess::ExitStatus /*e
 void ClipCommandProcess::slotStdOutputAvailable()
 {
     const QByteArray chunk = readAllStandardOutput();
-    if (m_newHistoryText.size() >= kMaxCommandOutputChars) {
+    if (m_rawOutput.size() >= kMaxCommandOutputBytes) {
         return;
     }
-    const QString decoded = QString::fromLocal8Bit(chunk);
-    const qsizetype remaining = kMaxCommandOutputChars - m_newHistoryText.size();
-    m_newHistoryText.append(decoded.left(remaining));
+    const qsizetype remaining = kMaxCommandOutputBytes - m_rawOutput.size();
+    m_rawOutput.append(chunk.left(remaining));
 }

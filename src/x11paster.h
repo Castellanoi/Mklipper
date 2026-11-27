@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QWidget>
 
+#include "x11keyboard.h"
+
 class X11Paster : public QObject
 {
     Q_OBJECT
@@ -33,4 +35,5 @@ private:
     unsigned long m_targetWindow = 0;
     bool m_targetIsTerminal = false;
     quint64 m_pasteSerial = 0;
+    X11ModifierMap m_cachedModMap;
 };

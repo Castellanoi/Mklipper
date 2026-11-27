@@ -28,6 +28,36 @@ using namespace Qt::StringLiterals;
 namespace
 {
 constexpr int MAX_CLIPBOARD_CHANGES = 10;
+
+QMimeData *cloneMimeData(const QMimeData *data)
+{
+    if (!data) {
+        return nullptr;
+    }
+    auto *mimeData = new QMimeData;
+    const QStringList formats = data->formats();
+    if (data->hasImage()) {
+        mimeData->setImageData(data->imageData());
+    }
+    if (data->hasText()) {
+        mimeData->setText(data->text());
+    }
+    for (const QString &format : formats) {
+        if (format.startsWith(MimeTypes::plainText)
+            || format.startsWith(MimeTypes::imagePrefix)
+            || format == MimeTypes::qtImage) {
+            continue;
+        }
+        mimeData->setData(format, data->data(format));
+    }
+    // Preserve raw image/* payloads (such as exact PNG bytes) if present
+    for (const QString &format : formats) {
+        if (format.startsWith(MimeTypes::imagePrefix)) {
+            mimeData->setData(format, data->data(format));
+        }
+    }
+    return mimeData;
+}
 }
 
 std::shared_ptr<SystemClipboard> SystemClipboard::self()
@@ -91,7 +121,8 @@ void SystemClipboard::checkClipData(QClipboard::Mode mode, const QMimeData *data
         return;
     }
 
-    if (data->formats().isEmpty()) {
+    const QStringList fmts = data->formats();
+    if (fmts.isEmpty()) {
         // Empty clipboard on X11 when source application closes
         Q_EMIT receivedEmptyClipboard(mode);
         return;
@@ -99,7 +130,6 @@ void SystemClipboard::checkClipData(QClipboard::Mode mode, const QMimeData *data
 
     bool hasImageFormat = data->hasImage();
     if (!hasImageFormat) {
-        const QStringList fmts = data->formats();
         for (const QString &fmt : fmts) {
             if (fmt.startsWith(MimeTypes::imagePrefix)) {
                 hasImageFormat = true;
@@ -124,7 +154,7 @@ void SystemClipboard::clear(SelectionMode mode)
     if (!m_clip) {
         return;
     }
-    if (mode & Selection) {
+    if ((mode & Selection) && m_clip->supportsSelection()) {
         IgnoreLock lock(m_selectionLockLevel);
         m_clip->clear(QClipboard::Selection);
     }
@@ -251,8 +281,15 @@ void SystemClipboard::setMimeData(const HistoryItemConstPtr &item,
     if (!qobject_cast<QGuiApplication *>(QCoreApplication::instance()) || !item) {
         return;
     }
-    QMimeData *selData = (mode & Selection) ? loadMimeDataFromDatabase(item, plainTextOverride) : nullptr;
-    QMimeData *clipData = (mode & Clipboard) ? loadMimeDataFromDatabase(item, plainTextOverride) : nullptr;
+    const bool wantSel = (mode & Selection) != 0 && (!m_clip || m_clip->supportsSelection());
+    const bool wantClip = (mode & Clipboard) != 0;
+    if (!wantSel && !wantClip) {
+        return;
+    }
+    // Load from SQLite/disk ONCE and clone in memory if both Selection and Clipboard are requested
+    QMimeData *loaded = loadMimeDataFromDatabase(item, plainTextOverride);
+    QMimeData *selData = wantSel ? (wantClip ? cloneMimeData(loaded) : loaded) : nullptr;
+    QMimeData *clipData = wantClip ? loaded : nullptr;
     setMimeDataInternal(selData, clipData, updateReason);
 }
 
@@ -262,28 +299,8 @@ void SystemClipboard::setMimeData(const QMimeData *data, SelectionMode mode, Cli
         return;
     }
 
-    const QStringList formats = data->formats();
-    auto cloneData = [data, &formats]() {
-        auto *mimeData = new QMimeData;
-        if (data->hasImage()) {
-            mimeData->setImageData(data->imageData());
-        }
-        if (data->hasText()) {
-            mimeData->setText(data->text());
-        }
-        for (const QString &format : formats) {
-            if (format.startsWith(MimeTypes::plainText)
-                || format.startsWith(MimeTypes::imagePrefix)
-                || format == MimeTypes::qtImage) {
-                continue;
-            }
-            mimeData->setData(format, data->data(format));
-        }
-        return mimeData;
-    };
-
-    QMimeData *selData = (mode & Selection) ? cloneData() : nullptr;
-    QMimeData *clipData = (mode & Clipboard) ? cloneData() : nullptr;
+    QMimeData *selData = ((mode & Selection) && (!m_clip || m_clip->supportsSelection())) ? cloneMimeData(data) : nullptr;
+    QMimeData *clipData = (mode & Clipboard) ? cloneMimeData(data) : nullptr;
     setMimeDataInternal(selData, clipData, updateReason);
 }
 
@@ -331,11 +348,15 @@ void SystemClipboard::setMimeDataInternal(QMimeData *selectionMimeData, QMimeDat
         } else if (updateReason == ClipboardUpdateReason::SyncSelection) {
             clipboardMimeData->setData(u"application/x-kde-syncselection"_s, "1");
         }
+        auto holder = std::make_shared<std::unique_ptr<QMimeData>>(clipboardMimeData);
         QMetaObject::invokeMethod(
             this,
-            [this, clipboardMimeData]() {
+            [this, holder = std::move(holder)]() {
+                if (!m_clip || !*holder) {
+                    return;
+                }
                 IgnoreLock lock(m_clipboardLockLevel);
-                m_clip->setMimeData(clipboardMimeData, QClipboard::Clipboard);
+                m_clip->setMimeData(holder->release(), QClipboard::Clipboard);
             },
             updateReason == ClipboardUpdateReason::SyncSelection ? Qt::QueuedConnection : Qt::DirectConnection);
     }

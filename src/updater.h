@@ -61,6 +61,8 @@ public:
     static QString normalizeVersionString(const QString &rawTag);
     static bool isNewerVersion(const QString &candidate, const QString &current);
     static QString parseSha256ForFile(const QByteArray &checksumContent, const QString &fileName);
+    static bool isAllowedUrl(const QUrl &url);
+    static bool parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo);
 
 public Q_SLOTS:
     void checkForUpdates(bool userInitiated);
@@ -89,9 +91,7 @@ private:
     void setState(State newState);
     QUrl manifestUrl(bool bustCache) const;
     QUrl releasesApiUrl() const;
-    bool isAllowedUrl(const QUrl &url) const;
     void startCheckRequest(const QUrl &url, CheckSource source);
-    bool parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) const;
 
     void onCheckReplyFinished();
     void startDebDownload();
@@ -119,6 +119,8 @@ private:
     QString m_downloadedDebPath;
     qint64 m_downloadedBytes = 0;
     bool m_downloadSizeExceeded = false;
+    bool m_downloadWriteFailed = false;
+    bool m_redirectBlocked = false;
     QString m_expectedSha256;
     QString m_installOutput;
 };

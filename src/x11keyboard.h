@@ -44,7 +44,23 @@ struct X11ModifierMap {
 
 namespace X11Keyboard
 {
+class ScopedErrorGuard
+{
+public:
+    explicit ScopedErrorGuard(X11Display *dpy);
+    ~ScopedErrorGuard();
+    ScopedErrorGuard(const ScopedErrorGuard &) = delete;
+    ScopedErrorGuard &operator=(const ScopedErrorGuard &) = delete;
+
+private:
+    X11Display *m_dpy = nullptr;
+    void *m_prev = nullptr;
+};
+
 X11Display *display();
+
+// Cached XInternAtom per Display* (eliminates repeated synchronous X11 round-trips for constant atoms)
+unsigned long internAtomCached(X11Display *dpy, const char *name, bool onlyIfExists = false);
 
 // Queries the X11 server's live modifier mapping (zero hardcoded Mod1/Mod2/Mod4/ScrollLock assumptions)
 X11ModifierMap queryModifierMap(X11Display *dpy);

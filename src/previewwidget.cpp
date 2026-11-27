@@ -187,6 +187,21 @@ void PreviewWidget::setImagePreview(const QString &uuid,
     updateScaledImage();
 }
 
+void PreviewWidget::clearPreview()
+{
+    m_uuid.clear();
+    m_sourceImage = {};
+    if (m_imageLabel) {
+        m_imageLabel->clear();
+    }
+    if (m_textView) {
+        m_textView->clear();
+    }
+    if (m_metaLabel) {
+        m_metaLabel->clear();
+    }
+}
+
 void PreviewWidget::refreshTheme()
 {
     const QPalette appPal = QApplication::palette();

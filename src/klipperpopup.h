@@ -10,9 +10,11 @@
 
 #include <QFrame>
 #include <QHash>
+#include <QPersistentModelIndex>
 #include <QRect>
 #include <QSet>
 #include <QSortFilterProxyModel>
+#include <QStringList>
 
 class HistoryModel;
 class QAbstractButton;
@@ -62,6 +64,7 @@ private:
     CategoryFilter m_category = CategoryFilter::All;
     QString m_rawQuery;
     QString m_foldedQuery;
+    QStringList m_foldedTokens;
 };
 
 class KlipperPopup : public QFrame
@@ -182,4 +185,6 @@ private:
     QTimer *m_relTimeTimer = nullptr;
     QTimer *m_highlightTimer = nullptr;
     QHash<QString, qint64> m_highlightStartMs;
+    QString m_lastHoverTooltip;
+    QPersistentModelIndex m_lastHoverTooltipIndex;
 };

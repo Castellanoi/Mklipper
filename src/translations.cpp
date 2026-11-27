@@ -18,6 +18,7 @@
 #include <QTranslator>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 
 using namespace Qt::StringLiterals;
@@ -217,6 +218,17 @@ QString matchLocaleToPack(const QString &localeTag)
 
 std::unique_ptr<JsonMapTranslator> s_translator;
 QString s_activeLang;
+bool s_postRoutineRegistered = false;
+
+void cleanupTranslatorOnExit()
+{
+    if (s_translator) {
+        if (auto *app = QCoreApplication::instance()) {
+            app->removeTranslator(s_translator.get());
+        }
+        s_translator.reset();
+    }
+}
 } // namespace
 
 namespace MklipperTranslations
@@ -285,6 +297,10 @@ bool applyLanguage(const QString &configured)
     const bool changed = (target != previous);
 
     if (auto *app = QCoreApplication::instance()) {
+        if (!s_postRoutineRegistered) {
+            s_postRoutineRegistered = true;
+            qAddPostRoutine(cleanupTranslatorOnExit);
+        }
         if (s_translator) {
             app->removeTranslator(s_translator.get());
             s_translator.reset();

@@ -5,14 +5,21 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 
 namespace MklipperText
 {
 // Strips diacritics/accents (Unicode NFD) and lowercases text for accent-insensitive matching
 QString foldSearchText(const QString &input);
 
+// Splits a pre-folded search query into non-empty whitespace-delimited tokens
+QStringList splitSearchTokens(const QString &foldedQuery);
+
 // Multi-token accent- and case-insensitive match (all whitespace-separated tokens in foldedQuery must appear)
 bool matchesFoldedQuery(const QString &haystack, const QString &foldedQuery);
+
+// Fast match against pre-split folded tokens (avoids re-splitting per row)
+bool matchesFoldedTokens(const QString &haystack, const QStringList &foldedTokens);
 
 // Returns true if text contains an http://, https://, or ftp:// URL
 bool containsUrl(const QString &text);

@@ -6,7 +6,6 @@
 
 #include "x11keyboard.h"
 
-#include <QGuiApplication>
 #include <QStringList>
 #include <QTimer>
 
@@ -18,38 +17,6 @@
 
 namespace
 {
-int ignoreX11Error(Display *, XErrorEvent *)
-{
-    return 0;
-}
-
-class ScopedX11ErrorGuard
-{
-public:
-    explicit ScopedX11ErrorGuard(Display *dpy)
-        : m_dpy(dpy)
-        , m_prev(XSetErrorHandler(ignoreX11Error))
-    {
-    }
-    ~ScopedX11ErrorGuard()
-    {
-        if (m_dpy) {
-            XSync(m_dpy, False);
-        }
-        XSetErrorHandler(m_prev);
-    }
-
-private:
-    Display *m_dpy = nullptr;
-    int (*m_prev)(Display *, XErrorEvent *) = nullptr;
-};
-
-Display *x11Display()
-{
-    auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
-    return x11App ? x11App->display() : nullptr;
-}
-
 bool isTerminalClass(const QString &cls)
 {
     static const QStringList kTerminals = {
@@ -130,17 +97,12 @@ bool queryWindowIsTerminal(Display *dpy, Window win)
     return false;
 }
 
-bool anyBlockingModifierHeld(Display *dpy)
-{
-    return X11Keyboard::anyBlockingModifierHeld(dpy);
-}
-
 void activateWindow(Display *dpy, Window win)
 {
     if (!dpy || win == 0 || win == None) {
         return;
     }
-    const Atom netActive = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    const Atom netActive = X11Keyboard::internAtomCached(dpy, "_NET_ACTIVE_WINDOW", false);
     if (netActive == None) {
         return;
     }
@@ -166,14 +128,14 @@ X11Paster::X11Paster(QObject *parent)
 
 void X11Paster::captureTargetWindow(WId ownWindowId)
 {
-    Display *dpy = x11Display();
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
         return;
     }
 
-    ScopedX11ErrorGuard x11Guard(dpy);
+    X11Keyboard::ScopedErrorGuard x11Guard(dpy);
     Window active = 0;
-    const Atom netActive = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", True);
+    const Atom netActive = X11Keyboard::internAtomCached(dpy, "_NET_ACTIVE_WINDOW", true);
     if (netActive != None) {
         Atom actualType = None;
         int actualFormat = 0;
@@ -204,7 +166,8 @@ void X11Paster::captureTargetWindow(WId ownWindowId)
 void X11Paster::schedulePaste()
 {
     const quint64 serial = ++m_pasteSerial;
-    if (Display *dpy = x11Display()) {
+    if (Display *dpy = X11Keyboard::display()) {
+        m_cachedModMap = X11Keyboard::queryModifierMap(dpy);
         if (m_targetWindow != 0) {
             activateWindow(dpy, static_cast<Window>(m_targetWindow));
         }
@@ -215,7 +178,7 @@ void X11Paster::schedulePaste()
 
 void X11Paster::activateOwnWindow(WId ownWindowId) const
 {
-    if (Display *dpy = x11Display()) {
+    if (Display *dpy = X11Keyboard::display()) {
         if (ownWindowId != 0) {
             activateWindow(dpy, static_cast<Window>(ownWindowId));
         }
@@ -228,13 +191,13 @@ void X11Paster::attemptPaste(int retriesLeft, quint64 serial)
         return;
     }
 
-    Display *dpy = x11Display();
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
         Q_EMIT pasteFinished();
         return;
     }
 
-    if (retriesLeft > 0 && anyBlockingModifierHeld(dpy)) {
+    if (retriesLeft > 0 && X11Keyboard::queryLiveModifiers(dpy, m_cachedModMap) != Qt::NoModifier) {
         QTimer::singleShot(25, this, [this, retriesLeft, serial]() { attemptPaste(retriesLeft - 1, serial); });
         return;
     }
@@ -255,7 +218,16 @@ void X11Paster::sendPasteKeystroke() const
         return;
     }
 
-    const X11ModifierMap modMap = X11Keyboard::queryModifierMap(dpy);
+    X11Keyboard::ScopedErrorGuard x11Guard(dpy);
+    int evBase = 0;
+    int errBase = 0;
+    int major = 0;
+    int minor = 0;
+    if (!XTestQueryExtension(dpy, &evBase, &errBase, &major, &minor)) {
+        return;
+    }
+
+    const X11ModifierMap &modMap = m_cachedModMap;
     const KeyCode ctrl = !modMap.controlKeycodes.isEmpty() ? modMap.controlKeycodes.first() : XKeysymToKeycode(dpy, XK_Control_L);
     const KeyCode shift = !modMap.shiftKeycodes.isEmpty() ? modMap.shiftKeycodes.first() : XKeysymToKeycode(dpy, XK_Shift_L);
     const QList<KeyCode> vCodes = X11Keyboard::keycodesForKeysym(dpy, XK_v);

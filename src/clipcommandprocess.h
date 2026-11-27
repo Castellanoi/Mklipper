@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <QByteArray>
+#include <QHash>
 #include <QProcess>
 #include <QString>
 
@@ -29,17 +31,17 @@ public:
 
     void launch();
 
+    static QString shellQuote(const QString &value);
+    static QString expandMacros(const QString &command, const QHash<QChar, QString> &map);
+
 private Q_SLOTS:
     void slotFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void slotStdOutputAvailable();
 
 private:
-    static QString shellQuote(const QString &value);
-    static QString expandMacros(const QString &command, const QHash<QChar, QString> &map);
-
     std::shared_ptr<HistoryModel> m_model;
     std::shared_ptr<SystemClipboard> m_clip;
     HistoryItemConstPtr m_historyItem;
-    QString m_newHistoryText;
+    QByteArray m_rawOutput;
     QString m_shellCommand;
 };

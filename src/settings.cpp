@@ -184,10 +184,30 @@ bool MklipperSettings::autostartEnabled()
     if (QFile::exists(userFile)) {
         QFile f(userFile);
         if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            const QString content = QString::fromUtf8(f.readAll());
-            if (content.contains(QStringLiteral("Hidden=true"))
-                || content.contains(QStringLiteral("X-GNOME-Autostart-enabled=false"))) {
-                return false;
+            bool inDesktopEntry = false;
+            QTextStream in(&f);
+            while (!in.atEnd()) {
+                const QString line = in.readLine().trimmed();
+                if (line.isEmpty() || line.startsWith(QLatin1Char('#'))) {
+                    continue;
+                }
+                if (line.startsWith(QLatin1Char('[')) && line.endsWith(QLatin1Char(']'))) {
+                    inDesktopEntry = (line == QStringLiteral("[Desktop Entry]"));
+                    continue;
+                }
+                if (!inDesktopEntry) {
+                    continue;
+                }
+                const int eq = line.indexOf(QLatin1Char('='));
+                if (eq <= 0) {
+                    continue;
+                }
+                const QString key = line.left(eq).trimmed();
+                const QString val = line.mid(eq + 1).trimmed();
+                if ((key == QStringLiteral("Hidden") && val.compare(QStringLiteral("true"), Qt::CaseInsensitive) == 0)
+                    || (key == QStringLiteral("X-GNOME-Autostart-enabled") && val.compare(QStringLiteral("false"), Qt::CaseInsensitive) == 0)) {
+                    return false;
+                }
             }
             return true;
         }

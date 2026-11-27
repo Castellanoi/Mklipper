@@ -4,9 +4,11 @@
 */
 #include "sourceinfo.h"
 
+#include "x11keyboard.h"
+
 #include <QByteArray>
 #include <QFile>
-#include <QGuiApplication>
+#include <QHash>
 #include <QMimeData>
 #include <QRegularExpression>
 #include <QStringConverter>
@@ -20,38 +22,6 @@ using namespace Qt::StringLiterals;
 
 namespace
 {
-int ignoreX11Error(Display *, XErrorEvent *)
-{
-    return 0;
-}
-
-class ScopedX11ErrorGuard
-{
-public:
-    explicit ScopedX11ErrorGuard(Display *dpy)
-        : m_dpy(dpy)
-        , m_prev(XSetErrorHandler(ignoreX11Error))
-    {
-    }
-    ~ScopedX11ErrorGuard()
-    {
-        if (m_dpy) {
-            XSync(m_dpy, False);
-        }
-        XSetErrorHandler(m_prev);
-    }
-
-private:
-    Display *m_dpy = nullptr;
-    int (*m_prev)(Display *, XErrorEvent *) = nullptr;
-};
-
-Display *x11Display()
-{
-    auto *x11App = qGuiApp ? qGuiApp->nativeInterface<QNativeInterface::QX11Application>() : nullptr;
-    return x11App ? x11App->display() : nullptr;
-}
-
 bool isHttpUrl(const QString &candidate)
 {
     const QUrl u(candidate.trimmed());
@@ -105,7 +75,7 @@ unsigned long readX11Pid(Display *dpy, Window win)
     if (!dpy || win == 0 || win == None) {
         return 0;
     }
-    const Atom pidAtom = XInternAtom(dpy, "_NET_WM_PID", True);
+    const Atom pidAtom = X11Keyboard::internAtomCached(dpy, "_NET_WM_PID", true);
     if (pidAtom == None) {
         return 0;
     }
@@ -183,7 +153,7 @@ X11WindowMeta inspectX11Window(Display *dpy, Window win)
         return meta;
     }
 
-    const Atom netWmName = XInternAtom(dpy, "_NET_WM_NAME", True);
+    const Atom netWmName = X11Keyboard::internAtomCached(dpy, "_NET_WM_NAME", true);
     meta.title = readX11StringProp(dpy, win, netWmName);
     if (meta.title.isEmpty()) {
         meta.title = readX11StringProp(dpy, win, XA_WM_NAME);
@@ -208,7 +178,7 @@ Window queryActiveWindow(Display *dpy)
     if (!dpy) {
         return None;
     }
-    const Atom netActive = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", True);
+    const Atom netActive = X11Keyboard::internAtomCached(dpy, "_NET_ACTIVE_WINDOW", true);
     if (netActive != None) {
         Atom actualType = None;
         int actualFormat = 0;
@@ -437,28 +407,74 @@ QString cleanWindowTitle(const QString &rawTitle, const QString &appName)
     return title;
 }
 
-ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeData *mimeData)
+bool isSafeHttpUrl(const QString &candidate)
 {
-    ClipboardSourceInfo info;
-    info.url = extractSourceUrlFromMime(mimeData);
+    return isHttpUrl(candidate);
+}
 
-    Display *dpy = x11Display();
+ClipboardSourceInspection inspectClipboardSource(QClipboard::Mode mode,
+                                                 const QMimeData *mimeData,
+                                                 const QStringList &extraIgnored,
+                                                 bool captureDetails)
+{
+    ClipboardSourceInspection result;
+
+    Display *dpy = X11Keyboard::display();
     if (!dpy) {
-        return info;
+        if (captureDetails && mimeData) {
+            result.info.url = extractSourceUrlFromMime(mimeData);
+        }
+        return result;
     }
 
-    ScopedX11ErrorGuard x11Guard(dpy);
+    X11Keyboard::ScopedErrorGuard x11Guard(dpy);
 
-    const Atom selAtom = XInternAtom(dpy, mode == QClipboard::Selection ? "PRIMARY" : "CLIPBOARD", False);
+    const Atom selAtom = X11Keyboard::internAtomCached(dpy, mode == QClipboard::Selection ? "PRIMARY" : "CLIPBOARD", false);
     const Window ownerWin = (selAtom != None) ? XGetSelectionOwner(dpy, selAtom) : None;
     const Window activeWin = queryActiveWindow(dpy);
 
-    X11WindowMeta ownerMeta = inspectX11Window(dpy, ownerWin);
-    if (ownerMeta.isMklipper) {
-        return {};
+    X11WindowMeta ownerMeta;
+    if (ownerWin != 0 && ownerWin != None) {
+        ownerMeta = inspectX11Window(dpy, ownerWin);
+        if (isIgnoredWindowMeta(ownerMeta, extraIgnored)) {
+            result.ignored = true;
+            return result;
+        }
     }
 
-    X11WindowMeta activeMeta = (activeWin != ownerWin) ? inspectX11Window(dpy, activeWin) : ownerMeta;
+    X11WindowMeta activeMeta;
+    if (activeWin != 0 && activeWin != None) {
+        activeMeta = (activeWin == ownerWin) ? ownerMeta : inspectX11Window(dpy, activeWin);
+        if (activeWin != ownerWin && isIgnoredWindowMeta(activeMeta, extraIgnored)) {
+            result.ignored = true;
+            return result;
+        }
+    }
+
+    // Also inspect direct X11 input focus window in case a fullscreen lockscreen overrides focus without _NET_ACTIVE_WINDOW
+    Window focusedWin = None;
+    int revert = 0;
+    XGetInputFocus(dpy, &focusedWin, &revert);
+    if (focusedWin != 0 && focusedWin != None && focusedWin != PointerRoot
+        && focusedWin != ownerWin && focusedWin != activeWin) {
+        const X11WindowMeta focusMeta = inspectX11Window(dpy, focusedWin);
+        if (isIgnoredWindowMeta(focusMeta, extraIgnored)) {
+            result.ignored = true;
+            return result;
+        }
+    }
+
+    if (!captureDetails) {
+        return result;
+    }
+
+    if (ownerMeta.isMklipper) {
+        return result;
+    }
+
+    if (mimeData) {
+        result.info.url = extractSourceUrlFromMime(mimeData);
+    }
 
     QString rawClass = ownerMeta.resClass;
     QString rawName = ownerMeta.resName;
@@ -467,10 +483,10 @@ ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeDat
         rawName = activeMeta.resName;
     }
 
-    info.app = prettifyAppName(rawClass, rawName);
+    result.info.app = prettifyAppName(rawClass, rawName);
 
     QString rawTitle = ownerMeta.title;
-    if ((rawTitle.isEmpty() || rawTitle.compare(info.app, Qt::CaseInsensitive) == 0)
+    if ((rawTitle.isEmpty() || rawTitle.compare(result.info.app, Qt::CaseInsensitive) == 0)
         && !activeMeta.isMklipper
         && !activeMeta.title.isEmpty()) {
         const bool samePid = (ownerMeta.pid != 0 && ownerMeta.pid == activeMeta.pid);
@@ -480,8 +496,13 @@ ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeDat
         }
     }
 
-    info.title = cleanWindowTitle(rawTitle, info.app);
-    return info;
+    result.info.title = cleanWindowTitle(rawTitle, result.info.app);
+    return result;
+}
+
+ClipboardSourceInfo captureClipboardSource(QClipboard::Mode mode, const QMimeData *mimeData)
+{
+    return inspectClipboardSource(mode, mimeData, {}, true).info;
 }
 
 bool isIgnoredAppIdentifier(const QString &raw, const QStringList &extraIgnored)
@@ -523,43 +544,7 @@ bool isIgnoredAppIdentifier(const QString &raw, const QStringList &extraIgnored)
 
 bool isIgnoredClipboardSource(QClipboard::Mode mode, const QStringList &extraIgnored)
 {
-    Display *dpy = x11Display();
-    if (!dpy) {
-        return false;
-    }
-
-    ScopedX11ErrorGuard x11Guard(dpy);
-
-    const Atom selAtom = XInternAtom(dpy, mode == QClipboard::Selection ? "PRIMARY" : "CLIPBOARD", False);
-    const Window ownerWin = (selAtom != None) ? XGetSelectionOwner(dpy, selAtom) : None;
-    if (ownerWin != 0 && ownerWin != None) {
-        const X11WindowMeta ownerMeta = inspectX11Window(dpy, ownerWin);
-        if (isIgnoredWindowMeta(ownerMeta, extraIgnored)) {
-            return true;
-        }
-    }
-
-    const Window activeWin = queryActiveWindow(dpy);
-    if (activeWin != 0 && activeWin != None && activeWin != ownerWin) {
-        const X11WindowMeta activeMeta = inspectX11Window(dpy, activeWin);
-        if (isIgnoredWindowMeta(activeMeta, extraIgnored)) {
-            return true;
-        }
-    }
-
-    // Also inspect direct X11 input focus window in case a fullscreen lockscreen overrides focus without _NET_ACTIVE_WINDOW
-    Window focusedWin = None;
-    int revert = 0;
-    XGetInputFocus(dpy, &focusedWin, &revert);
-    if (focusedWin != 0 && focusedWin != None && focusedWin != PointerRoot
-        && focusedWin != ownerWin && focusedWin != activeWin) {
-        const X11WindowMeta focusMeta = inspectX11Window(dpy, focusedWin);
-        if (isIgnoredWindowMeta(focusMeta, extraIgnored)) {
-            return true;
-        }
-    }
-
-    return false;
+    return inspectClipboardSource(mode, nullptr, extraIgnored, false).ignored;
 }
 
 QString formatCompactSourceLabel(const QString &app, const QString &title, const QString &url)

@@ -28,6 +28,7 @@ class EditCommandDialog : public QDialog
 public:
     explicit EditCommandDialog(const ClipCommand &cmd, QWidget *parent = nullptr)
         : QDialog(parent)
+        , m_originalIcon(cmd.icon)
     {
         setWindowTitle(QObject::tr("Editar comando"));
         setMinimumWidth(460);
@@ -53,7 +54,8 @@ public:
         m_outputCombo->addItem(QObject::tr("Ignorar salida"), ClipCommand::IGNORE);
         m_outputCombo->addItem(QObject::tr("Reemplazar elemento en el portapapeles"), ClipCommand::REPLACE);
         m_outputCombo->addItem(QObject::tr("Agregar salida como nuevo elemento"), ClipCommand::ADD);
-        m_outputCombo->setCurrentIndex(static_cast<int>(cmd.output));
+        const int outIdx = m_outputCombo->findData(static_cast<int>(cmd.output));
+        m_outputCombo->setCurrentIndex(outIdx >= 0 ? outIdx : 0);
         m_enabledCheck = new QCheckBox(QObject::tr("Habilitado"), card);
         m_enabledCheck->setChecked(cmd.isEnabled);
 
@@ -95,11 +97,12 @@ public:
         return ClipCommand(m_cmdEdit->text().trimmed(),
                            m_descEdit->text().trimmed(),
                            m_enabledCheck->isChecked(),
-                           QStringLiteral("system-run"),
+                           m_originalIcon.isEmpty() ? QStringLiteral("system-run") : m_originalIcon,
                            static_cast<ClipCommand::Output>(m_outputCombo->currentData().toInt()));
     }
 
 private:
+    QString m_originalIcon;
     QLineEdit *m_cmdEdit = nullptr;
     QLineEdit *m_descEdit = nullptr;
     QComboBox *m_outputCombo = nullptr;
@@ -260,8 +263,11 @@ void EditActionDialog::editSelectedCommand()
     }
     EditCommandDialog dlg(m_commands.at(row), this);
     if (dlg.exec() == QDialog::Accepted) {
-        m_commands[row] = dlg.command();
-        refreshTable();
+        ClipCommand updated = dlg.command();
+        if (!updated.command.isEmpty()) {
+            m_commands[row] = std::move(updated);
+            refreshTable();
+        }
     }
 }
 

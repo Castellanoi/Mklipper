@@ -32,23 +32,47 @@ QString foldSearchText(const QString &input)
     return out;
 }
 
-bool matchesFoldedQuery(const QString &haystack, const QString &foldedQuery)
+QStringList splitSearchTokens(const QString &foldedQuery)
 {
-    const QString trimmedQuery = foldedQuery.trimmed();
-    if (trimmedQuery.isEmpty()) {
+    QStringList tokens;
+    qsizetype start = -1;
+    const qsizetype len = foldedQuery.size();
+    for (qsizetype i = 0; i < len; ++i) {
+        if (foldedQuery.at(i).isSpace()) {
+            if (start >= 0) {
+                tokens.append(foldedQuery.mid(start, i - start));
+                start = -1;
+            }
+        } else if (start < 0) {
+            start = i;
+        }
+    }
+    if (start >= 0) {
+        tokens.append(foldedQuery.mid(start));
+    }
+    return tokens;
+}
+
+bool matchesFoldedTokens(const QString &haystack, const QStringList &foldedTokens)
+{
+    if (foldedTokens.isEmpty()) {
         return true;
     }
     if (haystack.isEmpty()) {
         return false;
     }
     const QString foldedHaystack = foldSearchText(haystack);
-    const QStringList tokens = trimmedQuery.split(QRegularExpression(u"\\s+"_s), Qt::SkipEmptyParts);
-    for (const QString &token : tokens) {
+    for (const QString &token : foldedTokens) {
         if (!foldedHaystack.contains(token)) {
             return false;
         }
     }
     return true;
+}
+
+bool matchesFoldedQuery(const QString &haystack, const QString &foldedQuery)
+{
+    return matchesFoldedTokens(haystack, splitSearchTokens(foldedQuery));
 }
 
 bool containsUrl(const QString &text)

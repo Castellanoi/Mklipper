@@ -141,6 +141,10 @@ void KlipperApp::setupTrayIcon()
     }
 
     m_trayIcon = new QSystemTrayIcon(icon, this);
+    m_hasTrayIconCache = true;
+    m_lastTrayAccent = t.accent.rgba();
+    m_lastTrayPaused = m_historyModel->isCapturePaused();
+    m_lastTrayBadge = badgeCount;
     m_trayMenu = new QMenu;
     rebuildTrayMenu();
     m_trayIcon->setContextMenu(m_trayMenu);
@@ -154,8 +158,20 @@ void KlipperApp::updateTrayIcon()
         return;
     }
     const ThemeTokens t = ThemeTokens::fromPalette(QApplication::palette());
+    const bool paused = m_historyModel->isCapturePaused();
     const int badgeCount = MklipperSettings::self()->showTrayBadge() ? static_cast<int>(m_unreadUuids.size()) : 0;
-    m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, m_historyModel->isCapturePaused(), badgeCount));
+    const QRgb accentRgba = t.accent.rgba();
+    if (m_hasTrayIconCache
+        && m_lastTrayAccent == accentRgba
+        && m_lastTrayPaused == paused
+        && m_lastTrayBadge == badgeCount) {
+        return;
+    }
+    m_hasTrayIconCache = true;
+    m_lastTrayAccent = accentRgba;
+    m_lastTrayPaused = paused;
+    m_lastTrayBadge = badgeCount;
+    m_trayIcon->setIcon(FlatIcons::appLogoIcon(t.accent, paused, badgeCount));
 }
 
 bool KlipperApp::eventFilter(QObject *watched, QEvent *ev)
@@ -439,7 +455,24 @@ void KlipperApp::reloadConfig()
     }
     m_urlGrabber->loadSettings();
     m_historyModel->loadSettings();
-    registerShortcuts();
+
+    const QStringList shortcutSig = {
+        MklipperTranslations::activeLanguage(),
+        s->shortcutPopup(),
+        s->shortcutTogglePlainText(),
+        s->shortcutTogglePause(),
+        s->shortcutEditCurrent(),
+        s->shortcutShowQr(),
+        s->shortcutRepeatAction(),
+        s->shortcutCycleNext(),
+        s->shortcutCyclePrev(),
+        s->shortcutClearHistory(),
+    };
+    if (langChanged || shortcutSig != m_lastShortcutSignature) {
+        m_lastShortcutSignature = shortcutSig;
+        registerShortcuts();
+    }
+
     updateTrayIcon();
     updateTrayTooltip();
 }
@@ -933,9 +966,16 @@ void KlipperApp::slotCyclePrev()
 
 QString KlipperApp::cycleNotificationText() const
 {
-    auto shorten = [](const HistoryItemConstPtr &item) -> QString {
+    auto shorten = [this](const HistoryItemConstPtr &item) -> QString {
         if (!item) {
             return {};
+        }
+        if (item->type() == HistoryItemType::Image) {
+            const int row = m_historyModel->indexOf(item->uuid());
+            if (row >= 0) {
+                return m_historyModel->index(row).data(Qt::DisplayRole).toString();
+            }
+            return tr("Imagen");
         }
         QString s = item->text().simplified();
         if (s.size() > 60) {

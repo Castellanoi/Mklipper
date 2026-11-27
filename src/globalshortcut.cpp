@@ -7,7 +7,6 @@
 #include <QDebug>
 #include <QGuiApplication>
 #include <QProcess>
-#include <QRegularExpression>
 
 #include <X11/Xlib.h>
 #include <xcb/xcb.h>
@@ -38,10 +37,31 @@ QString runGSettings(const QStringList &args, bool *ok = nullptr)
 QStringList parseGSettingsStringList(const QString &raw)
 {
     QStringList items;
-    static const QRegularExpression re(QStringLiteral("'([^']*)'"));
-    auto it = re.globalMatch(raw);
-    while (it.hasNext()) {
-        items.append(it.next().captured(1));
+    const qsizetype len = raw.size();
+    qsizetype i = 0;
+    while (i < len) {
+        const QChar quote = raw.at(i);
+        if (quote != QLatin1Char('\'') && quote != QLatin1Char('"')) {
+            ++i;
+            continue;
+        }
+        ++i;
+        QString current;
+        while (i < len) {
+            const QChar ch = raw.at(i);
+            if (ch == QLatin1Char('\\') && i + 1 < len) {
+                current.append(raw.at(i + 1));
+                i += 2;
+                continue;
+            }
+            if (ch == quote) {
+                ++i;
+                break;
+            }
+            current.append(ch);
+            ++i;
+        }
+        items.append(current);
     }
     return items;
 }
@@ -145,6 +165,14 @@ bool GlobalShortcutManager::syncCinnamonShortcuts(const QList<CinnamonShortcutSp
 
 bool GlobalShortcutManager::registerShortcut(const QString &id, const QKeySequence &sequence, std::function<void()> callback)
 {
+    return registerShortcutInternal(id, sequence, std::move(callback), true);
+}
+
+bool GlobalShortcutManager::registerShortcutInternal(const QString &id,
+                                                     const QKeySequence &sequence,
+                                                     std::function<void()> callback,
+                                                     bool refreshModMap)
+{
     unregisterShortcut(id);
 
     if (sequence.isEmpty() || !callback) {
@@ -156,8 +184,10 @@ bool GlobalShortcutManager::registerShortcut(const QString &id, const QKeySequen
         return false;
     }
 
-    // Re-query the live X11 modifier map dynamically (no hardcoded Mod1/Mod2/Mod4/ScrollLock masks)
-    m_modMap = X11Keyboard::queryModifierMap(dpy);
+    if (refreshModMap) {
+        // Re-query the live X11 modifier map dynamically (no hardcoded Mod1/Mod2/Mod4/ScrollLock masks)
+        m_modMap = X11Keyboard::queryModifierMap(dpy);
+    }
 
     const QKeyCombination combo = sequence[0];
     const Qt::Key key = combo.key();
@@ -229,7 +259,7 @@ void GlobalShortcutManager::refreshAllGrabs()
     QList<GrabbedKey> existing = m_shortcuts;
     unregisterAll();
     for (auto &entry : existing) {
-        registerShortcut(entry.id, entry.sequence, std::move(entry.callback));
+        registerShortcutInternal(entry.id, entry.sequence, std::move(entry.callback), false);
     }
 }
 

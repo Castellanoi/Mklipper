@@ -25,15 +25,20 @@
 
 using namespace Qt::StringLiterals;
 
+#ifndef MKLIPPER_REPO_SLUG
+#define MKLIPPER_REPO_SLUG "Castellanoi/Mklipper"
+#endif
+
 namespace
 {
-constexpr auto kDefaultManifestUrl = "https://raw.githubusercontent.com/Castellanoi/Mklipper/main/dist/latest.json";
-constexpr auto kDefaultReleasesApiUrl = "https://api.github.com/repos/Castellanoi/Mklipper/releases/latest";
+constexpr auto kDefaultManifestUrl = "https://raw.githubusercontent.com/" MKLIPPER_REPO_SLUG "/main/dist/latest.json";
+constexpr auto kDefaultReleasesApiUrl = "https://api.github.com/repos/" MKLIPPER_REPO_SLUG "/releases/latest";
 constexpr int kApiTimeoutMs = 25000;
 constexpr int kDownloadTimeoutMs = 180000;
 constexpr qint64 kMaxApiBytes = 2 * 1024 * 1024;
 constexpr qint64 kMaxChecksumBytes = 64 * 1024;
 constexpr qint64 kMaxDebBytes = 50 * 1024 * 1024;
+constexpr qsizetype kMaxInstallOutputChars = 512 * 1024;
 
 bool isLoopbackHost(const QString &host)
 {
@@ -64,7 +69,10 @@ bool isSafeDebAssetName(const QString &name)
     return re.match(name).hasMatch();
 }
 
-bool verifyDebMetadata(const QString &debPath, const QString &expectedArch, QString &errorDetails)
+bool verifyDebMetadata(const QString &debPath,
+                       const QString &expectedArch,
+                       const QString &expectedVersion,
+                       QString &errorDetails)
 {
     auto queryField = [&](const QString &field, QString &valueOut) -> bool {
         QProcess proc;
@@ -94,6 +102,19 @@ bool verifyDebMetadata(const QString &debPath, const QString &expectedArch, QStr
         errorDetails = QStringLiteral("Architecture=%1 (expected %2)").arg(pkgArch, expectedArch);
         return false;
     }
+
+    if (!expectedVersion.isEmpty()) {
+        QString pkgVer;
+        if (!queryField(u"Version"_s, pkgVer)) {
+            return false;
+        }
+        const QString cleanPkgVer = Updater::normalizeVersionString(pkgVer);
+        const QString cleanExpVer = Updater::normalizeVersionString(expectedVersion);
+        if (cleanPkgVer != cleanExpVer) {
+            errorDetails = QStringLiteral("Version=%1 (expected %2)").arg(pkgVer, expectedVersion);
+            return false;
+        }
+    }
     return true;
 }
 
@@ -112,10 +133,10 @@ Updater::Updater(QObject *parent)
 
 Updater::~Updater()
 {
-    if (m_activeReply) {
-        m_activeReply->disconnect(this);
-        m_activeReply->abort();
+    if (QNetworkReply *reply = m_activeReply.data()) {
         m_activeReply = nullptr;
+        reply->disconnect(this);
+        reply->abort();
     }
     cleanupDownload();
 }
@@ -246,7 +267,7 @@ QUrl Updater::releasesApiUrl() const
     return QUrl(QString::fromLatin1(kDefaultReleasesApiUrl));
 }
 
-bool Updater::isAllowedUrl(const QUrl &url) const
+bool Updater::isAllowedUrl(const QUrl &url)
 {
     if (!url.isValid() || url.host().isEmpty()) {
         return false;
@@ -309,10 +330,17 @@ void Updater::startCheckRequest(const QUrl &url, CheckSource source)
 
     QNetworkReply *reply = m_nam->get(req);
     m_activeReply = reply;
+    m_redirectBlocked = false;
+    connect(reply, &QNetworkReply::redirected, this, [this, reply](const QUrl &target) {
+        if (!isAllowedUrl(target)) {
+            m_redirectBlocked = true;
+            reply->abort();
+        }
+    });
     connect(reply, &QNetworkReply::finished, this, &Updater::onCheckReplyFinished);
 }
 
-bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) const
+bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo)
 {
     QString tagName = obj.value(u"tag_name"_s).toString().trimmed();
     QString version = normalizeVersionString(tagName);
@@ -370,6 +398,7 @@ bool Updater::parseReleaseJson(const QJsonObject &obj, ReleaseInfo &outInfo) con
             info.assetName = name;
             info.assetUrl = downloadUrl;
             info.assetSize = asset.value(u"size"_s).toInteger();
+            info.expectedSha256.clear();
             const QString inlineSha = asset.value(u"sha256"_s).toString().trimmed();
             if (reSha256.match(inlineSha).hasMatch()) {
                 info.expectedSha256 = inlineSha.toLower();
@@ -432,12 +461,6 @@ void Updater::onCheckReplyFinished()
 
     const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
-    if (reply->error() == QNetworkReply::OperationCanceledError) {
-        setState(State::Idle);
-        Q_EMIT cancelled();
-        return;
-    }
-
     auto fallbackOrFinish = [&](bool treatAsUpToDate, const QString &errorMsg) {
         if (source == CheckSource::Manifest) {
             if (treatAsUpToDate) {
@@ -457,6 +480,18 @@ void Updater::onCheckReplyFinished()
             Q_EMIT checkFailed(errorMsg.isEmpty() ? m_primaryCheckError : errorMsg, userInitiated);
         }
     };
+
+    if (m_redirectBlocked) {
+        m_redirectBlocked = false;
+        fallbackOrFinish(false, tr("La URL de actualización redirigió a un dominio no permitido."));
+        return;
+    }
+
+    if (reply->error() == QNetworkReply::OperationCanceledError) {
+        setState(State::Idle);
+        Q_EMIT cancelled();
+        return;
+    }
 
     if (httpStatus == 404) {
         fallbackOrFinish(true, {});
@@ -549,6 +584,13 @@ void Updater::downloadAndInstall(const ReleaseInfo &release)
 
         QNetworkReply *reply = m_nam->get(req);
         m_activeReply = reply;
+        m_redirectBlocked = false;
+        connect(reply, &QNetworkReply::redirected, this, [this, reply](const QUrl &target) {
+            if (!isAllowedUrl(target)) {
+                m_redirectBlocked = true;
+                reply->abort();
+            }
+        });
         connect(reply, &QNetworkReply::finished, this, &Updater::onChecksumReplyFinished);
     } else {
         startDebDownload();
@@ -567,6 +609,13 @@ void Updater::onChecksumReplyFinished()
     }
 
     if (m_state != State::Downloading) {
+        return;
+    }
+
+    if (m_redirectBlocked) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("La descarga de verificación SHA-256 redirigió a un dominio no permitido."), {});
         return;
     }
 
@@ -635,6 +684,8 @@ void Updater::startDebDownload()
     m_downloadedDebPath = m_tempDir->filePath(safeName);
     m_downloadedBytes = 0;
     m_downloadSizeExceeded = false;
+    m_downloadWriteFailed = false;
+    m_redirectBlocked = false;
 
     m_downloadFile = std::make_unique<QFile>(m_downloadedDebPath);
     if (!m_downloadFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -654,6 +705,12 @@ void Updater::startDebDownload()
     QNetworkReply *reply = m_nam->get(req);
     m_activeReply = reply;
 
+    connect(reply, &QNetworkReply::redirected, this, [this, reply](const QUrl &target) {
+        if (!isAllowedUrl(target)) {
+            m_redirectBlocked = true;
+            reply->abort();
+        }
+    });
     connect(reply, &QNetworkReply::readyRead, this, &Updater::onDebReadyRead);
     connect(reply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
         const qint64 effectiveTotal = total > 0 ? total : m_pendingInstall.assetSize;
@@ -679,6 +736,7 @@ void Updater::onDebReadyRead()
         return;
     }
     if (m_downloadFile->write(chunk) != chunk.size()) {
+        m_downloadWriteFailed = true;
         reply->abort();
     }
 }
@@ -699,24 +757,44 @@ void Updater::onDebReplyFinished()
         return;
     }
 
+    QString writeErr;
     if (m_downloadFile && m_downloadFile->isOpen()) {
         const QByteArray tail = reply->readAll();
-        if (!tail.isEmpty()) {
+        if (!tail.isEmpty() && !m_downloadSizeExceeded && !m_downloadWriteFailed) {
             m_downloadedBytes += tail.size();
             if (m_downloadedBytes > kMaxDebBytes) {
                 m_downloadSizeExceeded = true;
-            } else {
-                m_downloadFile->write(tail);
+            } else if (m_downloadFile->write(tail) != tail.size()) {
+                m_downloadWriteFailed = true;
             }
         }
-        m_downloadFile->flush();
+        if (!m_downloadWriteFailed && !m_downloadFile->flush()) {
+            m_downloadWriteFailed = true;
+        }
+        if (m_downloadWriteFailed) {
+            writeErr = m_downloadFile->errorString();
+        }
         m_downloadFile->close();
+    }
+
+    if (m_redirectBlocked) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("La descarga del paquete redirigió a un dominio no permitido."), {});
+        return;
     }
 
     if (m_downloadSizeExceeded) {
         cleanupDownload();
         setState(State::Idle);
         Q_EMIT installFailed(tr("El paquete descargado excede el tamaño máximo permitido."), {});
+        return;
+    }
+
+    if (m_downloadWriteFailed) {
+        cleanupDownload();
+        setState(State::Idle);
+        Q_EMIT installFailed(tr("No se pudo abrir el archivo temporal para escribir la actualización."), writeErr);
         return;
     }
 
@@ -795,7 +873,7 @@ void Updater::onDebReplyFinished()
     verifyFile.close();
 
     QString metaErr;
-    if (!verifyDebMetadata(m_downloadedDebPath, systemArchitecture(), metaErr)) {
+    if (!verifyDebMetadata(m_downloadedDebPath, systemArchitecture(), m_pendingInstall.version, metaErr)) {
         cleanupDownload();
         setState(State::Idle);
         Q_EMIT installFailed(
@@ -828,7 +906,12 @@ void Updater::launchPackageInstall(const QString &debPath)
     proc->setProcessChannelMode(QProcess::MergedChannels);
 
     connect(proc, &QProcess::readyReadStandardOutput, this, [this, proc]() {
-        m_installOutput.append(QString::fromUtf8(proc->readAllStandardOutput()));
+        if (m_installOutput.size() < kMaxInstallOutputChars) {
+            const QString chunk = QString::fromUtf8(proc->readAllStandardOutput());
+            m_installOutput.append(chunk.left(kMaxInstallOutputChars - m_installOutput.size()));
+        } else {
+            proc->readAllStandardOutput();
+        }
     });
 
     connect(proc, &QProcess::errorOccurred, this, [this, proc](QProcess::ProcessError error) {
@@ -885,11 +968,11 @@ void Updater::launchPackageInstall(const QString &debPath)
 
 void Updater::cancel()
 {
-    if (m_activeReply) {
-        m_activeReply->abort();
+    if (QNetworkReply *reply = m_activeReply.data()) {
+        reply->abort();
         return;
     }
-    if (m_installProcess && m_installProcess->state() != QProcess::NotRunning) {
+    if (QProcess *proc = m_installProcess.data(); proc && proc->state() != QProcess::NotRunning) {
         // Do not abruptly kill apt/dpkg mid-transaction; let it finish safely
         return;
     }
@@ -908,5 +991,7 @@ void Updater::cleanupDownload()
     m_downloadedDebPath.clear();
     m_downloadedBytes = 0;
     m_downloadSizeExceeded = false;
+    m_downloadWriteFailed = false;
+    m_redirectBlocked = false;
     m_tempDir.reset();
 }
