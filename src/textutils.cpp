@@ -9,6 +9,7 @@
 #include <QLocale>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QUrl>
 
 using namespace Qt::StringLiterals;
 
@@ -84,6 +85,27 @@ bool containsUrl(const QString &text)
         QStringLiteral(R"(\b(?:https?|ftp)://[^\s<>"]+)"),
         QRegularExpression::CaseInsensitiveOption);
     return kUrlRe.match(text).hasMatch();
+}
+
+bool isExactUrl(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.size() < 8) {
+        return false;
+    }
+    static const QRegularExpression kExactUrlRe(
+        QStringLiteral(R"(^(?:https?|ftp)://[^\s<>"]+$)"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (!kExactUrlRe.match(trimmed).hasMatch()) {
+        return false;
+    }
+    const QUrl url(trimmed, QUrl::StrictMode);
+    if (!url.isValid() || url.host().isEmpty()) {
+        // Fallback to tolerant mode for URLs with unencoded unicode/brackets while still requiring host & scheme
+        const QUrl tolerant(trimmed);
+        return tolerant.isValid() && !tolerant.host().isEmpty();
+    }
+    return true;
 }
 
 QString formatRelativeTime(qreal epochSeconds, qint64 nowMs)

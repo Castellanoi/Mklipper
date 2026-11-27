@@ -9,6 +9,13 @@
 #include <QString>
 #include <QStringList>
 
+enum class ActionBarMode {
+    MenuHoverOrClick = 0,
+    MenuClickOnly = 1,
+    AlwaysOnHover = 2,
+    AlwaysVisible = 3,
+};
+
 class MklipperSettings : public QObject
 {
     Q_OBJECT
@@ -128,6 +135,28 @@ public:
     QString skippedUpdateVersion() const { return m_skippedUpdateVersion; }
     void setSkippedUpdateVersion(const QString &v) { m_skippedUpdateVersion = v; }
 
+    // Tooltips
+    bool tooltipItemInfo() const { return m_tooltipItemInfo; }
+    void setTooltipItemInfo(bool v) { m_tooltipItemInfo = v; }
+
+    bool tooltipItemActions() const { return m_tooltipItemActions; }
+    void setTooltipItemActions(bool v) { m_tooltipItemActions = v; }
+
+    bool tooltipHeaderButtons() const { return m_tooltipHeaderButtons; }
+    void setTooltipHeaderButtons(bool v) { m_tooltipHeaderButtons = v; }
+
+    bool tooltipPlainTextSwitch() const { return m_tooltipPlainTextSwitch; }
+    void setTooltipPlainTextSwitch(bool v) { m_tooltipPlainTextSwitch = v; }
+
+    int tooltipDelayMs() const { return m_tooltipDelayMs; }
+    void setTooltipDelayMs(int v) { m_tooltipDelayMs = qBound(0, v, 3000); }
+
+    ActionBarMode actionBarMode() const { return m_actionBarMode; }
+    void setActionBarMode(ActionBarMode mode) { m_actionBarMode = mode; }
+
+    bool actionBarAnimation() const { return m_actionBarAnimation; }
+    void setActionBarAnimation(bool v) { m_actionBarAnimation = v; }
+
     // Autostart helper (user-level ~/.config/autostart/mklipper.desktop)
     static bool autostartEnabled();
     static void setAutostartEnabled(bool enabled);
@@ -181,4 +210,12 @@ private:
 
     bool m_autoCheckUpdates = true;
     QString m_skippedUpdateVersion;
+
+    bool m_tooltipItemInfo = true;
+    bool m_tooltipItemActions = true;
+    bool m_tooltipHeaderButtons = true;
+    bool m_tooltipPlainTextSwitch = true;
+    int m_tooltipDelayMs = 500;
+    ActionBarMode m_actionBarMode = ActionBarMode::MenuHoverOrClick;
+    bool m_actionBarAnimation = true;
 };

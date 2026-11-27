@@ -46,6 +46,8 @@ enum class FlatIcon {
     FileText,
     ChevronDown,
     ChevronUp,
+    Tooltip,
+    MoreVertical,
 };
 
 namespace FlatIcons

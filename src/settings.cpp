@@ -12,6 +12,36 @@
 
 namespace
 {
+QString actionBarModeToString(ActionBarMode mode)
+{
+    switch (mode) {
+    case ActionBarMode::MenuHoverOrClick:
+        return QStringLiteral("menu_hover_click");
+    case ActionBarMode::MenuClickOnly:
+        return QStringLiteral("menu_click");
+    case ActionBarMode::AlwaysOnHover:
+        return QStringLiteral("hover");
+    case ActionBarMode::AlwaysVisible:
+        return QStringLiteral("always");
+    }
+    return QStringLiteral("menu_hover_click");
+}
+
+ActionBarMode actionBarModeFromString(const QString &raw)
+{
+    const QString s = raw.trimmed().toLower();
+    if (s == QStringLiteral("menu_click")) {
+        return ActionBarMode::MenuClickOnly;
+    }
+    if (s == QStringLiteral("hover")) {
+        return ActionBarMode::AlwaysOnHover;
+    }
+    if (s == QStringLiteral("always")) {
+        return ActionBarMode::AlwaysVisible;
+    }
+    return ActionBarMode::MenuHoverOrClick;
+}
+
 void enforcePrivateConfigPermissions(const QString &iniPath)
 {
     if (iniPath.isEmpty()) {
@@ -93,6 +123,17 @@ void MklipperSettings::load()
     m_autoCheckUpdates = m_settings.value(QStringLiteral("AutoCheck"), true).toBool();
     m_skippedUpdateVersion = m_settings.value(QStringLiteral("SkippedVersion"), QString()).toString();
     m_settings.endGroup();
+
+    m_settings.beginGroup(QStringLiteral("Tooltips"));
+    m_tooltipItemInfo = m_settings.value(QStringLiteral("ShowItemInfo"), true).toBool();
+    m_tooltipItemActions = m_settings.value(QStringLiteral("ShowItemActions"), true).toBool();
+    m_tooltipHeaderButtons = m_settings.value(QStringLiteral("ShowHeaderButtons"), true).toBool();
+    m_tooltipPlainTextSwitch = m_settings.value(QStringLiteral("ShowPlainTextSwitch"), true).toBool();
+    m_tooltipDelayMs = qBound(0, m_settings.value(QStringLiteral("DelayMs"), 500).toInt(), 3000);
+    m_actionBarMode = actionBarModeFromString(
+        m_settings.value(QStringLiteral("ActionBarMode"), QStringLiteral("menu_hover_click")).toString());
+    m_actionBarAnimation = m_settings.value(QStringLiteral("ActionBarAnimation"), true).toBool();
+    m_settings.endGroup();
 }
 
 void MklipperSettings::save()
@@ -143,6 +184,16 @@ void MklipperSettings::save()
     m_settings.beginGroup(QStringLiteral("Updates"));
     m_settings.setValue(QStringLiteral("AutoCheck"), m_autoCheckUpdates);
     m_settings.setValue(QStringLiteral("SkippedVersion"), m_skippedUpdateVersion);
+    m_settings.endGroup();
+
+    m_settings.beginGroup(QStringLiteral("Tooltips"));
+    m_settings.setValue(QStringLiteral("ShowItemInfo"), m_tooltipItemInfo);
+    m_settings.setValue(QStringLiteral("ShowItemActions"), m_tooltipItemActions);
+    m_settings.setValue(QStringLiteral("ShowHeaderButtons"), m_tooltipHeaderButtons);
+    m_settings.setValue(QStringLiteral("ShowPlainTextSwitch"), m_tooltipPlainTextSwitch);
+    m_settings.setValue(QStringLiteral("DelayMs"), m_tooltipDelayMs);
+    m_settings.setValue(QStringLiteral("ActionBarMode"), actionBarModeToString(m_actionBarMode));
+    m_settings.setValue(QStringLiteral("ActionBarAnimation"), m_actionBarAnimation);
     m_settings.endGroup();
 
     m_settings.sync();

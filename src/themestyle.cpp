@@ -912,6 +912,31 @@ QString dialogStyleSheet(const ThemeTokens &t)
             background-color: %ACCENT%;
             border-radius: 3px;
         }
+        QSlider::groove:horizontal {
+            border: none;
+            height: 5px;
+            background: %SURFACE_HOVER%;
+            border-radius: 2.5px;
+        }
+        QSlider::sub-page:horizontal {
+            background: %ACCENT%;
+            border-radius: 2.5px;
+        }
+        QSlider::add-page:horizontal {
+            background: %SURFACE_HOVER%;
+            border-radius: 2.5px;
+        }
+        QSlider::handle:horizontal {
+            background: %ACCENT%;
+            border: 2px solid %SURFACE%;
+            width: 14px;
+            height: 14px;
+            margin: -5px 0;
+            border-radius: 9px;
+        }
+        QSlider::handle:horizontal:hover {
+            background: %ACCENT_HOVER%;
+        }
         QScrollArea {
             background: transparent;
             border: none;

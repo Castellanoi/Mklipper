@@ -9,6 +9,7 @@
 #include "helpdialog.h"
 #include "historycycler.h"
 #include "historymodel.h"
+#include "hovertooltip.h"
 #include "klipperpopup.h"
 #include "previewwidget.h"
 #include "qrcodewidget.h"
@@ -17,6 +18,7 @@
 #include "systemclipboard.h"
 #include "textutils.h"
 #include "themestyle.h"
+#include "tooltippreviewwidget.h"
 #include "translations.h"
 #include "updatedialog.h"
 #include "updater.h"
@@ -95,6 +97,15 @@ void testTextUtils()
     CHECK(MklipperText::containsUrl(u"ftp://files.example.org/pub"_s));
     CHECK(!MklipperText::containsUrl(u"just plain text without links"_s));
     CHECK(!MklipperText::containsUrl(u"short"_s));
+
+    // Exact URL detection (must be strictly a single URL, not text containing a URL)
+    CHECK(MklipperText::isExactUrl(u"https://github.com/Castellanoi/Mklipper"_s));
+    CHECK(MklipperText::isExactUrl(u"  HTTP://EXAMPLE.ORG/test?q=1#top  "_s));
+    CHECK(MklipperText::isExactUrl(u"ftp://files.example.org/pub"_s));
+    CHECK(!MklipperText::isExactUrl(u"Check https://github.com/Castellanoi/Mklipper now"_s));
+    CHECK(!MklipperText::isExactUrl(u"https://a.com https://b.com"_s));
+    CHECK(!MklipperText::isExactUrl(u"https://"_s));
+    CHECK(!MklipperText::isExactUrl(u"plain text"_s));
 
     // Deterministic relative timestamps
     MklipperTranslations::applyLanguage(u"es"_s);
@@ -265,6 +276,14 @@ void testHistoryModelAndFilters(const QString &tmpDir)
 
     proxy.setCategoryFilter(HistoryFilterProxyModel::CategoryFilter::Links);
     CHECK(proxy.rowCount() == 2); // uriMime + linkMime
+
+    // Paragraph merely containing a URL must NOT appear under Links filter
+    QMimeData textWithEmbeddedUrl;
+    textWithEmbeddedUrl.setText(u"Mira este sitio: https://linuxmint.com/download cuando puedas"_s);
+    CHECK(model->insert(&textWithEmbeddedUrl));
+    CHECK(proxy.rowCount() == 2);
+    model->remove(model->index(0).data(HistoryModel::UuidRole).toString(), false);
+    CHECK(proxy.rowCount() == 2);
 
     proxy.setCategoryFilter(HistoryFilterProxyModel::CategoryFilter::Starred);
     CHECK(proxy.rowCount() == 3);
@@ -944,6 +963,160 @@ void testUiWidgetsAndDialogsSmoke(const QString &tmpDir)
     std::unique_ptr<ClipAction> takenAction(actDlg.takeAction());
     CHECK(takenAction != nullptr);
 }
+
+void testTooltipsFormattingControllerAndSettings()
+{
+    MklipperTranslations::applyLanguage(u"es"_s);
+    const QFont tipFont = QToolTip::font();
+    const QFontMetrics fm(tipFont);
+    const int maxW = 260;
+
+    // Short line untouched; long URL truncated to fixed width ending with "..."
+    CHECK(HoverTooltip::elideLine(u"Firefox"_s, fm, maxW) == u"Firefox"_s);
+    const QString longUrl = u"https://example.com/"_s + QString(300, QLatin1Char('a'));
+    const QString elidedUrl = HoverTooltip::elideLine(longUrl, fm, maxW);
+    CHECK(elidedUrl.endsWith(u"..."_s));
+    CHECK(elidedUrl.size() < longUrl.size());
+    CHECK(fm.horizontalAdvance(elidedUrl) <= maxW);
+
+    // Multi-KB input is safely bounded and truncated with "..."
+    const QString hugeUrl = u"https://example.com/"_s + QString(20000, QLatin1Char('z'));
+    const QString elidedHuge = HoverTooltip::elideLine(hugeUrl, fm, maxW);
+    CHECK(elidedHuge.endsWith(u"..."_s));
+    CHECK(fm.horizontalAdvance(elidedHuge) <= maxW);
+
+    // formatSourceTooltip trims each line to maxW and omits empty fields
+    const QString srcTip = HoverTooltip::formatSourceTooltip(
+        u"Firefox"_s,
+        u"Un título de ventana extremadamente largo que debería cortarse de manera prolija para no ocupar toda la pantalla"_s,
+        longUrl,
+        u"Hace 2 min"_s,
+        tipFont,
+        maxW);
+    const QStringList srcLines = srcTip.split(QLatin1Char('\n'));
+    CHECK(srcLines.size() == 4);
+    for (const QString &line : srcLines) {
+        CHECK(fm.horizontalAdvance(line) <= maxW);
+    }
+    CHECK(srcLines.at(2).endsWith(u"..."_s));
+    CHECK(HoverTooltip::formatSourceTooltip({}, {}, {}, {}).isEmpty());
+
+    // formatWrappedTooltip wraps long text and elides unbreakable tokens
+    const QString wrapped = HoverTooltip::formatWrappedTooltip(
+        u"Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos). "_s + longUrl,
+        tipFont,
+        maxW);
+    const QStringList wrappedLines = wrapped.split(QLatin1Char('\n'));
+    CHECK(wrappedLines.size() >= 2);
+    for (const QString &line : wrappedLines) {
+        CHECK(fm.horizontalAdvance(line) <= maxW);
+    }
+    CHECK(wrappedLines.last().endsWith(u"..."_s));
+
+    // prepareDisplayText escapes HTML-like text safely while leaving plain text untouched
+    CHECK(HoverTooltip::prepareDisplayText(u"Aplicación: Firefox"_s) == u"Aplicación: Firefox"_s);
+    const QString richSafe = HoverTooltip::prepareDisplayText(u"Ventana: <b>Prueba</b>\nEnlace: https://a.com"_s);
+    CHECK(richSafe.contains(u"&lt;b&gt;Prueba&lt;/b&gt;"_s));
+    CHECK(richSafe.contains(u"<br>"_s));
+
+    // HoverTooltipController: category enable/disable, 0ms immediate show, >0ms delay & cancel
+    QWidget host;
+    host.resize(200, 100);
+    host.show();
+    HoverTooltipController ctrl(&host);
+
+    TooltipConfig cfg;
+    cfg.itemInfo = true;
+    cfg.itemActions = false;
+    cfg.headerButtons = true;
+    cfg.plainTextSwitch = true;
+    cfg.delayMs = 0;
+    ctrl.setConfig(cfg);
+
+    ctrl.hoverTarget(u"row:0:act:1"_s, TooltipCategory::ItemActions, u"Eliminar"_s, QPoint(10, 10), &host, host.rect());
+    CHECK(ctrl.visibleKey().isEmpty());
+    CHECK(!ctrl.isPending());
+
+    ctrl.hoverTarget(u"row:0:info"_s, TooltipCategory::ItemInfo, u"Aplicación: Firefox"_s, QPoint(10, 10), &host, host.rect());
+    CHECK(ctrl.visibleKey() == u"row:0:info"_s);
+    CHECK(ctrl.visibleText() == u"Aplicación: Firefox"_s);
+
+    // Disabling active category hides it immediately
+    cfg.itemInfo = false;
+    ctrl.setConfig(cfg);
+    CHECK(ctrl.visibleKey().isEmpty());
+
+    // Non-zero delay starts timer and fires after elapsed delay
+    cfg.itemInfo = true;
+    cfg.delayMs = 40;
+    ctrl.setConfig(cfg);
+    ctrl.hoverTarget(u"row:1:info"_s, TooltipCategory::ItemInfo, u"Aplicación: Xed"_s, QPoint(15, 15), &host, host.rect());
+    CHECK(ctrl.isPending());
+    CHECK(ctrl.visibleKey().isEmpty());
+
+    QEventLoop loop;
+    QTimer::singleShot(110, &loop, &QEventLoop::quit);
+    loop.exec();
+    CHECK(!ctrl.isPending());
+    CHECK(ctrl.visibleKey() == u"row:1:info"_s);
+
+    ctrl.cancel();
+    CHECK(ctrl.visibleKey().isEmpty());
+
+    // TooltipPreviewWidget smoke & live config propagation
+    TooltipPreviewWidget tipPreview;
+    cfg.actionBarMode = ActionBarMode::MenuClickOnly;
+    cfg.actionBarAnimation = false;
+    tipPreview.setTooltipConfig(cfg);
+    CHECK(tipPreview.tooltipConfig().delayMs == 40);
+    CHECK(!tipPreview.tooltipConfig().itemActions);
+    CHECK(tipPreview.tooltipConfig().actionBarMode == ActionBarMode::MenuClickOnly);
+    CHECK(!tipPreview.tooltipConfig().actionBarAnimation);
+    cfg.actionBarMode = ActionBarMode::AlwaysVisible;
+    tipPreview.setTooltipConfig(cfg);
+    CHECK(tipPreview.tooltipConfig().actionBarMode == ActionBarMode::AlwaysVisible);
+    cfg.actionBarMode = ActionBarMode::AlwaysOnHover;
+    cfg.actionBarAnimation = true;
+    tipPreview.setTooltipConfig(cfg);
+    tipPreview.refreshTheme();
+
+    // Settings persistence & delay clamping
+    auto *s = MklipperSettings::self();
+    s->setTooltipItemInfo(false);
+    s->setTooltipItemActions(true);
+    s->setTooltipHeaderButtons(false);
+    s->setTooltipPlainTextSwitch(false);
+    s->setActionBarAnimation(false);
+    s->setTooltipDelayMs(99999);
+    CHECK(s->tooltipDelayMs() == 3000);
+    s->setTooltipDelayMs(-50);
+    CHECK(s->tooltipDelayMs() == 0);
+    s->setTooltipDelayMs(650);
+    for (ActionBarMode m : {ActionBarMode::MenuHoverOrClick,
+                            ActionBarMode::MenuClickOnly,
+                            ActionBarMode::AlwaysOnHover,
+                            ActionBarMode::AlwaysVisible}) {
+        s->setActionBarMode(m);
+        s->save();
+        s->load();
+        CHECK(s->actionBarMode() == m);
+    }
+    CHECK(!s->tooltipItemInfo());
+    CHECK(s->tooltipItemActions());
+    CHECK(!s->tooltipHeaderButtons());
+    CHECK(!s->tooltipPlainTextSwitch());
+    CHECK(!s->actionBarAnimation());
+    CHECK(s->tooltipDelayMs() == 650);
+    // Restore defaults
+    s->setTooltipItemInfo(true);
+    s->setTooltipItemActions(true);
+    s->setTooltipHeaderButtons(true);
+    s->setTooltipPlainTextSwitch(true);
+    s->setTooltipDelayMs(500);
+    s->setActionBarMode(ActionBarMode::MenuHoverOrClick);
+    s->setActionBarAnimation(true);
+    s->save();
+}
 } // namespace
 
 int main(int argc, char **argv)
@@ -969,6 +1142,7 @@ int main(int argc, char **argv)
     testUpdaterSecurityAndParsing();
     testX11KeyboardAndSettings(tmpDir.path());
     testUiWidgetsAndDialogsSmoke(tmpDir.path());
+    testTooltipsFormattingControllerAndSettings();
 
     if (g_failures > 0) {
         std::cerr << "Mklipper tests FAILED with " << g_failures << " failure(s) out of " << g_checks << " checks." << std::endl;

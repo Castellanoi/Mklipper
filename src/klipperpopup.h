@@ -31,6 +31,7 @@ class QToolButton;
 class PreviewWidget;
 class QRCodeWidget;
 class ClipboardItemDelegate;
+class HoverTooltipController;
 class X11Paster;
 
 class HistoryFilterProxyModel : public QSortFilterProxyModel
@@ -118,8 +119,10 @@ private Q_SLOTS:
     void updatePersistentUi();
     void onPasteFinished();
     void tickNewItemHighlights();
+    void tickActionBarAnimations();
 
 private:
+    void syncActionBarTargets();
     void applyTheme();
     void showPositioned(const QPoint &anchorPos, bool anchorAbove);
     void returnToListPage();
@@ -185,6 +188,11 @@ private:
     QTimer *m_relTimeTimer = nullptr;
     QTimer *m_highlightTimer = nullptr;
     QHash<QString, qint64> m_highlightStartMs;
-    QString m_lastHoverTooltip;
-    QPersistentModelIndex m_lastHoverTooltipIndex;
+    QTimer *m_actionAnimTimer = nullptr;
+    qint64 m_lastActionAnimMs = 0;
+    QHash<QString, qreal> m_actionBarProgress;
+    QSet<QString> m_pinnedMenuUuids;
+    QString m_hoverMenuUuid;
+    QString m_suppressedHoverMenuUuid;
+    HoverTooltipController *m_tooltipController = nullptr;
 };

@@ -9,6 +9,7 @@
 #include "flaticons.h"
 #include "historyitem.h"
 #include "historymodel.h"
+#include "hovertooltip.h"
 #include "previewwidget.h"
 #include "qrcodewidget.h"
 #include "settings.h"
@@ -47,7 +48,6 @@
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolButton>
-#include <QToolTip>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -64,9 +64,11 @@ constexpr int kActionBtnGap = 2;
 constexpr qint64 kHighlightHoldMs = 650;
 constexpr qint64 kHighlightFadeMs = 2000;
 constexpr qint64 kHighlightTotalMs = kHighlightHoldMs + kHighlightFadeMs;
+constexpr qint64 kActionBarAnimDurationMs = 180;
 
 enum class RowAction {
     None,
+    ToggleMenu,
     OpenSource,
     Star,
     Action,
@@ -76,6 +78,13 @@ enum class RowAction {
     Edit,
     Delete,
 };
+
+qreal easeOutCubic(qreal t)
+{
+    const qreal clamped = qBound<qreal>(0.0, t, 1.0);
+    const qreal inv = 1.0 - clamped;
+    return 1.0 - inv * inv * inv;
+}
 
 bool isSafeExternalHttpUrl(const QUrl &url)
 {
@@ -175,7 +184,8 @@ bool HistoryFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex 
         }
         break;
     case CategoryFilter::Links:
-        if (type != HistoryItemType::Url && !MklipperText::containsUrl(text)) {
+        if (type != HistoryItemType::Url
+            && (type == HistoryItemType::Image || !MklipperText::isExactUrl(text))) {
             return false;
         }
         break;
@@ -262,6 +272,48 @@ public:
         return m_highlightIntensities.value(uuid, 0.0);
     }
 
+    static bool usesMenuMode(ActionBarMode mode)
+    {
+        return mode == ActionBarMode::MenuHoverOrClick || mode == ActionBarMode::MenuClickOnly;
+    }
+
+    void setActionBarMode(ActionBarMode mode)
+    {
+        m_actionBarMode = mode;
+    }
+
+    ActionBarMode actionBarMode() const { return m_actionBarMode; }
+
+    void setActionBarProgress(const QHash<QString, qreal> &progress)
+    {
+        m_actionBarProgress = progress;
+    }
+
+    void setPinnedMenuUuids(const QSet<QString> &pinned)
+    {
+        m_pinnedMenuUuids = pinned;
+    }
+
+    bool isMenuPinned(const QString &uuid) const
+    {
+        return !uuid.isEmpty() && m_pinnedMenuUuids.contains(uuid);
+    }
+
+    qreal openProgressFor(const QString &uuid) const
+    {
+        if (m_actionBarMode == ActionBarMode::AlwaysVisible) {
+            return 1.0;
+        }
+        return qBound<qreal>(0.0, m_actionBarProgress.value(uuid, 0.0), 1.0);
+    }
+
+    static QRect menuButtonRect(const QRect &cardRect)
+    {
+        const int right = cardRect.right() - 8;
+        const int cy = cardRect.center().y() - kActionBtnSize / 2;
+        return QRect(right - kActionBtnSize, cy, kActionBtnSize, kActionBtnSize);
+    }
+
     static qreal captureTimestampFor(const QModelIndex &index)
     {
         const qreal added = index.data(HistoryModel::AddedTimeRole).toDouble();
@@ -292,23 +344,7 @@ public:
         const QString title = index.data(HistoryModel::SourceTitleRole).toString();
         const QString url = index.data(HistoryModel::SourceUrlRole).toString();
         const QString rel = MklipperText::formatRelativeTime(captureTimestampFor(index));
-        if (app.isEmpty() && title.isEmpty() && url.isEmpty() && rel.isEmpty()) {
-            return {};
-        }
-        QStringList lines;
-        if (!app.isEmpty()) {
-            lines.append(tr("Aplicación: %1").arg(app));
-        }
-        if (!title.isEmpty()) {
-            lines.append(tr("Ventana: %1").arg(title));
-        }
-        if (!url.isEmpty()) {
-            lines.append(tr("Enlace: %1").arg(url));
-        }
-        if (!rel.isEmpty()) {
-            lines.append(tr("Copiado: %1").arg(rel));
-        }
-        return lines.join(QLatin1Char('\n'));
+        return HoverTooltip::formatSourceTooltip(app, title, url, rel);
     }
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
@@ -339,7 +375,8 @@ public:
         const bool hasAction = index.data(HistoryModel::HasActionRole).toBool();
         const QString sourceUrl = index.data(HistoryModel::SourceUrlRole).toString();
 
-        int right = cardRect.right() - 8;
+        const bool hasMenu = usesMenuMode(m_actionBarMode);
+        int right = hasMenu ? (menuButtonRect(cardRect).left() - kActionBtnGap) : (cardRect.right() - 8);
         const int cy = cardRect.center().y() - kActionBtnSize / 2;
 
         auto pushBtn = [&](RowAction act, const QString &tip, FlatIcon icon, bool active = false) {
@@ -378,13 +415,54 @@ public:
         return buttons;
     }
 
-    RowAction hitTestButton(const QRect &cardRect, const QModelIndex &index, const QPoint &pos, QString *tooltipOut = nullptr) const
+    QRect expandedPillRect(const QRect &cardRect, const QModelIndex &index) const
     {
+        const auto btns = buttonRects(cardRect, index);
+        if (btns.isEmpty()) {
+            return {};
+        }
+        const int left = btns.last().rect.left() - 3;
+        const int right = usesMenuMode(m_actionBarMode)
+            ? (menuButtonRect(cardRect).right() + 3)
+            : (btns.first().rect.right() + 3);
+        const int top = btns.first().rect.top() - 2;
+        const int height = btns.first().rect.height() + 4;
+        return QRect(left, top, right - left + 1, height);
+    }
+
+    RowAction hitTestButton(const QRect &cardRect,
+                            const QModelIndex &index,
+                            const QPoint &pos,
+                            QString *tooltipOut = nullptr,
+                            QRect *rectOut = nullptr) const
+    {
+        const QString uuid = index.data(HistoryModel::UuidRole).toString();
+        const bool hasMenu = usesMenuMode(m_actionBarMode);
+        if (hasMenu) {
+            const QRect menuRect = menuButtonRect(cardRect);
+            if (menuRect.contains(pos)) {
+                if (tooltipOut) {
+                    *tooltipOut = isMenuPinned(uuid) ? tr("Ocultar acciones") : tr("Acciones del elemento");
+                }
+                if (rectOut) {
+                    *rectOut = menuRect;
+                }
+                return RowAction::ToggleMenu;
+            }
+        }
+
+        if (openProgressFor(uuid) < 0.30) {
+            return RowAction::None;
+        }
+
         const auto btns = buttonRects(cardRect, index);
         for (const auto &b : btns) {
             if (b.rect.contains(pos)) {
                 if (tooltipOut) {
                     *tooltipOut = b.tooltip;
+                }
+                if (rectOut) {
+                    *rectOut = b.rect;
                 }
                 return b.action;
             }
@@ -447,51 +525,56 @@ public:
             painter->fillPath(accentBar, t.accent);
         }
 
-        // Reserve right margin for hover/selected flat action bar or persistent star indicator
-        const bool showButtons = isHovered || isSelected;
+        // Reserve right margin cleanly according to action bar mode
+        const bool hasMenu = usesMenuMode(m_actionBarMode);
+        const qreal openProg = openProgressFor(itemUuid);
+        const bool paintActionBar = (openProg > 0.01);
         int rightReserved = 12;
         QList<ButtonRect> btns;
-        if (showButtons) {
+        if (m_actionBarMode == ActionBarMode::AlwaysVisible) {
             btns = buttonRects(cardRect, index);
             if (!btns.isEmpty()) {
                 rightReserved = cardRect.right() - btns.last().rect.left() + 12;
             }
-        } else if (isStarred) {
-            rightReserved = 30;
+        } else if (hasMenu) {
+            const QRect menuRect = menuButtonRect(cardRect);
+            rightReserved = cardRect.right() - menuRect.left() + (isStarred ? 28 : 10);
+            if (paintActionBar) {
+                btns = buttonRects(cardRect, index);
+            }
+        } else {
+            if (paintActionBar) {
+                btns = buttonRects(cardRect, index);
+            }
+            if (isStarred) {
+                rightReserved = 30;
+            }
         }
 
         QRect contentRect = cardRect.adjusted(12, 7, -rightReserved, -7);
 
         // Minimalist borderless shortcut chip (1..9, 0 for 10th) when quick digit shortcuts are enabled
-        if (MklipperSettings::self()->quickSelectDigits()) {
+        if (MklipperSettings::self()->quickSelectDigits() && index.row() >= 0 && index.row() < 10) {
             const int rowNum = index.row();
-            const bool hasDigitShortcut = (rowNum >= 0 && rowNum < 10);
-            const QString badgeText = (rowNum < 9) ? QString::number(rowNum + 1)
-                                    : (rowNum == 9) ? u"0"_s
-                                    : QString::number(rowNum + 1);
-            const int badgeW = (rowNum >= 99) ? 26 : 20;
+            const QString badgeText = (rowNum < 9) ? QString::number(rowNum + 1) : u"0"_s;
+            const int badgeW = 20;
             const int badgeH = 20;
             const QRect badgeRect(contentRect.left(),
                                   contentRect.center().y() - badgeH / 2,
                                   badgeW,
                                   badgeH);
 
-            if (hasDigitShortcut) {
-                QPainterPath badgePath;
-                badgePath.addRoundedRect(QRectF(badgeRect), 6.0, 6.0);
-                QColor badgeBg = isTopItem ? t.accent
-                                           : QColor(t.textPrimary.red(), t.textPrimary.green(), t.textPrimary.blue(), t.isDark ? 24 : 18);
-                painter->fillPath(badgePath, badgeBg);
-            }
+            QPainterPath badgePath;
+            badgePath.addRoundedRect(QRectF(badgeRect), 6.0, 6.0);
+            QColor badgeBg = isTopItem ? t.accent
+                                       : QColor(t.textPrimary.red(), t.textPrimary.green(), t.textPrimary.blue(), t.isDark ? 24 : 18);
+            painter->fillPath(badgePath, badgeBg);
 
             QFont badgeFont = option.font;
             badgeFont.setPointSizeF(qMax(8.0, badgeFont.pointSizeF() - 1.4));
-            badgeFont.setBold(hasDigitShortcut);
+            badgeFont.setBold(true);
             painter->setFont(badgeFont);
-            const QColor badgeFg = (hasDigitShortcut && isTopItem) ? t.accentFg
-                                 : hasDigitShortcut                ? t.textSecondary
-                                                                   : t.textMuted;
-            painter->setPen(badgeFg);
+            painter->setPen(isTopItem ? t.accentFg : t.textSecondary);
             painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
 
             contentRect.setLeft(badgeRect.right() + 10);
@@ -590,6 +673,7 @@ public:
             painter->setPen(Qt::NoPen);
             painter->setBrush(dotColor);
             painter->drawEllipse(dotRect);
+            painter->setBrush(Qt::NoBrush);
 
             painter->setPen(t.textMuted);
             const QRect textMetaRect = metaRect.adjusted(dotSize + 5, 0, 0, 0);
@@ -598,59 +682,104 @@ public:
                               fmMeta.elidedText(sourceLabel, Qt::ElideRight, textMetaRect.width()));
         }
 
-        // Flat minimalist action bar (crisp SVG icons, borderless tonal buttons)
-        if (showButtons && !btns.isEmpty()) {
-            const QRect pillRect(btns.last().rect.left() - 3,
-                                 btns.first().rect.top() - 2,
-                                 btns.first().rect.right() - btns.last().rect.left() + 7,
-                                 btns.first().rect.height() + 4);
-            QColor pillBg = t.surfaceBg;
-            pillBg.setAlpha(t.isDark ? 238 : 242);
-            QPainterPath pillPath;
-            pillPath.addRoundedRect(QRectF(pillRect).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
-            painter->fillPath(pillPath, pillBg);
-            painter->setPen(QPen(t.hairline, 1.0));
-            painter->drawPath(pillPath);
-
-            for (const auto &b : btns) {
-                const bool btnHover = isHovered && b.rect.contains(m_hoverPos);
-                if (btnHover) {
-                    QPainterPath bp;
-                    bp.addRoundedRect(QRectF(b.rect), 6.0, 6.0);
-                    QColor hbg = (b.action == RowAction::Delete) ? t.dangerSoft
-                               : (b.action == RowAction::Star)   ? t.warningSoft
-                                                                 : t.surfaceHoverBg;
-                    painter->fillPath(bp, hbg);
-                }
-
-                QColor iconColor = t.textSecondary;
-                if (b.active) {
-                    iconColor = t.warning;
-                } else if (btnHover && b.action == RowAction::Delete) {
-                    iconColor = t.danger;
-                } else if (btnHover && b.action == RowAction::Star) {
-                    iconColor = t.warning;
-                } else if (btnHover) {
-                    iconColor = t.textPrimary;
-                }
-
-                const QRectF iconRect(b.rect.center().x() - 7.5, b.rect.center().y() - 7.5, 15.0, 15.0);
-                FlatIcons::paint(painter, b.icon, iconRect, iconColor);
-            }
-        } else {
+        // Persistent star & new-item indicators when action bar is collapsed
+        if (!paintActionBar) {
+            const qreal rightEdge = hasMenu ? static_cast<qreal>(menuButtonRect(cardRect).left() - 4)
+                                            : static_cast<qreal>(cardRect.right() - 10);
             if (isStarred) {
-                const QRectF starRect(cardRect.right() - 24.0, cardRect.center().y() - 7.0, 14.0, 14.0);
+                const QRectF starRect(rightEdge - 14.0, cardRect.center().y() - 7.0, 14.0, 14.0);
                 FlatIcons::paint(painter, FlatIcon::StarFilled, starRect, t.warning);
             }
             if (newHi > 0.02) {
-                const qreal dotX = isStarred ? (cardRect.right() - 36.0) : (cardRect.right() - 18.0);
+                const qreal dotX = isStarred ? (rightEdge - 26.0) : (rightEdge - 8.0);
                 const QRectF newDotRect(dotX, cardRect.center().y() - 3.5, 7.0, 7.0);
                 QColor dotCol = t.accent;
                 dotCol.setAlpha(qRound(newHi * 235.0));
                 painter->setPen(Qt::NoPen);
                 painter->setBrush(dotCol);
                 painter->drawEllipse(newDotRect);
+                painter->setBrush(Qt::NoBrush);
             }
+        }
+
+        // Animated sweeping flat action bar (slides smoothly leftward out of the 3-dot trigger or right edge)
+        const QRect menuRect = menuButtonRect(cardRect);
+        if (paintActionBar && !btns.isEmpty()) {
+            const qreal eased = easeOutCubic(openProg);
+            const int expandedLeft = btns.last().rect.left() - 3;
+            const int pillRight = hasMenu ? (menuRect.right() + 3) : (btns.first().rect.right() + 3);
+            const int collapsedLeft = hasMenu ? (menuRect.left() - 3) : pillRight;
+            const int animLeft = qRound(collapsedLeft + (expandedLeft - collapsedLeft) * eased);
+            const int pillTop = btns.first().rect.top() - 2;
+            const int pillHeight = btns.first().rect.height() + 4;
+            const QRect animPillRect(animLeft, pillTop, qMax(1, pillRight - animLeft + 1), pillHeight);
+
+            QColor pillBg = t.isDark ? t.surfaceActiveBg : t.surfaceBg;
+            pillBg.setAlpha(250);
+            QPainterPath pillPath;
+            pillPath.addRoundedRect(QRectF(animPillRect).adjusted(0.5, 0.5, -0.5, -0.5), 8.0, 8.0);
+            painter->fillPath(pillPath, pillBg);
+            painter->strokePath(pillPath, QPen(t.borderSubtle, 1.0));
+
+            // Clip action buttons inside the opening tray (to the left of the 3-dot trigger) and sweep them leftward
+            const int clipRight = hasMenu ? menuRect.left() : (animPillRect.right() + 1);
+            if (clipRight > animPillRect.left()) {
+                painter->save();
+                QPainterPath clipPath;
+                clipPath.addRoundedRect(QRectF(animPillRect).adjusted(1.0, 1.0, -1.0, -1.0), 7.5, 7.5);
+                painter->setClipPath(clipPath);
+                painter->setClipRect(QRect(animPillRect.left(), animPillRect.top(), clipRight - animPillRect.left(), animPillRect.height()),
+                                     Qt::IntersectClip);
+
+                const int maxSlide = qMin(48, qMax(0, collapsedLeft - expandedLeft));
+                const int slideDx = qRound((1.0 - eased) * maxSlide);
+                painter->setOpacity(qBound<qreal>(0.0, openProg * 1.35, 1.0));
+
+                for (const auto &b : btns) {
+                    const QRect drawRect = b.rect.translated(slideDx, 0);
+                    const bool btnHover = (openProg >= 0.30) && isHovered && b.rect.contains(m_hoverPos);
+                    if (btnHover) {
+                        QPainterPath bp;
+                        bp.addRoundedRect(QRectF(drawRect), 6.0, 6.0);
+                        QColor hbg = (b.action == RowAction::Delete) ? t.dangerSoft
+                                   : (b.action == RowAction::Star)   ? t.warningSoft
+                                                                     : t.surfaceHoverBg;
+                        painter->fillPath(bp, hbg);
+                    }
+
+                    QColor iconColor = t.textSecondary;
+                    if (b.active) {
+                        iconColor = t.warning;
+                    } else if (btnHover && b.action == RowAction::Delete) {
+                        iconColor = t.danger;
+                    } else if (btnHover && b.action == RowAction::Star) {
+                        iconColor = t.warning;
+                    } else if (btnHover) {
+                        iconColor = t.textPrimary;
+                    }
+
+                    const QRectF iconRect(drawRect.center().x() - 7.5, drawRect.center().y() - 7.5, 15.0, 15.0);
+                    FlatIcons::paint(painter, b.icon, iconRect, iconColor);
+                }
+                painter->restore();
+            }
+        }
+
+        // Vertical 3-dot menu button anchored on the right edge in menu modes
+        if (hasMenu) {
+            const bool pinned = isMenuPinned(itemUuid);
+            const bool menuHover = isHovered && menuRect.contains(m_hoverPos);
+            if (pinned || menuHover) {
+                QPainterPath mp;
+                mp.addRoundedRect(QRectF(menuRect), 6.0, 6.0);
+                painter->fillPath(mp, pinned ? t.accentSoft : t.surfaceHoverBg);
+            }
+            const QColor dotColor = pinned                   ? t.accent
+                                  : menuHover                ? t.textPrimary
+                                  : (isHovered || isSelected) ? t.textSecondary
+                                                              : t.textMuted;
+            const QRectF dotIconRect(menuRect.center().x() - 7.5, menuRect.center().y() - 7.5, 15.0, 15.0);
+            FlatIcons::paint(painter, FlatIcon::MoreVertical, dotIconRect, dotColor);
         }
 
         painter->restore();
@@ -692,6 +821,9 @@ private:
     QPersistentModelIndex m_hoveredIndex;
     QPoint m_hoverPos;
     QHash<QString, qreal> m_highlightIntensities;
+    ActionBarMode m_actionBarMode = ActionBarMode::MenuHoverOrClick;
+    QHash<QString, qreal> m_actionBarProgress;
+    QSet<QString> m_pinnedMenuUuids;
     mutable QCache<QString, QPixmap> m_thumbCache;
 };
 
@@ -809,28 +941,24 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_pauseBtn->setCheckable(true);
     m_pauseBtn->setIconSize(QSize(16, 16));
     m_pauseBtn->setCursor(Qt::PointingHandCursor);
-    m_pauseBtn->setToolTip(tr("Pausar captura del portapapeles (modo incógnito)"));
     m_pauseBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_clearBtn = new QToolButton(listPage);
     m_clearBtn->setObjectName(u"mklipperDangerBtn"_s);
     m_clearBtn->setIconSize(QSize(16, 16));
     m_clearBtn->setCursor(Qt::PointingHandCursor);
-    m_clearBtn->setToolTip(tr("Vaciar historial"));
     m_clearBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_configBtn = new QToolButton(listPage);
     m_configBtn->setObjectName(u"mklipperIconBtn"_s);
     m_configBtn->setIconSize(QSize(16, 16));
     m_configBtn->setCursor(Qt::PointingHandCursor);
-    m_configBtn->setToolTip(tr("Configurar Mklipper"));
     m_configBtn->setFixedSize(toolBtnSide, toolBtnSide);
 
     m_closeBtn = new QToolButton(listPage);
     m_closeBtn->setObjectName(u"mklipperDangerBtn"_s);
     m_closeBtn->setIconSize(QSize(16, 16));
     m_closeBtn->setCursor(Qt::PointingHandCursor);
-    m_closeBtn->setToolTip(tr("Cerrar ventana"));
     m_closeBtn->setFixedSize(toolBtnSide, toolBtnSide);
     connect(m_closeBtn, &QToolButton::clicked, this, &QWidget::hide);
 
@@ -878,8 +1006,6 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     modeBar->setSpacing(6);
 
     m_plainTextSwitch = new PlainTextSwitch(tr("Pegar sin formato"), listPage);
-    m_plainTextSwitch->setToolTip(
-        tr("Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos). Consejo: mantén Shift al pegar para invertirlo puntualmente."));
     m_plainTextSwitch->setChecked(MklipperSettings::self()->pastePlainText());
     connect(m_plainTextSwitch, &QAbstractButton::toggled, this, [](bool checked) {
         auto *s = MklipperSettings::self();
@@ -1160,6 +1286,47 @@ KlipperPopup::KlipperPopup(QWidget *parent)
     m_highlightTimer->setInterval(33);
     connect(m_highlightTimer, &QTimer::timeout, this, &KlipperPopup::tickNewItemHighlights);
 
+    m_actionAnimTimer = new QTimer(this);
+    m_actionAnimTimer->setInterval(16);
+    connect(m_actionAnimTimer, &QTimer::timeout, this, &KlipperPopup::tickActionBarAnimations);
+
+    if (m_listView && m_listView->selectionModel()) {
+        connect(m_listView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this]() {
+            if (MklipperSettings::self()->actionBarMode() == ActionBarMode::AlwaysOnHover) {
+                syncActionBarTargets();
+            }
+        });
+    }
+
+    m_tooltipController = new HoverTooltipController(this);
+    m_tooltipController->registerWidget(
+        m_pauseBtn,
+        TooltipCategory::HeaderButtons,
+        [this]() {
+            return m_model->isCapturePaused()
+                ? tr("Reanudar captura del portapapeles")
+                : tr("Pausar captura del portapapeles (modo incógnito)");
+        });
+    m_tooltipController->registerWidget(
+        m_clearBtn,
+        TooltipCategory::HeaderButtons,
+        []() { return tr("Vaciar historial"); });
+    m_tooltipController->registerWidget(
+        m_configBtn,
+        TooltipCategory::HeaderButtons,
+        []() { return tr("Configurar Mklipper"); });
+    m_tooltipController->registerWidget(
+        m_closeBtn,
+        TooltipCategory::HeaderButtons,
+        []() { return tr("Cerrar ventana"); });
+    m_tooltipController->registerWidget(
+        m_plainTextSwitch,
+        TooltipCategory::PlainTextSwitch,
+        []() {
+            return tr("Quita colores, fuentes y estilos HTML al pegar texto (no afecta imágenes ni archivos). Consejo: mantén Shift al pegar para invertirlo puntualmente.");
+        },
+        true);
+
     applyTheme();
     updatePasswordBanner();
     updatePauseUi();
@@ -1237,6 +1404,169 @@ void KlipperPopup::tickNewItemHighlights()
     }
     if (m_highlightStartMs.isEmpty() && m_highlightTimer) {
         m_highlightTimer->stop();
+    }
+}
+
+void KlipperPopup::syncActionBarTargets()
+{
+    if (!m_delegate) {
+        return;
+    }
+
+    const auto *s = MklipperSettings::self();
+    const ActionBarMode mode = s->actionBarMode();
+    const bool animated = s->actionBarAnimation();
+    m_delegate->setActionBarMode(mode);
+    m_delegate->setPinnedMenuUuids(m_pinnedMenuUuids);
+
+    if (mode == ActionBarMode::AlwaysVisible) {
+        if (m_actionAnimTimer) {
+            m_actionAnimTimer->stop();
+        }
+        m_actionBarProgress.clear();
+        m_delegate->setActionBarProgress({});
+        if (m_listView) {
+            m_listView->viewport()->update();
+        }
+        return;
+    }
+
+    QSet<QString> openTargets;
+    if (ClipboardItemDelegate::usesMenuMode(mode)) {
+        openTargets = m_pinnedMenuUuids;
+        if (mode == ActionBarMode::MenuHoverOrClick && !m_hoverMenuUuid.isEmpty()) {
+            openTargets.insert(m_hoverMenuUuid);
+        }
+    } else if (mode == ActionBarMode::AlwaysOnHover) {
+        const QModelIndex hoverIdx = m_delegate->hoveredIndex();
+        if (hoverIdx.isValid()) {
+            const QString u = hoverIdx.data(HistoryModel::UuidRole).toString();
+            if (!u.isEmpty()) {
+                openTargets.insert(u);
+            }
+        }
+        if (m_listView) {
+            const QModelIndex curIdx = m_listView->currentIndex();
+            if (curIdx.isValid()) {
+                const QString u = curIdx.data(HistoryModel::UuidRole).toString();
+                if (!u.isEmpty()) {
+                    openTargets.insert(u);
+                }
+            }
+        }
+    }
+
+    if (!animated) {
+        if (m_actionAnimTimer) {
+            m_actionAnimTimer->stop();
+        }
+        m_actionBarProgress.clear();
+        for (const QString &u : openTargets) {
+            m_actionBarProgress.insert(u, 1.0);
+        }
+        m_delegate->setActionBarProgress(m_actionBarProgress);
+        if (m_listView) {
+            m_listView->viewport()->update();
+        }
+        return;
+    }
+
+    for (const QString &u : openTargets) {
+        if (!m_actionBarProgress.contains(u)) {
+            m_actionBarProgress.insert(u, 0.0);
+        }
+    }
+
+    bool needsAnim = false;
+    for (auto it = m_actionBarProgress.constBegin(); it != m_actionBarProgress.constEnd(); ++it) {
+        const qreal target = openTargets.contains(it.key()) ? 1.0 : 0.0;
+        if (qAbs(it.value() - target) > 0.001) {
+            needsAnim = true;
+            break;
+        }
+    }
+
+    if (needsAnim && m_actionAnimTimer && !m_actionAnimTimer->isActive()) {
+        m_lastActionAnimMs = QDateTime::currentMSecsSinceEpoch();
+        m_actionAnimTimer->start();
+    }
+    m_delegate->setActionBarProgress(m_actionBarProgress);
+}
+
+void KlipperPopup::tickActionBarAnimations()
+{
+    if (!m_delegate) {
+        if (m_actionAnimTimer) {
+            m_actionAnimTimer->stop();
+        }
+        return;
+    }
+
+    const auto *s = MklipperSettings::self();
+    const ActionBarMode mode = s->actionBarMode();
+    if (mode == ActionBarMode::AlwaysVisible) {
+        if (m_actionAnimTimer) {
+            m_actionAnimTimer->stop();
+        }
+        return;
+    }
+
+    QSet<QString> openTargets;
+    if (ClipboardItemDelegate::usesMenuMode(mode)) {
+        openTargets = m_pinnedMenuUuids;
+        if (mode == ActionBarMode::MenuHoverOrClick && !m_hoverMenuUuid.isEmpty()) {
+            openTargets.insert(m_hoverMenuUuid);
+        }
+    } else if (mode == ActionBarMode::AlwaysOnHover) {
+        const QModelIndex hoverIdx = m_delegate->hoveredIndex();
+        if (hoverIdx.isValid()) {
+            const QString u = hoverIdx.data(HistoryModel::UuidRole).toString();
+            if (!u.isEmpty()) {
+                openTargets.insert(u);
+            }
+        }
+        if (m_listView) {
+            const QModelIndex curIdx = m_listView->currentIndex();
+            if (curIdx.isValid()) {
+                const QString u = curIdx.data(HistoryModel::UuidRole).toString();
+                if (!u.isEmpty()) {
+                    openTargets.insert(u);
+                }
+            }
+        }
+    }
+
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    const qint64 dt = qBound(qint64(1), nowMs - m_lastActionAnimMs, qint64(60));
+    m_lastActionAnimMs = nowMs;
+    const qreal step = static_cast<qreal>(dt) / static_cast<qreal>(kActionBarAnimDurationMs);
+
+    bool anyActive = false;
+    for (auto it = m_actionBarProgress.begin(); it != m_actionBarProgress.end();) {
+        const qreal target = openTargets.contains(it.key()) ? 1.0 : 0.0;
+        qreal cur = it.value();
+        if (cur < target) {
+            cur = qMin(target, cur + step);
+        } else if (cur > target) {
+            cur = qMax(target, cur - step);
+        }
+        if (cur <= 0.001 && target == 0.0) {
+            it = m_actionBarProgress.erase(it);
+            continue;
+        }
+        it.value() = cur;
+        if (qAbs(cur - target) > 0.001) {
+            anyActive = true;
+        }
+        ++it;
+    }
+
+    m_delegate->setActionBarProgress(m_actionBarProgress);
+    if (m_listView) {
+        m_listView->viewport()->update();
+    }
+    if (!anyActive && m_actionAnimTimer) {
+        m_actionAnimTimer->stop();
     }
 }
 
@@ -1488,6 +1818,12 @@ bool KlipperPopup::event(QEvent *ev)
         if (m_highlightTimer) {
             m_highlightTimer->stop();
         }
+        if (m_actionAnimTimer) {
+            m_actionAnimTimer->stop();
+        }
+        m_hoverMenuUuid.clear();
+        m_suppressedHoverMenuUuid.clear();
+        syncActionBarTargets();
         if (!m_highlightStartMs.isEmpty()) {
             m_highlightStartMs.clear();
             if (m_delegate) {
@@ -1501,21 +1837,26 @@ bool KlipperPopup::event(QEvent *ev)
             m_editArea->clear();
         }
         m_editingUuid.clear();
-        m_lastHoverTooltip.clear();
-        m_lastHoverTooltipIndex = QModelIndex();
+        if (m_tooltipController) {
+            m_tooltipController->cancel();
+        }
         m_pastingInProgress = false;
         ++m_pasteGeneration;
     } else if (ev->type() == QEvent::Enter && s->keepPopupOpen() && !m_pastingInProgress) {
         // Refresh target window when user switches to another app and hovers back over persistent popup
         m_paster->captureTargetWindow(winId());
-    } else if (ev->type() == QEvent::WindowDeactivate
-               && !m_suppressAutoHide
-               && !m_pastingInProgress
-               && (!s->keepPopupOpen() || s->closePopupOnFocusOut())
-               && QApplication::activeModalWidget() == nullptr
-               && QApplication::activePopupWidget() == nullptr) {
-        m_lastHideTimeMs = QDateTime::currentMSecsSinceEpoch();
-        hide();
+    } else if (ev->type() == QEvent::WindowDeactivate) {
+        if (m_tooltipController) {
+            m_tooltipController->cancel();
+        }
+        if (!m_suppressAutoHide
+            && !m_pastingInProgress
+            && (!s->keepPopupOpen() || s->closePopupOnFocusOut())
+            && QApplication::activeModalWidget() == nullptr
+            && QApplication::activePopupWidget() == nullptr) {
+            m_lastHideTimeMs = QDateTime::currentMSecsSinceEpoch();
+            hide();
+        }
     }
     return QFrame::event(ev);
 }
@@ -1588,6 +1929,9 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
     }
 
     if (watched == m_listView->viewport()) {
+        if (ev->type() == QEvent::ToolTip) {
+            return true;
+        }
         if (ev->type() == QEvent::MouseMove) {
             auto *me = static_cast<QMouseEvent *>(ev);
             const QPoint pos = me->position().toPoint();
@@ -1599,35 +1943,92 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
             if (prevIdx.isValid() && prevIdx != idx) {
                 m_listView->viewport()->update(m_listView->visualRect(prevIdx));
             }
+            const ActionBarMode barMode = MklipperSettings::self()->actionBarMode();
+            const QString prevHoverMenu = m_hoverMenuUuid;
             if (idx.isValid()) {
-                m_listView->viewport()->update(m_listView->visualRect(idx));
                 const QRect cardRect = ClipboardItemDelegate::cardRectFor(m_listView->visualRect(idx));
-                QString tip;
-                if (m_delegate->hitTestButton(cardRect, idx, pos, &tip) == RowAction::None || tip.isEmpty()) {
-                    tip = ClipboardItemDelegate::sourceTooltipFor(idx);
-                }
-                if (tip != m_lastHoverTooltip || idx != m_lastHoverTooltipIndex) {
-                    m_lastHoverTooltip = tip;
-                    m_lastHoverTooltipIndex = idx;
-                    if (!tip.isEmpty()) {
-                        QToolTip::showText(me->globalPosition().toPoint(), tip, m_listView->viewport());
+                const QString uuid = idx.data(HistoryModel::UuidRole).toString();
+
+                if (barMode == ActionBarMode::MenuHoverOrClick) {
+                    const QRect menuRect = ClipboardItemDelegate::menuButtonRect(cardRect);
+                    const QRect pillRect = m_delegate->expandedPillRect(cardRect, idx).adjusted(0, -2, 0, 2);
+                    const bool overMenu = menuRect.contains(pos);
+                    if (!overMenu && m_suppressedHoverMenuUuid == uuid) {
+                        m_suppressedHoverMenuUuid.clear();
+                    }
+                    if (!uuid.isEmpty() && m_suppressedHoverMenuUuid != uuid) {
+                        const bool alreadyOpen = (m_hoverMenuUuid == uuid) || (m_delegate->openProgressFor(uuid) > 0.05);
+                        if (overMenu || (alreadyOpen && pillRect.contains(pos))) {
+                            m_hoverMenuUuid = uuid;
+                        } else {
+                            m_hoverMenuUuid.clear();
+                        }
                     } else {
-                        QToolTip::hideText();
+                        m_hoverMenuUuid.clear();
+                    }
+                } else {
+                    m_hoverMenuUuid.clear();
+                    m_suppressedHoverMenuUuid.clear();
+                }
+
+                if (m_hoverMenuUuid != prevHoverMenu || (barMode == ActionBarMode::AlwaysOnHover && prevIdx != idx)) {
+                    syncActionBarTargets();
+                }
+
+                m_listView->viewport()->update(m_listView->visualRect(idx));
+                QString tip;
+                QRect btnRect;
+                const RowAction act = m_delegate->hitTestButton(cardRect, idx, pos, &tip, &btnRect);
+                if (m_tooltipController) {
+                    const QPoint gPos = me->globalPosition().toPoint();
+                    if (act != RowAction::None && !tip.isEmpty()) {
+                        const QString key = QStringLiteral("row:%1:act:%2").arg(idx.row()).arg(static_cast<int>(act));
+                        m_tooltipController->hoverTarget(key,
+                                                         TooltipCategory::ItemActions,
+                                                         tip,
+                                                         gPos,
+                                                         m_listView->viewport(),
+                                                         btnRect);
+                    } else {
+                        const QString infoTip = ClipboardItemDelegate::sourceTooltipFor(idx);
+                        if (!infoTip.isEmpty()) {
+                            const QString key = QStringLiteral("row:%1:info").arg(idx.row());
+                            m_tooltipController->hoverTarget(key,
+                                                             TooltipCategory::ItemInfo,
+                                                             infoTip,
+                                                             gPos,
+                                                             m_listView->viewport(),
+                                                             cardRect);
+                        } else {
+                            m_tooltipController->cancel();
+                        }
                     }
                 }
-            } else if (!m_lastHoverTooltip.isEmpty() || m_lastHoverTooltipIndex.isValid()) {
-                m_lastHoverTooltip.clear();
-                m_lastHoverTooltipIndex = QModelIndex();
-                QToolTip::hideText();
+            } else {
+                m_hoverMenuUuid.clear();
+                m_suppressedHoverMenuUuid.clear();
+                if (!prevHoverMenu.isEmpty() || barMode == ActionBarMode::AlwaysOnHover) {
+                    syncActionBarTargets();
+                }
+                if (m_tooltipController) {
+                    m_tooltipController->cancel();
+                }
             }
         } else if (ev->type() == QEvent::Leave) {
             const QModelIndex prevIdx = m_delegate->hoveredIndex();
             m_delegate->setHoveredIndex(QModelIndex(), QPoint(-1, -1));
-            m_lastHoverTooltip.clear();
-            m_lastHoverTooltipIndex = QModelIndex();
-            QToolTip::hideText();
+            m_hoverMenuUuid.clear();
+            m_suppressedHoverMenuUuid.clear();
+            syncActionBarTargets();
+            if (m_tooltipController) {
+                m_tooltipController->cancel();
+            }
             if (prevIdx.isValid()) {
                 m_listView->viewport()->update(m_listView->visualRect(prevIdx));
+            }
+        } else if (ev->type() == QEvent::MouseButtonPress || ev->type() == QEvent::Wheel) {
+            if (m_tooltipController) {
+                m_tooltipController->cancel();
             }
         } else if (ev->type() == QEvent::MouseButtonRelease) {
             auto *me = static_cast<QMouseEvent *>(ev);
@@ -1636,8 +2037,28 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                 const QModelIndex idx = m_listView->indexAt(pos);
                 if (idx.isValid()) {
                     const QRect cardRect = ClipboardItemDelegate::cardRectFor(m_listView->visualRect(idx));
+                    const QString uuid = idx.data(HistoryModel::UuidRole).toString();
                     const RowAction act = m_delegate->hitTestButton(cardRect, idx, pos);
                     switch (act) {
+                    case RowAction::ToggleMenu: {
+                        if (!uuid.isEmpty()) {
+                            if (m_pinnedMenuUuids.contains(uuid)) {
+                                m_pinnedMenuUuids.remove(uuid);
+                                if (m_hoverMenuUuid == uuid) {
+                                    m_hoverMenuUuid.clear();
+                                }
+                                m_suppressedHoverMenuUuid = uuid;
+                            } else {
+                                m_pinnedMenuUuids.insert(uuid);
+                                if (m_suppressedHoverMenuUuid == uuid) {
+                                    m_suppressedHoverMenuUuid.clear();
+                                }
+                            }
+                            syncActionBarTargets();
+                            m_listView->viewport()->update(m_listView->visualRect(idx));
+                        }
+                        return true;
+                    }
                     case RowAction::OpenSource: {
                         const QUrl srcUrl(idx.data(HistoryModel::SourceUrlRole).toString());
                         if (isSafeExternalHttpUrl(srcUrl)) {
@@ -1670,6 +2091,11 @@ bool KlipperPopup::eventFilter(QObject *watched, QEvent *ev)
                         deleteItem(idx);
                         return true;
                     case RowAction::None:
+                        if (m_delegate->openProgressFor(uuid) >= 0.30
+                            && m_delegate->expandedPillRect(cardRect, idx).contains(pos)) {
+                            // Ignore stray clicks on the narrow padding between action buttons
+                            return true;
+                        }
                         activateItem(idx, me->modifiers().testFlag(Qt::ShiftModifier));
                         return true;
                     }
@@ -1944,9 +2370,6 @@ void KlipperPopup::updatePauseUi()
     if (m_pauseBtn) {
         QSignalBlocker blk(m_pauseBtn);
         m_pauseBtn->setChecked(paused);
-        m_pauseBtn->setToolTip(paused
-                                   ? tr("Reanudar captura del portapapeles")
-                                   : tr("Pausar captura del portapapeles (modo incógnito)"));
     }
     if (m_pauseBanner) {
         m_pauseBanner->setVisible(paused);
@@ -1970,6 +2393,11 @@ void KlipperPopup::deleteItem(const QModelIndex &proxyIndex)
         return;
     }
     const QString uuid = src.data(HistoryModel::UuidRole).toString();
+    m_pinnedMenuUuids.remove(uuid);
+    m_actionBarProgress.remove(uuid);
+    if (m_hoverMenuUuid == uuid) {
+        m_hoverMenuUuid.clear();
+    }
     m_suppressAutoHide = true;
     m_model->remove(uuid, true, this);
     m_suppressAutoHide = false;
@@ -2039,6 +2467,10 @@ void KlipperPopup::updatePersistentUi()
         m_listView->doItemsLayout();
         m_listView->viewport()->update();
     }
+    if (m_tooltipController) {
+        m_tooltipController->setConfig(TooltipConfig::fromSettings());
+    }
+    syncActionBarTargets();
     updateStatusLabel();
 }
 

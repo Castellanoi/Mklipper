@@ -185,6 +185,16 @@ const char *svgBodyFor(FlatIcon id)
 
     case FlatIcon::ChevronUp:
         return "<path d='m6 15 6-6 6 6'/>";
+
+    case FlatIcon::Tooltip:
+        return "<path d='M5 4.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4.5L12 19.8 9.5 16.5H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z'/>"
+               "<path d='M7.5 9.2h9'/>"
+               "<path d='M7.5 12.6h5.5'/>";
+
+    case FlatIcon::MoreVertical:
+        return "<circle cx='12' cy='5.5' r='1.65' fill='COLOR' stroke='none'/>"
+               "<circle cx='12' cy='12' r='1.65' fill='COLOR' stroke='none'/>"
+               "<circle cx='12' cy='18.5' r='1.65' fill='COLOR' stroke='none'/>";
     }
     return "";
 }

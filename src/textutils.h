@@ -24,6 +24,9 @@ bool matchesFoldedTokens(const QString &haystack, const QStringList &foldedToken
 // Returns true if text contains an http://, https://, or ftp:// URL
 bool containsUrl(const QString &text);
 
+// Returns true if the entire (trimmed) text is a single valid http://, https://, or ftp:// URL
+bool isExactUrl(const QString &text);
+
 // Formats a Unix epoch timestamp (seconds) as a localized relative time string.
 // Pass nowMs >= 0 for deterministic unit testing; defaults to current wall-clock time.
 QString formatRelativeTime(qreal epochSeconds, qint64 nowMs = -1);

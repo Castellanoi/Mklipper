@@ -1,5 +1,76 @@
 # Changelog
 
+## v1.8.5
+
+### 🇪🇸 Español
+- **Menú de 3 puntos (`⋮`) y barra de acciones animada:**
+  - Los botones de acción de cada tarjeta (fijar, abrir enlace, QR, vista previa, editar, guardar PNG, eliminar) ahora se agrupan tras un botón discreto de **3 puntos verticales (`⋮`)** a la derecha, dejando más espacio visible para el contenido.
+  - Animación suave de barrido hacia la izquierda al desplegarse: funciona al **pasar el cursor** sobre `⋮` (manteniéndose abierta mientras el cursor permanezca dentro de la barra) o de forma **persistente al hacer clic** hasta volver a pulsar `⋮`.
+  - Color uniforme y limpio en la barra de acciones para todos los elementos, manteniendo el indicador circular de origen web/local.
+- **Tooltips mejorados con ancho fijo y nueva pestaña «Tooltips» en Configuración:**
+  - Los tooltips con enlaces o títulos largos ahora se acotan a un ancho máximo fijo y se recortan limpiamente con `...` en lugar de ocupar todo el ancho de la pantalla.
+  - Nueva pestaña **Tooltips** en Configuración con una **vista previa interactiva** que responde como la ventana real: permite elegir el modo de la barra de acciones (*Menú `⋮` por hover/clic*, *solo clic*, *al pasar el cursor por la tarjeta* o *siempre visible*), activar o desactivar la animación, configurar qué tooltips mostrar y ajustar su retardo de aparición en milisegundos.
+- **Pulido de lista y filtros:**
+  - Los números de atajo rápido `1–0` a la izquierda ahora se muestran únicamente para las 10 primeras posiciones (`1–9` y `0`), omitiendo numeración a partir del elemento 11.
+  - El filtro **Enlaces** ahora muestra únicamente elementos que son efectivamente un enlace, excluyendo párrafos o fragmentos de texto que solo contienen una URL incrustada.
+
+### 🇬🇧 English
+- **Vertical 3-dot menu (`⋮`) & animated action bar:**
+  - Per-card action buttons (pin, open source link, QR, preview, edit, save PNG, delete) now collapse neatly behind a vertical **3-dot trigger (`⋮`)** on the right, freeing horizontal space for item text.
+  - Smooth leftward slide-out animation: opens on **hover** over `⋮` (staying open while hovering anywhere inside the action bar) or toggles **persistently on click** until `⋮` is clicked again.
+  - Consistent elevated surface styling for the action bar across all items while keeping the accent/muted source origin dot.
+- **Fixed-width elided tooltips & new «Tooltips» Settings tab:**
+  - Hover tooltips with long URLs or window titles are now capped to a fixed maximum width and cleanly trimmed with `...` instead of stretching across the entire screen.
+  - New **Tooltips** tab in Settings with a **live interactive preview** matching the real popup window: configure the action bar mode (*`⋮` Menu on hover/click*, *click only*, *on card hover*, or *always visible*), toggle smooth animation, enable/disable each tooltip category, and set the appearance delay in milliseconds.
+- **List & filter polish:**
+  - Quick-select digit badges (`1–0`) on the left now appear only for the first 10 items (`1–9` and `0`), hiding numbers from position 11 onward.
+  - The **Links** filter now strictly matches items that are actual links instead of arbitrary text containing an embedded URL.
+
+### 🇧🇷 Português (Brasil)
+- **Menu vertical de 3 pontos (`⋮`) e barra de ações animada:**
+  - Os botões de ação de cada cartão agora ficam recolhidos atrás de um botão `⋮` à direita e deslizam suavemente para a esquerda ao passar o cursor ou de forma persistente ao clicar, com cor uniforme para todos os itens.
+- **Dicas com largura fixa e nova aba «Dicas» nas Configurações:**
+  - Links e títulos longos nas dicas agora têm largura máxima fixa com corte em `...`.
+  - Nova aba **Dicas** com **pré-visualização interativa** em tempo real para configurar o modo da barra de ações, animação suave, visibilidade de cada dica e atraso de exibição em milissegundos.
+- **Melhorias na lista e filtros:**
+  - Os números de atalho rápido `1–0` aparecem apenas nos 10 primeiros itens, e o filtro **Links** exibe somente itens que são realmente links.
+
+### 🇫🇷 Français
+- **Menu vertical à 3 points (`⋮`) et barre d’actions animée :**
+  - Les boutons d’action de chaque carte se regroupent désormais derrière un bouton `⋮` à droite avec une ouverture fluide vers la gauche au survol ou persistante au clic, avec une couleur uniforme pour tous les éléments.
+- **Infobulles à largeur fixe et nouvel onglet « Infobulles » dans les Paramètres :**
+  - Les liens et titres longs dans les infobulles sont désormais limités à une largeur maximale fixe et tronqués avec `...`.
+  - Nouvel onglet **Infobulles** avec **aperçu interactif en direct** pour choisir le mode de la barre d’actions, l’animation, les infobulles actives et leur délai d’apparition en millisecondes.
+- **Améliorations de la liste et des filtres :**
+  - Les numéros d’accès rapide `1–0` ne s’affichent plus au-delà du 10e élément, et le filtre **Liens** n’affiche plus que les véritables liens.
+
+### 🇮🇹 Italiano
+- **Menu verticale a 3 punti (`⋮`) e barra delle azioni animata:**
+  - I pulsanti di azione di ciascuna scheda sono ora raccolti dietro un pulsante `⋮` a destra con scorrimento fluido verso sinistra al passaggio del mouse o persistente al clic, con stile uniforme su tutti gli elementi.
+- **Tooltip a larghezza fissa e nuova scheda «Tooltip» nelle Impostazioni:**
+  - Link e titoli lunghi nei tooltip ora rispettano una larghezza massima fissa e vengono troncati con `...`.
+  - Nuova scheda **Tooltip** con **anteprima interattiva dal vivo** per configurare la modalità della barra delle azioni, l’animazione fluida, la visibilità di ogni tooltip e il ritardo di comparsa in millisecondi.
+- **Rifiniture di elenco e filtri:**
+  - I numeri di scelta rapida `1–0` compaiono solo per i primi 10 elementi e il filtro **Link** mostra esclusivamente elementi che sono realmente link.
+
+### 🇩🇪 Deutsch
+- **Vertikales 3-Punkte-Menü (`⋮`) & animierte Aktionsleiste:**
+  - Die Aktionsschaltflächen jeder Karte sind nun hinter einem `⋮`-Symbol rechts gebündelt und gleiten beim Überfahren oder dauerhaft per Klick sanft nach links heraus – in einheitlicher Farbe für alle Einträge.
+- **Tooltips mit fester Breite & neuer Tab „Tooltips“ in den Einstellungen:**
+  - Lange Links und Fenstertitel in Tooltips werden auf eine feste Maximalbreite begrenzt und sauber mit `...` gekürzt.
+  - Neuer Tab **Tooltips** mit **interaktiver Live-Vorschau** zur Konfiguration von Aktionsleisten-Modus, sanfter Animation, Sichtbarkeit einzelner Tooltips und Anzeigeverzögerung in Millisekunden.
+- **Listen- & Filterverbesserungen:**
+  - Schnellwahl-Ziffern (`1–0`) werden nur noch für die ersten 10 Einträge angezeigt, und der Filter **Links** zeigt ausschließlich echte Links an.
+
+### 🇷🇺 Русский
+- **Вертикальное меню `⋮` и анимированная панель действий:**
+  - Кнопки действий каждой карточки теперь скрыты за кнопкой `⋮` справа и плавно выдвигаются влево при наведении или постоянно по клику, с единым оформлением для всех элементов.
+- **Подсказки фиксированной ширины и новая вкладка «Подсказки» в настройках:**
+  - Длинные ссылки и заголовки в подсказках теперь ограничены фиксированной шириной и аккуратно обрезаются с `...`.
+  - Новая вкладка **Подсказки** с **интерактивным предпросмотром** в реальном времени для настройки режима панели действий, плавной анимации, видимости каждой категории подсказок и задержки появления в миллисекундах.
+- **Улучшения списка и фильтров:**
+  - Цифры быстрого выбора `1–0` отображаются только для первых 10 элементов, а фильтр **Ссылки** теперь показывает исключительно настоящие ссылки.
+
 ## v1.8.4
 
 ### 🇪🇸 Español

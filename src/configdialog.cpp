@@ -7,9 +7,11 @@
 #include "editactiondialog.h"
 #include "flaticons.h"
 #include "historymodel.h"
+#include "hovertooltip.h"
 #include "settings.h"
 #include "shortcutrecorder.h"
 #include "themestyle.h"
+#include "tooltippreviewwidget.h"
 #include "translations.h"
 
 #include <QCheckBox>
@@ -28,6 +30,8 @@
 #include <QPushButton>
 #include <QScreen>
 #include <QScrollArea>
+#include <QSignalBlocker>
+#include <QSlider>
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QTabWidget>
@@ -612,6 +616,210 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
                  FlatIcons::icon(FlatIcon::Keyboard, t.textSecondary, t.textPrimary, t.textMuted, 15),
                  tr("Atajos"));
 
+    // ==================== Tab 4: Tooltips ====================
+    auto *tooltipsPage = new QWidget(this);
+    auto *tipsOuterLayout = new QHBoxLayout(tooltipsPage);
+    tipsOuterLayout->setContentsMargins(2, 6, 6, 8);
+    tipsOuterLayout->setSpacing(14);
+
+    // Left column: action bar behavior + tooltip visibility toggles + hover delay controls
+    auto *tipsLeftCol = new QVBoxLayout;
+    tipsLeftCol->setSpacing(8);
+
+    auto *actionBarCard = addSectionCard(tipsLeftCol, tr("Barra de acciones en elementos"), t, tooltipsPage);
+    auto *actionBarLayout = new QVBoxLayout(actionBarCard);
+    actionBarLayout->setContentsMargins(14, 12, 14, 12);
+    actionBarLayout->setSpacing(8);
+
+    const QString barModeTip = tr("Elige cómo se muestran los botones de acción (fijar, abrir enlace, QR, editar, eliminar) en cada elemento de la lista.");
+    auto *barModeLabel = new QLabel(tr("Mostrar botones de acción:"), actionBarCard);
+    barModeLabel->setToolTip(barModeTip);
+    actionBarLayout->addWidget(barModeLabel);
+
+    m_actionBarModeCombo = new QComboBox(actionBarCard);
+    m_actionBarModeCombo->setToolTip(barModeTip);
+    m_actionBarModeCombo->addItem(tr("Menú ⋮ (al pasar el cursor o hacer clic)"), static_cast<int>(ActionBarMode::MenuHoverOrClick));
+    m_actionBarModeCombo->addItem(tr("Menú ⋮ (solo al hacer clic)"), static_cast<int>(ActionBarMode::MenuClickOnly));
+    m_actionBarModeCombo->addItem(tr("Al pasar el cursor por la tarjeta"), static_cast<int>(ActionBarMode::AlwaysOnHover));
+    m_actionBarModeCombo->addItem(tr("Siempre visible"), static_cast<int>(ActionBarMode::AlwaysVisible));
+    const int barModeIdx = m_actionBarModeCombo->findData(static_cast<int>(s->actionBarMode()));
+    m_actionBarModeCombo->setCurrentIndex(barModeIdx >= 0 ? barModeIdx : 0);
+    const QFontMetrics barComboFm(m_actionBarModeCombo->font());
+    m_actionBarModeCombo->setMinimumHeight(qMax(m_actionBarModeCombo->sizeHint().height(), barComboFm.height() + 12));
+    actionBarLayout->addWidget(m_actionBarModeCombo);
+
+    m_actionBarAnimation = new QCheckBox(tr("Animación de apertura suave"), actionBarCard);
+    m_actionBarAnimation->setChecked(s->actionBarAnimation());
+    m_actionBarAnimation->setEnabled(s->actionBarMode() != ActionBarMode::AlwaysVisible);
+    m_actionBarAnimation->setToolTip(
+        tr("Desliza suavemente hacia la izquierda los botones de acción al abrirse o cerrarse."));
+    actionBarLayout->addWidget(m_actionBarAnimation);
+
+    auto *tipsVisCard = addSectionCard(tipsLeftCol, tr("Tooltips visibles"), t, tooltipsPage);
+    auto *tipsVisLayout = new QVBoxLayout(tipsVisCard);
+    tipsVisLayout->setContentsMargins(14, 12, 14, 12);
+    tipsVisLayout->setSpacing(8);
+
+    m_tipItemInfo = new QCheckBox(tr("Información de cada elemento"), tipsVisCard);
+    m_tipItemInfo->setChecked(s->tooltipItemInfo());
+    m_tipItemInfo->setToolTip(
+        tr("Muestra la aplicación, ventana, enlace de origen y fecha al pasar el cursor sobre un elemento del historial."));
+
+    m_tipItemActions = new QCheckBox(tr("Botones de acción de cada elemento"), tipsVisCard);
+    m_tipItemActions->setChecked(s->tooltipItemActions());
+    m_tipItemActions->setToolTip(
+        tr("Muestra el nombre de cada botón flotante en las tarjetas (fijar, abrir enlace, QR, vista previa, editar, eliminar)."));
+
+    m_tipHeaderButtons = new QCheckBox(tr("Botones de la barra superior"), tipsVisCard);
+    m_tipHeaderButtons->setChecked(s->tooltipHeaderButtons());
+    m_tipHeaderButtons->setToolTip(
+        tr("Muestra la descripción de los botones de pausar, vaciar historial, configurar y cerrar ventana."));
+
+    m_tipPlainTextSwitch = new QCheckBox(tr("Interruptor «Pegar sin formato»"), tipsVisCard);
+    m_tipPlainTextSwitch->setChecked(s->tooltipPlainTextSwitch());
+    m_tipPlainTextSwitch->setToolTip(
+        tr("Muestra la ayuda emergente al pasar el cursor sobre el interruptor «Pegar sin formato»."));
+
+    tipsVisLayout->addWidget(m_tipItemInfo);
+    tipsVisLayout->addWidget(m_tipItemActions);
+    tipsVisLayout->addWidget(m_tipHeaderButtons);
+    tipsVisLayout->addWidget(m_tipPlainTextSwitch);
+
+    auto *tipsDelayCard = addSectionCard(tipsLeftCol, tr("Tiempo de aparición"), t, tooltipsPage);
+    auto *tipsDelayLayout = new QVBoxLayout(tipsDelayCard);
+    tipsDelayLayout->setContentsMargins(14, 12, 14, 12);
+    tipsDelayLayout->setSpacing(8);
+
+    const QString delayTip = tr("Tiempo en milisegundos que tarda en aparecer un tooltip al mantener el cursor sobre un elemento.");
+    auto *delayLabel = new QLabel(tr("Retardo al pasar el cursor:"), tipsDelayCard);
+    delayLabel->setToolTip(delayTip);
+    tipsDelayLayout->addWidget(delayLabel);
+
+    auto *delayRow = new QHBoxLayout;
+    delayRow->setSpacing(10);
+
+    m_tipDelaySlider = new QSlider(Qt::Horizontal, tipsDelayCard);
+    m_tipDelaySlider->setRange(0, HoverTooltip::kMaxDelayMs);
+    m_tipDelaySlider->setSingleStep(50);
+    m_tipDelaySlider->setPageStep(250);
+    m_tipDelaySlider->setValue(s->tooltipDelayMs());
+    m_tipDelaySlider->setToolTip(delayTip);
+
+    m_tipDelaySpin = new QSpinBox(tipsDelayCard);
+    m_tipDelaySpin->setRange(0, HoverTooltip::kMaxDelayMs);
+    m_tipDelaySpin->setSingleStep(50);
+    m_tipDelaySpin->setSuffix(tr(" ms"));
+    m_tipDelaySpin->setValue(s->tooltipDelayMs());
+    m_tipDelaySpin->setToolTip(delayTip);
+    const QFontMetrics delayFm(m_tipDelaySpin->font());
+    const int delaySpinW = delayFm.horizontalAdvance(QStringLiteral("3000") + m_tipDelaySpin->suffix()) + qMax(54, delayFm.height() * 3);
+    m_tipDelaySpin->setMinimumWidth(delaySpinW);
+    m_tipDelaySpin->setMinimumHeight(qMax(m_tipDelaySpin->sizeHint().height(), delayFm.height() + 14));
+
+    delayRow->addWidget(m_tipDelaySlider, 1);
+    delayRow->addWidget(m_tipDelaySpin);
+    tipsDelayLayout->addLayout(delayRow);
+
+    auto *delayHint = new QLabel(tr("0 ms los muestra al instante. Recomendado: 400–600 ms."), tipsDelayCard);
+    delayHint->setWordWrap(true);
+    QFont dhFont = delayHint->font();
+    dhFont.setPointSizeF(qMax(8.0, dhFont.pointSizeF() - 1.3));
+    delayHint->setFont(dhFont);
+    QPalette dhPal = delayHint->palette();
+    dhPal.setColor(QPalette::WindowText, t.textMuted);
+    delayHint->setPalette(dhPal);
+    tipsDelayLayout->addWidget(delayHint);
+    tipsLeftCol->addStretch();
+
+    // Right column: interactive live preview matching the real popup window + tip card
+    auto *tipsRightCol = new QVBoxLayout;
+    tipsRightCol->setSpacing(8);
+
+    auto *previewTitle = new QLabel(tr("Vista previa interactiva"), tooltipsPage);
+    QFont ptFont = previewTitle->font();
+    ptFont.setBold(true);
+    ptFont.setPointSizeF(qMax(9.0, ptFont.pointSizeF() - 0.3));
+    previewTitle->setFont(ptFont);
+    QPalette ptPal = previewTitle->palette();
+    ptPal.setColor(QPalette::WindowText, t.textSecondary);
+    previewTitle->setPalette(ptPal);
+    previewTitle->setContentsMargins(4, 4, 0, 0);
+    tipsRightCol->addWidget(previewTitle);
+
+    m_tooltipPreview = new TooltipPreviewWidget(tooltipsPage);
+    tipsRightCol->addWidget(m_tooltipPreview, 0, Qt::AlignTop);
+
+    auto *tipsInfoCard = new QFrame(tooltipsPage);
+    tipsInfoCard->setObjectName(QStringLiteral("mklipperTipCard"));
+    tipsInfoCard->setMaximumWidth(m_tooltipPreview->maximumWidth());
+    auto *tipsInfoLayout = new QHBoxLayout(tipsInfoCard);
+    tipsInfoLayout->setContentsMargins(12, 10, 12, 10);
+    tipsInfoLayout->setSpacing(9);
+
+    auto *tipsInfoIcon = new QLabel(tipsInfoCard);
+    tipsInfoIcon->setPixmap(FlatIcons::pixmap(FlatIcon::Info, t.accent, 17, devicePixelRatioF()));
+    tipsInfoIcon->setFixedSize(17, 17);
+    tipsInfoLayout->addWidget(tipsInfoIcon, 0, Qt::AlignTop);
+
+    auto *tipsInfoText = new QLabel(
+        tr("Prueba tus cambios en tiempo real sobre la vista previa: haz clic o pasa el cursor por «⋮» y sobre cada elemento. Los enlaces largos se recortan con «...»."),
+        tipsInfoCard);
+    tipsInfoText->setWordWrap(true);
+    QFont tiFont = tipsInfoText->font();
+    tiFont.setPointSizeF(qMax(8.0, tiFont.pointSizeF() - 0.9));
+    tipsInfoText->setFont(tiFont);
+    tipsInfoLayout->addWidget(tipsInfoText, 1);
+    tipsRightCol->addWidget(tipsInfoCard);
+    tipsRightCol->addStretch();
+
+    tipsOuterLayout->addLayout(tipsLeftCol, 1);
+    tipsOuterLayout->addLayout(tipsRightCol, 0);
+
+    auto syncTooltipPreview = [this]() {
+        const auto mode = static_cast<ActionBarMode>(m_actionBarModeCombo->currentData().toInt());
+        if (m_actionBarAnimation) {
+            m_actionBarAnimation->setEnabled(mode != ActionBarMode::AlwaysVisible);
+        }
+        if (!m_tooltipPreview) {
+            return;
+        }
+        TooltipConfig cfg;
+        cfg.itemInfo = m_tipItemInfo->isChecked();
+        cfg.itemActions = m_tipItemActions->isChecked();
+        cfg.headerButtons = m_tipHeaderButtons->isChecked();
+        cfg.plainTextSwitch = m_tipPlainTextSwitch->isChecked();
+        cfg.delayMs = m_tipDelaySpin->value();
+        cfg.actionBarMode = mode;
+        cfg.actionBarAnimation = m_actionBarAnimation->isChecked();
+        m_tooltipPreview->setTooltipConfig(cfg);
+    };
+
+    connect(m_actionBarModeCombo, &QComboBox::currentIndexChanged, this, syncTooltipPreview);
+    connect(m_actionBarAnimation, &QCheckBox::toggled, this, syncTooltipPreview);
+    connect(m_tipItemInfo, &QCheckBox::toggled, this, syncTooltipPreview);
+    connect(m_tipItemActions, &QCheckBox::toggled, this, syncTooltipPreview);
+    connect(m_tipHeaderButtons, &QCheckBox::toggled, this, syncTooltipPreview);
+    connect(m_tipPlainTextSwitch, &QCheckBox::toggled, this, syncTooltipPreview);
+    connect(m_tipDelaySlider, &QSlider::valueChanged, this, [this, syncTooltipPreview](int value) {
+        if (m_tipDelaySpin->value() != value) {
+            QSignalBlocker blk(m_tipDelaySpin);
+            m_tipDelaySpin->setValue(value);
+        }
+        syncTooltipPreview();
+    });
+    connect(m_tipDelaySpin, &QSpinBox::valueChanged, this, [this, syncTooltipPreview](int value) {
+        if (m_tipDelaySlider->value() != value) {
+            QSignalBlocker blk(m_tipDelaySlider);
+            m_tipDelaySlider->setValue(value);
+        }
+        syncTooltipPreview();
+    });
+    syncTooltipPreview();
+
+    tabs->addTab(makeScrollTab(tooltipsPage, this),
+                 FlatIcons::icon(FlatIcon::Tooltip, t.textSecondary, t.textPrimary, t.textMuted, 15),
+                 tr("Tooltips"));
+
     // Dialog action footer
     auto *footerDivider = new QFrame(this);
     footerDivider->setObjectName(QStringLiteral("mklipperDivider"));
@@ -654,9 +862,10 @@ ConfigDialog::ConfigDialog(URLGrabber *urlGrabber, QWidget *parent)
     refreshActionList();
 
     // Pick a comfortable initial size across all tabs so no horizontal scrollbar appears on any language
-    const int maxTabW = qMax(generalPage->sizeHint().width(),
-                             qMax(actionsPage->sizeHint().width(), keysPage->sizeHint().width()));
-    const int maxTabH = qMax(generalPage->sizeHint().height(), keysPage->sizeHint().height());
+    const int maxTabW = qMax(qMax(generalPage->sizeHint().width(), actionsPage->sizeHint().width()),
+                             qMax(keysPage->sizeHint().width(), tooltipsPage->sizeHint().width()));
+    const int maxTabH = qMax(qMax(generalPage->sizeHint().height(), keysPage->sizeHint().height()),
+                             tooltipsPage->sizeHint().height());
     const QSize preferred(maxTabW + 76, maxTabH + 136);
     if (QScreen *scr = QGuiApplication::primaryScreen()) {
         const QRect avail = scr->availableGeometry();
@@ -857,6 +1066,14 @@ void ConfigDialog::saveAndAccept()
     s->setShortcutCycleNext(m_keyCycleNext->keySequence().toString());
     s->setShortcutCyclePrev(m_keyCyclePrev->keySequence().toString());
     s->setShortcutClearHistory(m_keyClearHistory->keySequence().toString());
+
+    s->setTooltipItemInfo(m_tipItemInfo->isChecked());
+    s->setTooltipItemActions(m_tipItemActions->isChecked());
+    s->setTooltipHeaderButtons(m_tipHeaderButtons->isChecked());
+    s->setTooltipPlainTextSwitch(m_tipPlainTextSwitch->isChecked());
+    s->setTooltipDelayMs(m_tipDelaySpin->value());
+    s->setActionBarMode(static_cast<ActionBarMode>(m_actionBarModeCombo->currentData().toInt()));
+    s->setActionBarAnimation(m_actionBarAnimation->isChecked());
 
     s->setAutoCheckUpdates(m_autoCheckUpdates->isChecked());
     if (m_languageCombo) {

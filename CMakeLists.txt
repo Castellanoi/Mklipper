@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mklipper VERSION 1.8.4 LANGUAGES CXX)
+project(mklipper VERSION 1.8.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -62,6 +62,10 @@ set(MKLIPPER_CORE_SOURCES
     src/qrcodewidget.h
     src/previewwidget.cpp
     src/previewwidget.h
+    src/hovertooltip.cpp
+    src/hovertooltip.h
+    src/tooltippreviewwidget.cpp
+    src/tooltippreviewwidget.h
     src/klipperpopup.cpp
     src/klipperpopup.h
     src/editactiondialog.cpp

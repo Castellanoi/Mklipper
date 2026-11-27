@@ -13,8 +13,10 @@ class QCheckBox;
 class QComboBox;
 class QLineEdit;
 class QListWidget;
+class QSlider;
 class QSpinBox;
 class ShortcutRecorder;
+class TooltipPreviewWidget;
 
 class ConfigDialog : public QDialog
 {
@@ -85,4 +87,15 @@ private:
     ShortcutRecorder *m_keyCycleNext = nullptr;
     ShortcutRecorder *m_keyCyclePrev = nullptr;
     ShortcutRecorder *m_keyClearHistory = nullptr;
+
+    // Tooltips & action bar tab
+    QComboBox *m_actionBarModeCombo = nullptr;
+    QCheckBox *m_actionBarAnimation = nullptr;
+    QCheckBox *m_tipItemInfo = nullptr;
+    QCheckBox *m_tipItemActions = nullptr;
+    QCheckBox *m_tipHeaderButtons = nullptr;
+    QCheckBox *m_tipPlainTextSwitch = nullptr;
+    QSlider *m_tipDelaySlider = nullptr;
+    QSpinBox *m_tipDelaySpin = nullptr;
+    TooltipPreviewWidget *m_tooltipPreview = nullptr;
 };
