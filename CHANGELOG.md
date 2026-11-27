@@ -1,5 +1,73 @@
 # Changelog
 
+## v1.8.4
+
+### 🇪🇸 Español
+- **Estabilidad y correcciones:**
+  - Corregidas las acciones automáticas Magic MIME para enlaces `mailto:` y `ftp://`, y la detección insensible a mayúsculas para `http://`/`https://` (rechazando texto con espacios).
+  - Solucionados problemas de ciclo de vida en `URLGrabber`, seguimiento de cursor con `QPersistentModelIndex`, preservación de UTF-8 multibyte y protección contra borrado accidental en comandos con error (`REPLACE`), respaldo/restauración de elementos fijados tipo URL y edición de la fila superior.
+  - Mejorada la lectura del archivo de inicio automático, el parseo de listas GSettings, las notificaciones de rotación sobre imágenes, el comando `--clear` al iniciar sin instancia previa y la finalización acotada de subprocesos `gsettings`.
+- **Seguridad y endurecimiento:**
+  - Bloqueo inmediato de redirecciones a dominios no autorizados durante la descarga de actualizaciones, verificación adicional de la versión interna del paquete `.deb` y validación estricta de `sourceUrl` y límites de tamaño al importar respaldos JSON.
+- **Optimización de rendimiento y memoria:**
+  - Caché en memoria de metadatos de imágenes, inspección X11 en una sola pasada con caché de átomos, lectura única de mapa de teclado X11 y caché de atajos globales (evitando ejecuciones redundantes de `gsettings` al cambiar opciones).
+  - Renderizado más fluido del popup (extracción O(1) de vista previa, repintado por fila al mover el cursor, miniaturas HiDPI y liberación de memoria al ocultar la vista previa) y notificaciones D-Bus asíncronas.
+- **Calidad y pruebas:**
+  - Compilación estricta (`-Wall -Wextra -Wpedantic`) sin advertencias, limpieza de claves de traducción obsoletas en los 7 paquetes y ampliación de la suite de pruebas a 493 verificaciones validadas con ASan/UBSan.
+
+### 🇬🇧 English
+- **Stability & bug fixes:**
+  - Fixed Magic MIME actions for `mailto:` and `ftp://` links and case-insensitive `http://`/`https://` detection (rejecting text with spaces).
+  - Fixed `URLGrabber` reload safety, `QPersistentModelIndex` hover tracking, multi-byte UTF-8 command stdout accumulation, safe `REPLACE` behavior on failing commands, URL item type preservation on pinned backup import, and row-0 inline edit timestamp sync.
+  - Improved autostart `.desktop` parsing, GSettings string-list parsing, image labels in cycle notifications, `--clear` handling on fresh launch, and bounded `gsettings` timeout cleanup.
+- **Security hardening:**
+  - Immediate abort on disallowed redirect hosts during update downloads, extra `.deb` `Version` metadata check, and strict `sourceUrl` / payload bounds validation on JSON pinned backup imports.
+- **Performance & memory optimizations:**
+  - In-memory image metadata cache, single-pass X11 source inspection with atom caching, single `XGetKeyboardMapping` call in `X11Keyboard`, and shortcut signature caching (skipping redundant `gsettings` spawns on unrelated setting changes).
+  - Smoother popup rendering (O(1) two-line preview extraction, row-scoped hover repaints, HiDPI thumbnails, releasing hidden preview images from RAM) and non-blocking async D-Bus notifications.
+- **Quality & tests:**
+  - Clean strict compilation (`-Wall -Wextra -Wpedantic`, zero warnings), pruned obsolete i18n keys across all 7 packs, and expanded hermetic test suite to 493 checks verified under ASan/UBSan.
+
+### 🇧🇷 Português (Brasil)
+- **Estabilidade e correções:**
+  - Corrigidas as ações Magic MIME para `mailto:` e `ftp://`, preservação do tipo URL ao importar favoritos, UTF-8 em saída de comandos, proteção do modo `REPLACE` em falhas e notificações de rotação para imagens.
+- **Segurança:**
+  - Bloqueio imediato de redirecionamentos não autorizados no atualizador, verificação da versão do `.deb` e validação de `sourceUrl` e limites ao importar backups JSON.
+- **Desempenho e testes:**
+  - Cache de metadados de imagens, inspeção X11 em passagem única, cache de atalhos (evitando chamadas repetidas ao `gsettings`), notificações D-Bus assíncronas e 493 verificações automatizadas aprovadas com ASan/UBSan.
+
+### 🇫🇷 Français
+- **Stabilité et corrections :**
+  - Correction des actions Magic MIME pour `mailto:` et `ftp://`, préservation du type URL à l'import des favoris, gestion UTF-8 des commandes, sécurité du mode `REPLACE` en cas d'échec et libellés d'image dans les notifications de rotation.
+- **Sécurité :**
+  - Blocage immédiat des redirections non autorisées dans le module de mise à jour, vérification de la version du `.deb` et validation stricte de `sourceUrl` lors de l'import JSON.
+- **Performances et tests :**
+  - Cache mémoire des métadonnées d'image, inspection X11 en un seul passage, mise en cache des raccourcis (évitant les appels `gsettings` inutiles), notifications D-Bus asynchrones et 493 vérifications automatisées validées sous ASan/UBSan.
+
+### 🇮🇹 Italiano
+- **Stabilità e correzioni:**
+  - Corrette le azioni Magic MIME per `mailto:` e `ftp://`, preservazione del tipo URL nell'importazione dei fissati, gestione UTF-8 dei comandi, protezione della modalità `REPLACE` in caso di errore e notifiche di rotazione per le immagini.
+- **Sicurezza:**
+  - Blocco immediato dei reindirizzamenti non autorizzati nell'aggiornamento, verifica della versione `.deb` e validazione rigorosa di `sourceUrl` nell'importazione JSON.
+- **Prestazioni e test:**
+  - Cache dei metadati delle immagini, ispezione X11 in un singolo passaggio, cache delle scorciatoie (evitando chiamate `gsettings` superflue), notifiche D-Bus asincrone e 493 controlli automatizzati validati con ASan/UBSan.
+
+### 🇩🇪 Deutsch
+- **Stabilität & Fehlerbehebungen:**
+  - Magic-MIME-Aktionen für `mailto:` und `ftp://`, Erhalt des URL-Typs beim Import angehefteter Einträge, UTF-8-Befehlsausgaben, sicherer `REPLACE`-Modus bei Fehlern und Bildbezeichnungen beim Durchschalten behoben.
+- **Sicherheit:**
+  - Sofortiger Abbruch nicht erlaubter Weiterleitungen im Updater, zusätzliche `.deb`-Versionsprüfung und strenge `sourceUrl`-Validierung beim JSON-Import.
+- **Leistung & Tests:**
+  - Bildmetadaten-Cache, X11-Inspektion in einem Durchgang, Tastenkürzel-Cache (keine unnötigen `gsettings`-Aufrufe), asynchrone D-Bus-Benachrichtigungen und 493 automatisierte Tests mit ASan/UBSan bestanden.
+
+### 🇷🇺 Русский
+- **Стабильность и исправления:**
+  - Исправлены действия Magic MIME для `mailto:` и `ftp://`, сохранение типа URL при импорте закреплённых элементов, обработка многобайтового UTF-8 в командах, защита режима `REPLACE` при ошибках и подписи изображений при переключении истории.
+- **Безопасность:**
+  - Мгновенная блокировка неразрешённых перенаправлений в модуле обновлений, дополнительная проверка версии `.deb` и строгая проверка `sourceUrl` при импорте JSON.
+- **Производительность и тесты:**
+  - Кэш метаданных изображений, однопроходная X11-инспекция, кэширование горячих клавиш (без лишних вызовов `gsettings`), асинхронные D-Bus-уведомления и 493 автоматические проверки с ASan/UBSan.
+
 ## v1.8.3
 
 ### 🇪🇸 Español
